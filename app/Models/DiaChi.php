@@ -18,6 +18,11 @@ class DiaChi extends Model
         'ID_Quan',
         'CanHo',
         'DiaChiDayDu',
+        'is_Deleted',
+    ];
+
+    protected $casts = [
+        'is_Deleted' => 'boolean',
     ];
 
     public function quan()

@@ -27,7 +27,6 @@ class BookingController extends Controller
             $addresses = Auth::user()
                 ->khachHang
                 ->diaChis()
-                ->where('is_Deleted', false)
                 ->orderBy('ID_DC')
                 ->take(3)
                 ->get();
@@ -63,7 +62,7 @@ class BookingController extends Controller
         };
 
         if ($idDv === null) {
-            return response()->json(['error' => 'Thoi luong khong hop le'], 422);
+            return response()->json(['error' => 'Thời lượng không hợp lệ'], 422);
         }
 
         $service = DichVu::findOrFail($idDv);
@@ -128,13 +127,7 @@ class BookingController extends Controller
                     $proximityPercent = 80;
                 } else {
                     $nvQuan = $nv->ID_Quan ? Quan::find($nv->ID_Quan) : null;
-                    if (
-                        $nvQuan &&
-                        $nvQuan->ViDo !== null &&
-                        $nvQuan->KinhDo !== null &&
-                        $customerQuan->ViDo !== null &&
-                        $customerQuan->KinhDo !== null
-                    ) {
+                    if ($nvQuan && $nvQuan->ViDo !== null && $customerQuan->ViDo !== null) {
                         $distKm = $this->distanceKm(
                             (float) $nvQuan->ViDo,
                             (float) $nvQuan->KinhDo,
@@ -185,7 +178,7 @@ class BookingController extends Controller
         $customer = $account?->khachHang;
 
         if (!$customer) {
-            return response()->json(['error' => 'Vui long dang nhap truoc khi ap ma khuyen mai.'], 403);
+            return response()->json(['error' => 'Vui lA2ng �`a?ng nhA?p trA��c khi A�p mA� khuyA�n mA�i'], 403);
         }
 
         $km = KhuyenMai::where('ID_KM', $code)
@@ -193,18 +186,13 @@ class BookingController extends Controller
             ->first();
 
         if (!$km) {
-            return response()->json(['error' => 'Ma khuyen mai khong hop le hoac da ngung hoat dong.'], 422);
+            return response()->json(['error' => 'Mã khuyến mãi không hợp lệ hoặc đã ngưng kích hoạt'], 422);
         }
 
         $today = Carbon::today();
         if (($km->NgayBatDau && $today->lt(Carbon::parse($km->NgayBatDau))) ||
             ($km->NgayKetThuc && $today->gt(Carbon::parse($km->NgayKetThuc)))) {
-            return response()->json(['error' => 'Ma khuyen mai da het han.'], 422);
-        }
-
-        // Khong cho khach hang ap lai ma da dung truoc do
-        if ($this->voucherUsedByCustomer($customer->ID_KH, $code)) {
-            return response()->json(['error' => 'Ma khuyen mai nay ban da su dung truoc do nen khong the ap lai.'], 422);
+            return response()->json(['error' => 'Mã khuyến mãi đã hết hạn'], 422);
         }
 
         $discount = $amount * ((float) $km->PhanTramGiam / 100);
@@ -227,23 +215,23 @@ class BookingController extends Controller
     {
         $validated = $request->validate([
             'payment_method' => ['nullable', 'in:cash,vnpay'],
-            'loai_don'       => ['required', 'in:hour,month'],
-            'id_dv'          => ['required', 'string'],
-            'id_dc'          => ['nullable', 'string'],
-            'dia_chi_text'   => ['nullable', 'string'],
-            'dia_chi_unit'   => ['nullable', 'string'],
-            'dia_chi_street' => ['nullable', 'string'],
-            'ngay_lam'       => ['nullable', 'date'],
-            'gio_bat_dau'    => ['nullable', 'date_format:H:i'],
-            'thoi_luong'     => ['nullable', 'integer', 'min:1'],
-            'tong_tien'      => ['required', 'numeric', 'min:0'],
-            'tong_sau_giam'  => ['nullable', 'numeric', 'min:0'],
-            'id_nv'          => ['nullable', 'string'],
-            'id_km'          => ['nullable', 'string'],
+            'loai_don'      => ['required', 'in:hour,month'],
+            'id_dv'         => ['required', 'string'],
+            'id_dc'         => ['nullable', 'string'],
+            'dia_chi_text'  => ['nullable', 'string'],
+            'dia_chi_unit'  => ['nullable', 'string'],
+            'dia_chi_street'=> ['nullable', 'string'],
+            'ngay_lam'      => ['nullable', 'date'],
+            'gio_bat_dau'   => ['nullable', 'date_format:H:i'],
+            'thoi_luong'    => ['nullable', 'integer', 'min:1'],
+            'tong_tien'     => ['required', 'numeric', 'min:0'],
+            'tong_sau_giam' => ['nullable', 'numeric', 'min:0'],
+            'id_nv'         => ['nullable', 'string'],
+            'id_km'         => ['nullable', 'string'],
             'vouchers'                  => ['nullable', 'array'],
             'vouchers.*.id_km'          => ['required_with:vouchers', 'string'],
             'vouchers.*.tien_giam'      => ['required_with:vouchers', 'numeric', 'min:0'],
-            'ghi_chu'        => ['nullable', 'string'],
+            'ghi_chu'       => ['nullable', 'string'],
         ]);
 
         $paymentMethod = $validated['payment_method'] ?? 'vnpay';
@@ -252,7 +240,7 @@ class BookingController extends Controller
         $customer = $account?->khachHang;
 
         if (!$customer) {
-            return response()->json(['error' => 'Khong tim thay khach hang.'], 403);
+            return response()->json(['error' => 'Không tìm thấy khách hàng'], 403);
         }
 
         $prefix = $validated['loai_don'] === 'month'
@@ -262,15 +250,7 @@ class BookingController extends Controller
 
         $appliedVouchers = $validated['vouchers'] ?? [];
 
-        // Chan su dung lai ma khuyen mai o buoc confirm (phong truong hop front-end bo qua API applyVoucher)
-        if (!empty($validated['id_km'])) {
-            if ($this->voucherUsedByCustomer($customer->ID_KH, $validated['id_km'])) {
-                return response()->json([
-                    'error' => 'Ma khuyen mai ' . $validated['id_km'] . ' ban da su dung truoc do nen khong the ap lai.',
-                ], 422);
-            }
-        }
-
+        // KhA'ng cho khA-ch hA�ng A�p lA�i bA?t kA� mA� khuyA�n mA�i nA�o A�A� tA?ng s��` d��ng trA??c A�A�y
         if (!empty($appliedVouchers)) {
             foreach ($appliedVouchers as $voucher) {
                 if (empty($voucher['id_km'])) {
@@ -278,9 +258,22 @@ class BookingController extends Controller
                 }
 
                 $code = $voucher['id_km'];
-                if ($this->voucherUsedByCustomer($customer->ID_KH, $code)) {
+
+                $hasUsed = DonDat::where('ID_KH', $customer->ID_KH)
+                    ->where(function ($query) use ($code) {
+                        $query->where('ID_KM', $code)
+                            ->orWhereExists(function ($sub) use ($code) {
+                                $sub->selectRaw('1')
+                                    ->from('ChiTietKhuyenMai')
+                                    ->whereColumn('ChiTietKhuyenMai.ID_DD', 'DonDat.ID_DD')
+                                    ->where('ChiTietKhuyenMai.ID_KM', $code);
+                            });
+                    })
+                    ->exists();
+
+                if ($hasUsed) {
                     return response()->json([
-                        'error' => 'Ma khuyen mai ' . $code . ' ban da su dung truoc do nen khong the ap lai.',
+                        'error' => 'M�� khuyA�n mA�i ' . $code . ' bA?n A� t��`ng s��` d��ng cho �`����n trA??c A�A�y nA�n khA'ng th��� A�p lA�i.',
                     ], 422);
                 }
             }
@@ -292,17 +285,20 @@ class BookingController extends Controller
             : $tongTien;
 
         $gioBatDau = $validated['gio_bat_dau'] ?? null;
+
         $selectedStaffId = $validated['id_nv'] ?? null;
 
-        // Xy ly dia chi: tim ID_DC phu hop hoac tao moi (dia chi don le, khong bat buoc la dia chi da luu)
+        // Xử lý địa chỉ: tìm ID_DC phù hợp hoặc tạo mới
         $idDc = $validated['id_dc'] ?? null;
         $diaChiText = isset($validated['dia_chi_text'])
             ? trim((string) $validated['dia_chi_text'])
             : '';
 
         if ($diaChiText !== '') {
-            // Tu front-end: dia_chi_text co the la chuoi gop unit + street.
-            // O day uu tien 2 truong rieng neu co: dia_chi_unit, dia_chi_street.
+            // �`��c lA� pA-n hiA�n �`ang lA� chu��>i kA?t hA?p tA� t��� select-address:
+            //  - N���u khA'ch nh��?p unit-address:  "unit, <streetAddress>"
+            //  - N���u khA'ng nh��?p unit-address:  "<streetAddress>"
+            // TA?i confirm, ta uu tiA�n dA?ng thA?ng hai trA??ng rieng neu co.
             $rawUnit   = $validated['dia_chi_unit']   ?? null;
             $rawStreet = $validated['dia_chi_street'] ?? null;
 
@@ -314,11 +310,12 @@ class BookingController extends Controller
                 ? trim($rawStreet)
                 : $diaChiText;
 
-            // Khong tao/cap nhat dia chi da luu cua khach o day.
-            // Chi tim xem dia chi nay co trong danh sach dia chi da luu (chua bi xoa mem) hay khong, neu co thi tai su dung ID_DC.
-            $query = $customer->diaChis()
-                ->where('is_Deleted', false)
-                ->where('DiaChiDayDu', $full);
+            // KhA'ng tA?o mA?i / cA?p nhA?t �`��<a ch��% �`A? luu cua khA'ch
+            // o day. Chi thu xem co A`�a chi nao da ton tai trong danh sach
+            // dia chi da luu cua khA'ch thi tai su dung ID_DC do; neu khong
+            // thi tao dia chi moi nhung khong gan ID_KH (�`a?A�a chi chi gan
+            // voi �`A?n A`a�t, khA'ng toi la dia chi da luu cua khA'ch).
+            $query = $customer->diaChis()->where('DiaChiDayDu', $full);
             if ($canHo !== null) {
                 $query->where('CanHo', $canHo);
             }
@@ -332,11 +329,11 @@ class BookingController extends Controller
                 $newIdDc = IdGenerator::next('DiaChi', 'ID_DC', 'DC_');
 
                 DiaChi::create([
-                    'ID_DC'       => $newIdDc,
-                    'ID_KH'       => null,
-                    'ID_Quan'     => $quan?->ID_Quan,
-                    'CanHo'       => $canHo,
-                    'DiaChiDayDu' => $full,
+                    'ID_DC'        => $newIdDc,
+                    'ID_KH'        => null,
+                    'ID_Quan'      => $quan?->ID_Quan,
+                    'CanHo'        => $canHo,
+                    'DiaChiDayDu'  => $full,
                 ]);
 
                 $idDc = $newIdDc;
@@ -367,6 +364,7 @@ class BookingController extends Controller
             'ID_Goi'         => null,
             'NgayBatDauGoi'  => null,
             'NgayKetThucGoi' => null,
+            // Giữ nguyên trạng thái cũ để khớp với schema DB
             'TrangThaiDon'   => $trangThaiDon,
             'TongTien'       => $tongTien,
             'TongTienSauGiam'=> $tongSauGiam,
@@ -374,7 +372,7 @@ class BookingController extends Controller
             'ID_KM'          => $validated['id_km'] ?? null,
         ]);
 
-        // Luu chi tiet khuyen mai (ho tro nhieu voucher cho 1 don)
+        // Lưu chi tiết khuyến mãi (hỗ trợ nhiều KM cho 1 đơn)
         if (!empty($appliedVouchers)) {
             foreach ($appliedVouchers as $voucher) {
                 if (empty($voucher['id_km'])) {
@@ -458,64 +456,51 @@ class BookingController extends Controller
         $isValidSignature = hash_equals($secureHash, (string) $vnp_SecureHash);
 
         $txnRef        = $request->query('vnp_TxnRef');
-        $responseCode  = $request->query('vnp_ResponseCode');
-        $transactionNo = $request->query('vnp_TransactionNo');
+    $responseCode  = $request->query('vnp_ResponseCode');
+    $transactionNo = $request->query('vnp_TransactionNo');
 
-        $status  = 'failed';
-        $message = 'Thanh toan that bai.';
+    $status  = 'failed';
+    $message = 'Thanh toán thất bại.';
 
-        if ($isValidSignature && $responseCode === '00') {
-            $status  = 'success';
-            $message = 'Thanh toan thanh cong.';
+    if ($isValidSignature && $responseCode === '00') {
+        $status  = 'success';
+        $message = 'Thanh toán thành công.';
 
-            if ($txnRef) {
-                $order = DonDat::find($txnRef);
-                if ($order) {
-                    if ($order->ID_NV) {
-                        $order->TrangThaiDon = 'assigned';
-                    } else {
-                        $order->TrangThaiDon = 'finding_staff';
-                    }
-                    $order->save();
+        if ($txnRef) {
+            $order = DonDat::find($txnRef);
+            if ($order) {
+                // giữ logic assigned / finding_staff như bạn muốn
+                if ($order->ID_NV) {
+                    $order->TrangThaiDon = 'assigned';
+                } else {
+                    $order->TrangThaiDon = 'finding_staff';
+                }
+                $order->save();
 
-                    $payment = LichSuThanhToan::where('ID_DD', $order->ID_DD)
-                        ->where('PhuongThucThanhToan', 'VNPay')
-                        ->orderByDesc('ThoiGian')
-                        ->first();
+                // Cập nhật lịch sử thanh toán VNPay
+                $payment = LichSuThanhToan::where('ID_DD', $order->ID_DD)
+                    ->where('PhuongThucThanhToan', 'VNPay')
+                    ->orderByDesc('ThoiGian')
+                    ->first();
 
-                    if ($payment) {
-                        $payment->TrangThai = 'ThanhCong';
-                        $payment->MaGiaoDichVNPAY = $transactionNo;
-                        $payment->save();
-                    }
+                if ($payment) {
+                    $payment->TrangThai = 'ThanhCong';
+                    $payment->MaGiaoDichVNPAY = $transactionNo;
+                    $payment->save();
                 }
             }
-        } elseif (!$isValidSignature) {
-            $message = 'Chu ky khong hop le.';
         }
-
-        return view('payment-result', [
-            'status'        => $status,
-            'message'       => $message,
-            'orderId'       => $txnRef,
-            'transactionNo' => $transactionNo,
-            'responseCode'  => $responseCode,
-        ]);
+    } elseif (!$isValidSignature) {
+        $message = 'Chữ ký không hợp lệ.';
     }
 
-    private function voucherUsedByCustomer(string $customerId, string $code): bool
-    {
-        return DonDat::where('ID_KH', $customerId)
-            ->where(function ($query) use ($code) {
-                $query->where('ID_KM', $code)
-                    ->orWhereExists(function ($sub) use ($code) {
-                        $sub->selectRaw('1')
-                            ->from('ChiTietKhuyenMai')
-                            ->whereColumn('ChiTietKhuyenMai.ID_DD', 'DonDat.ID_DD')
-                            ->where('ChiTietKhuyenMai.ID_KM', $code);
-                    });
-            })
-            ->exists();
+    return view('payment-result', [
+        'status'        => $status,
+        'message'       => $message,
+        'orderId'       => $txnRef,
+        'transactionNo' => $transactionNo,
+        'responseCode'  => $responseCode,
+    ]);
     }
 
     private function distanceKm(float $lat1, float $lon1, float $lat2, float $lon2): float
@@ -543,7 +528,7 @@ class BookingController extends Controller
         $candidate = null;
 
         if (count($segments) >= 3) {
-            // Vi du: 140 Le Trong Tan, Tay Thanh, Tan Phu, Thanh pho Ho Chi Minh
+            // VD: 140 Le Trong Tan, Tay Thanh, Tan Phu, Thanh pho Ho Chi Minh
             // -> Quan/huyen thuong nam o vi tri thu 2 tu cuoi len.
             $candidate = $segments[count($segments) - 2];
         } elseif (count($segments) >= 2) {
@@ -557,15 +542,15 @@ class BookingController extends Controller
             return null;
         }
 
-        // Tim quan/huyen bang LIKE truoc
+        // Tim quan/huyen bang like truoc
         $quan = Quan::where('TenQuan', 'like', '%' . $candidate . '%')->first();
         if ($quan) {
             return $quan;
         }
 
-        // Thu loai bo cac tien to thong dung: Quan, Huyen, TP, Thanh pho...
+        // Thu loai bo cac tien to thong dung trong TenQuan va A`�a chi
         $normalize = static function (string $value): string {
-            $value = preg_replace('/^(Quan|Huyen|TP\\.?|Thanh pho)\\s+/iu', '', $value);
+            $value = preg_replace('/^(Quận|Huyện|TP\\.?|Thành phố)\\s+/iu', '', $value);
             return trim((string) $value);
         };
 
@@ -576,19 +561,19 @@ class BookingController extends Controller
 
         $quans = Quan::all();
 
-        foreach ($quans as $quanItem) {
-            if (!$quanItem->TenQuan) {
+        foreach ($quans as $quan) {
+            if (!$quan->TenQuan) {
                 continue;
             }
 
-            $normalizedTenQuan = $normalize($quanItem->TenQuan);
+            $normalizedTenQuan = $normalize($quan->TenQuan);
             if ($normalizedTenQuan !== '' &&
                 mb_stripos($normalizedCandidate, $normalizedTenQuan) !== false) {
-                return $quanItem;
+                return $quan;
             }
 
-            if (mb_stripos($address, $quanItem->TenQuan) !== false) {
-                return $quanItem;
+            if (mb_stripos($address, $quan->TenQuan) !== false) {
+                return $quan;
             }
         }
 

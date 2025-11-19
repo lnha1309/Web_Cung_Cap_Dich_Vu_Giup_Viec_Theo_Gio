@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\DiaChi;
-use App\Models\DonDat;
 use App\Models\Quan;
 use App\Support\IdGenerator;
 use Illuminate\Http\Request;
@@ -20,11 +19,15 @@ class ProfileController extends Controller
             abort(404);
         }
 
-        $addresses = $customer->diaChis()->orderBy('ID_DC')->take(3)->get();
+        $addresses = $customer->diaChis()
+            ->where('is_Deleted', false)
+            ->orderBy('ID_DC')
+            ->take(3)
+            ->get();
 
         return view('profile', [
-            'account' => $account,
-            'customer' => $customer,
+            'account'   => $account,
+            'customer'  => $customer,
             'addresses' => $addresses,
         ]);
     }
@@ -40,18 +43,18 @@ class ProfileController extends Controller
 
         $validated = $request->validate(
             [
-                'Ten_KH' => ['required', 'string', 'max:255'],
-                'SDT' => ['required', 'string', 'max:15', 'unique:KhachHang,SDT,' . $customer->ID_KH . ',ID_KH'],
-                'addresses' => ['array'],
-                'addresses.*.id' => ['nullable', 'string'],
+                'Ten_KH'                  => ['required', 'string', 'max:255'],
+                'SDT'                     => ['required', 'string', 'max:15', 'unique:KhachHang,SDT,' . $customer->ID_KH . ',ID_KH'],
+                'addresses'               => ['array'],
+                'addresses.*.id'          => ['nullable', 'string'],
                 'addresses.*.DiaChiDayDu' => ['nullable', 'string', 'max:1000'],
-                'addresses.*.district' => ['nullable', 'string', 'max:255'],
-                'addresses.*.CanHo' => ['nullable', 'string', 'max:255'],
+                'addresses.*.district'    => ['nullable', 'string', 'max:255'],
+                'addresses.*.CanHo'       => ['nullable', 'string', 'max:255'],
             ],
             [],
             [
                 'Ten_KH' => 'Họ và tên',
-                'SDT' => 'Số điện thoại',
+                'SDT'    => 'Số điện thoại',
             ]
         );
 
@@ -61,31 +64,30 @@ class ProfileController extends Controller
 
         $addressesData = $validated['addresses'] ?? [];
 
-        // Cập nhật / tạo / xóa tối đa 3 địa chỉ
-        $existing = $customer->diaChis()->orderBy('ID_DC')->take(3)->get()->keyBy('ID_DC');
+        // Cập nhật / tạo tối đa 3 địa chỉ đang hoạt động (chưa bị xoá mềm)
+        $existing = $customer->diaChis()
+            ->where('is_Deleted', false)
+            ->orderBy('ID_DC')
+            ->take(3)
+            ->get()
+            ->keyBy('ID_DC');
+
         $usedIds = [];
 
         foreach ($addressesData as $item) {
-            $text = trim($item['DiaChiDayDu'] ?? '');
-            $id = $item['id'] ?? null;
+            $text         = trim($item['DiaChiDayDu'] ?? '');
+            $id           = $item['id'] ?? null;
             $districtName = trim($item['district'] ?? '');
-            $apartment = trim($item['CanHo'] ?? '');
+            $apartment    = trim($item['CanHo'] ?? '');
 
             $idQuan = null;
             if ($districtName !== '') {
                 $quan = Quan::where('TenQuan', 'like', '%' . $districtName . '%')->first();
-                if (!$quan) {
-                    $plain = preg_replace('/^(Quận|Huyện|TP Thủ Đức)/iu', '', $districtName);
-                    $plain = trim($plain);
-                    if ($plain !== '') {
-                        $quan = Quan::where('TenQuan', 'like', '%' . $plain . '%')->first();
-                    }
-                }
                 if ($quan) {
                     $idQuan = $quan->ID_Quan;
                 }
 
-                // Nếu chọn 1 địa chỉ ngoài danh sách quận/huyện của TP.HCM thì không cho lưu
+                // Nếu chọn địa chỉ ngoài danh sách quận/huyện TP.HCM thì không cho lưu
                 if ($text !== '' && $idQuan === null) {
                     return back()
                         ->withErrors(['addresses' => 'Dịch vụ hiện tại chỉ phục vụ trong khu vực TP.HCM.'])
@@ -95,19 +97,13 @@ class ProfileController extends Controller
 
             if ($id && isset($existing[$id])) {
                 if ($text === '') {
-                    // Nếu để trống, chỉ cho phép xóa địa chỉ nếu chưa được dùng trong đơn đặt lịch nào
-                    if (DonDat::where('ID_DC', $id)->exists()) {
-                        return back()
-                            ->withErrors(['addresses' => 'Địa chỉ này đã được sử dụng trong đơn đặt nên không thể xóa.'])
-                            ->withInput();
-                    }
-
-                    $existing[$id]->delete();
+                    // Xoá mềm: đánh dấu is_Deleted = true, giữ lại bản ghi để không ảnh hưởng FK
+                    $existing[$id]->is_Deleted = true;
+                    $existing[$id]->save();
                 } else {
                     $existing[$id]->DiaChiDayDu = $text;
-                    $existing[$id]->CanHo = $apartment !== '' ? $apartment : null;
+                    $existing[$id]->CanHo       = $apartment !== '' ? $apartment : null;
                     if ($idQuan !== null) {
-                        // Chỉ cập nhật quận/huyện nếu người dùng đã chọn lại trên bản đồ
                         $existing[$id]->ID_Quan = $idQuan;
                     }
                     $existing[$id]->save();
@@ -116,16 +112,19 @@ class ProfileController extends Controller
             } elseif ($text !== '' && count($usedIds) + $existing->count() < 3) {
                 $newId = IdGenerator::next('DiaChi', 'ID_DC', 'DC_');
                 DiaChi::create([
-                    'ID_DC' => $newId,
-                    'ID_KH' => $customer->ID_KH,
-                    'ID_Quan' => $idQuan,
-                    'CanHo' => $apartment !== '' ? $apartment : null,
+                    'ID_DC'       => $newId,
+                    'ID_KH'       => $customer->ID_KH,
+                    'ID_Quan'     => $idQuan,
+                    'CanHo'       => $apartment !== '' ? $apartment : null,
                     'DiaChiDayDu' => $text,
+                    'is_Deleted'  => false,
                 ]);
             }
         }
 
-        return redirect()->route('profile.show')->with('status', 'Cập nhật thông tin cá nhân thành công.');
+        return redirect()
+            ->route('profile.show')
+            ->with('status', 'Cập nhật thông tin cá nhân thành công.');
     }
 }
 
