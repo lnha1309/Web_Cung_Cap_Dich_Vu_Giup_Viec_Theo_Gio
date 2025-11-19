@@ -1,5 +1,6 @@
 <script>
     document.addEventListener('DOMContentLoaded', () => {
+        // FAQ toggle
         document.querySelectorAll('.faq-question').forEach(question => {
             question.addEventListener('click', function () {
                 const faqItem = this.parentElement;
@@ -14,5 +15,24 @@
                 }
             });
         });
+
+        // Account dropdown toggle
+        const accountToggle = document.getElementById('accountMenuToggle');
+        const accountDropdown = document.getElementById('accountMenuDropdown');
+
+        if (accountToggle && accountDropdown) {
+            accountToggle.addEventListener('click', (event) => {
+                event.stopPropagation();
+                accountDropdown.classList.toggle('open');
+            });
+
+            document.addEventListener('click', () => {
+                accountDropdown.classList.remove('open');
+            });
+
+            accountDropdown.addEventListener('click', (event) => {
+                event.stopPropagation();
+            });
+        }
     });
 </script>

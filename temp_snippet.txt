@@ -1,0 +1,40 @@
+        const originalTotalEl = document.getElementById('originalTotalAmount');
+        const totalDueEl = document.getElementById('totalDueAmount');
+
+        if (totalDueBlock) {
+            totalDueBlock.classList.add('has-discount');
+        }
+        if (originalTotalEl) {
+            originalTotalEl.textContent = `${amount.toLocaleString('vi-VN')} VND`;
+        }
+        if (totalDueEl) {
+            totalDueEl.textContent = `${data.final_amount.toLocaleString('vi-VN')} VND`;
+        }
+
+        const hasPets = (window.selectedOptions || []).includes('pets');
+        const surcharge = hasPets ? 30000 : 0;
+        const originalTotal = amount + surcharge;
+        const finalTotal = data.final_amount + surcharge;
+
+        window.bookingState.totalAfterDiscount = finalTotal;
+
+        const otherCostsTotalEl = document.getElementById('otherCostsTotal');
+        if (otherCostsTotalEl) {
+            const otherCosts = hasPets ? surcharge : 0;
+            otherCostsTotalEl.textContent = `${otherCosts.toLocaleString('vi-VN')} VND`;
+        }
+        if (originalTotalEl) {
+            originalTotalEl.textContent = `${originalTotal.toLocaleString('vi-VN')} VND`;
+        }
+        if (totalDueEl) {
+            totalDueEl.textContent = `${finalTotal.toLocaleString('vi-VN')} VND`;
+        }
+
+        if (voucherInput) {
+            voucherInput.disabled = true;
+        }
+
+        statusEl.className = 'voucher-status success';
+        statusEl.textContent = 'Áp dụng mã khuyến mãi thành công';
+    } catch (e) {
+        console.error('Lỗi áp dụng mã khuyến mãi', e);

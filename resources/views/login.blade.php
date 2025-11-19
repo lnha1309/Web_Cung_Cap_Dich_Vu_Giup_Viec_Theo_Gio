@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
@@ -57,7 +57,7 @@
             font-weight: 500;
         }
 
-        input[type="email"],
+        input[type="text"],
         input[type="password"] {
             width: 100%;
             padding: 15px 20px;
@@ -67,7 +67,7 @@
             transition: all 0.3s ease;
         }
 
-        input[type="email"]:focus,
+        input[type="text"]:focus,
         input[type="password"]:focus {
             outline: none;
             border-color: #004d2e;
@@ -124,17 +124,41 @@
                 <img src="{{ asset('assets/logo.png') }}" alt="Logo">
             </a>
         </div>
-        <form>
+        <form method="POST" action="{{ route('login.post') }}">
+            @csrf
             <h1>Đăng nhập</h1>
+
+            @if ($errors->has('login'))
+                <div style="color: red; margin-bottom: 15px;">
+                    {{ $errors->first('login') }}
+                </div>
+            @endif
+
             <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" id="email" name="email" placeholder="Nhập email của bạn" required>
+                <label for="TenDN">Tên đăng nhập</label>
+                <input
+                    type="text"
+                    id="TenDN"
+                    name="TenDN"
+                    value="{{ old('TenDN') }}"
+                    placeholder="Nhập tên đăng nhập của bạn"
+                    required
+                >
             </div>
+
             <div class="form-group">
                 <label for="password">Mật khẩu</label>
-                <input type="password" id="password" name="password" placeholder="Nhập mật khẩu" required>
+                <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    placeholder="Nhập mật khẩu"
+                    required
+                >
             </div>
+
             <button type="submit" class="login-button">Đăng nhập</button>
+
             <div class="signup-link">
                 Bạn chưa có tài khoản? <a href="{{ url('register') }}">Đăng ký ngay</a>
             </div>
@@ -142,3 +166,4 @@
     </div>
 </body>
 </html>
+

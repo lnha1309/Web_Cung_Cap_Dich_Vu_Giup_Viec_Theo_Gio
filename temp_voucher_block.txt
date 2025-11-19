@@ -1,0 +1,80 @@
+
+// Định nghĩa window.applyVoucher NGAY TẠI ĐÂY (trước handleApplyVoucherClick)
+window.applyVoucher = async function () {
+    const voucherInput = document.getElementById('voucherInputLeft');
+    const statusEl = document.getElementById('voucherStatus');
+
+    if (!statusEl) {
+        return;
+    }
+
+    const raw = voucherInput ? voucherInput.value.trim() : '';
+    const code = raw.toUpperCase();
+
+    statusEl.className = 'voucher-status';
+    statusEl.textContent = '';
+
+    if (!code) {
+        statusEl.className = 'voucher-status error';
+        statusEl.textContent = 'Vui lòng nhập mã khuyến mãi';
+        return;
+    }
+
+    const amount = window.bookingState.totalPrice || 0;
+    if (!amount) {
+        statusEl.className = 'voucher-status error';
+        statusEl.textContent = 'Chưa có giá đơn để áp dụng mã';
+        return;
+    }
+
+    try {
+        const res = await fetch('{{ route('booking.applyVoucher') }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            },
+            body: JSON.stringify({
+                code,
+                amount,
+            }),
+        });
+
+        const data = await res.json();
+        if (data.error) {
+            statusEl.className = 'voucher-status error';
+            statusEl.textContent = data.error;
+            return;
+        }
+
+        window.bookingState.voucherId = data.id_km;
+        window.bookingState.totalAfterDiscount = data.final_amount;
+
+        const discountRow = document.getElementById('voucherDiscountRow');
+        const discountAmountEl = document.getElementById('voucherDiscountAmount');
+        if (discountRow && discountAmountEl) {
+            discountRow.classList.add('show');
+            discountAmountEl.textContent = `-${data.discount_amount.toLocaleString('vi-VN')} VND`;
+        }
+
+        const totalDueBlock = document.querySelector('.total-due');
+        const originalTotalEl = document.getElementById('originalTotalAmount');
+        const totalDueEl = document.getElementById('totalDueAmount');
+
+        if (totalDueBlock) {
+            totalDueBlock.classList.add('has-discount');
+        }
+        if (originalTotalEl) {
+            originalTotalEl.textContent = `${amount.toLocaleString('vi-VN')} VND`;
+        }
+        if (totalDueEl) {
+            totalDueEl.textContent = `${data.final_amount.toLocaleString('vi-VN')} VND`;
+        }
+
+        const hasPets = (window.selectedOptions || []).includes('pets');
+        const surcharge = hasPets ? 30000 : 0;
+        const originalTotal = amount + surcharge;
+        const finalTotal = data.final_amount + surcharge;
+
+        window.bookingState.totalAfterDiscount = finalTotal;
+

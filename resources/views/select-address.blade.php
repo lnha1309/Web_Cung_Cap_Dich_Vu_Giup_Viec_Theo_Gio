@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
@@ -53,6 +53,70 @@
 
         .pac-container { border-radius: 8px; margin-top: 5px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15); border: none; font-family: Arial, sans-serif; z-index: 10000; }
 
+        .saved-addresses {
+            margin-bottom: 12px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background-color: #fafafa;
+            border: 1px solid #eee;
+        }
+
+        .saved-addresses-title {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #333;
+        }
+
+        .saved-address-list {
+            list-style: none;
+        }
+
+        .saved-address-item {
+            padding: 6px 8px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            margin-bottom: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .saved-address-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .saved-address-item.selected {
+            border-color: #004d2e;
+            background-color: #f0f8f5;
+        }
+
+        .saved-address-main {
+            flex: 1;
+        }
+
+        .saved-address-apartment {
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .saved-address-full {
+            color: #555;
+        }
+
+        .saved-address-pill {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            border: 1px solid #ccc;
+            color: #555;
+            background-color: #fff;
+            white-space: nowrap;
+        }
+
         @media (max-width: 768px) {
             .address-container { padding: 15px; width: 95%; top: 10px; }
             .header h1 { font-size: 16px; }
@@ -77,21 +141,48 @@
             <h1>Vui lòng chọn địa chỉ của bạn</h1>
         </div>
 
+        @if(!empty($addresses) && count($addresses) > 0)
+            <div class="saved-addresses">
+                <div class="saved-addresses-title">Địa chỉ đã lưu</div>
+                <ul class="saved-address-list">
+                    @foreach($addresses as $item)
+                        @php
+                            $apartment = $item->CanHo;
+                            $full = $item->DiaChiDayDu;
+                        @endphp
+                        <li
+                            class="saved-address-item"
+                            data-apartment="{{ $apartment }}"
+                            data-full="{{ $full }}"
+                        >
+                            <div class="saved-address-main">
+                                @if($apartment)
+                                    <div class="saved-address-apartment">{{ $apartment }}</div>
+                                @endif
+                                <div class="saved-address-full">{{ $full }}</div>
+                            </div>
+                            <div class="saved-address-pill">Chọn</div>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
         <div class="form-group">
             <label class="form-label">Địa chỉ</label>
             <div class="input-wrapper">
                 <span class="input-icon">📍</span>
                 <input type="text" id="street-address" placeholder="VD. 140 Lê Trọng Tấn, phường Tây Thạnh, quận Tân Phú, TPHCM" autocomplete="off">
-                <button class="clear-btn" onclick="clearInput('street-address')">✕</button>
+                <button class="clear-btn" onclick="clearInput('street-address')">×</button>
             </div>
         </div>
 
         <div class="form-group">
             <label class="form-label">Số tòa nhà/ Căn hộ <span class="optional-label">(Tùy chọn)</span></label>
             <div class="input-wrapper">
-                <span class="input-icon">🏢</span>
+                <span class="input-icon">🏠</span>
                 <input type="text" id="unit-address" placeholder="VD. Căn hộ số 30/ Tòa nhà số 7" autocomplete="off">
-                <button class="clear-btn" onclick="clearInput('unit-address')">✕</button>
+                <button class="clear-btn" onclick="clearInput('unit-address')">×</button>
             </div>
         </div>
 
@@ -218,11 +309,39 @@
                 return;
             }
 
-            localStorage.setItem('streetAddress', streetAddress);
-            localStorage.setItem('unitAddress', unitAddress);
-            
-            window.location.href = "{{ url('booking') }}";
+            const street = streetAddress.trim();
+            const unit = unitAddress.trim();
+
+            let displayAddress = street;
+            if (unit) {
+                displayAddress = unit + ', ' + street;
+            }
+
+            const url = new URL("{{ route('booking.show') }}", window.location.origin);
+            url.searchParams.set('address', displayAddress);
+            url.searchParams.set('street', street);
+            if (unit) {
+                url.searchParams.set('unit', unit);
+            }
+
+            window.location.href = url.toString();
         }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const items = document.querySelectorAll('.saved-address-item');
+            items.forEach(item => {
+                item.addEventListener('click', () => {
+                    items.forEach(i => i.classList.remove('selected'));
+                    item.classList.add('selected');
+
+                    const full = item.getAttribute('data-full') || '';
+                    const apartment = item.getAttribute('data-apartment') || '';
+
+                    document.getElementById('street-address').value = full;
+                    document.getElementById('unit-address').value = apartment;
+                });
+            });
+        });
     </script>
     
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBu4n17b1QXeenFSYC07lzTKet5siXlnuU&libraries=places&callback=initMap" async defer></script>

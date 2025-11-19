@@ -1,0 +1,40 @@
+        <div class="left-panel" id="leftPanel">
+            <div class="booking-card">
+                <h2>Thông tin đơn đặt</h2>
+
+                <!-- Trường Người đặt - CHỈ HIỂN THỊ Ở PAYMENT SCREEN -->
+                <div class="booking-item" id="bookerInfo" style="display: none;">
+                    <div>
+                        <label>Người đặt:</label>
+                        <div class="value">Nguyễn Văn A</div>
+                        <div class="sub-info">SĐT: 0123 456 789</div>
+                    </div>
+                </div>
+
+                <div class="booking-item">
+                    <div>
+                        <label>Địa chỉ:</label>
+                        <div class="value">140 Tây Thạnh...</div>
+                    </div>
+                </div>
+
+                <div class="booking-item">
+                    <div>
+                        <label>Dịch vụ:</label>
+                        <div class="value">Giúp việc theo giờ</div>
+                        <!-- Khối lượng công việc - CHỈ HIỂN THỊ Ở PAYMENT SCREEN -->
+                        <div class="sub-info" id="workloadInfo" style="display: none;">Khối lượng công việc: <span id="workloadValue">5.5 giờ @ 07:00</span></div>
+                    </div>
+                </div>
+
+                <div class="booking-item" id="timeInfo" style="display: none;">
+                    <div>
+                        <label>Thời gian:</label>
+                        <div class="value" id="timeValue">Mon 10 Nov @ 07:00</div>
+                    </div>
+                </div>
+                <!-- Thông tin lặp lại -->
+                <div class="booking-item" id="repeatDaysInfo" style="display: none;">
+                    <div>
+                        <label>Thứ lặp lại</label>
+                        <div class="value" id="repeatDaysValue">Th 2, Th 4</div>

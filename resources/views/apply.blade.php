@@ -82,6 +82,7 @@
     input[type="date"],
     input[type="number"],
     input[type="file"],
+      input[type="password"],
     select,
     textarea {
       width: 100%;
@@ -273,6 +274,14 @@
       border-radius: 4px;
       font-size: 14px;
     }
+    function togglePassword(fieldId) {
+    var input = document.getElementById(fieldId);
+    if (input.type === "password") {
+        input.type = "text";
+    } else {
+        input.type = "password";
+    }
+}
   </style>
 </head>
 <body>
@@ -300,10 +309,33 @@
 
     <form id="registerForm">
       <div class="form-group">
+        <label for="username">Tên đăng nhập *</label>
+        <input type="text" id="username" placeholder="Tên đăng nhập của bạn" required>
+      </div>
+      <div class="form-group" style="position: relative;">
+    <label for="password">Mật khẩu *</label>
+    <input type="password" id="password" placeholder="Nhập mật khẩu của bạn" required>
+    <span class="toggle-password" onclick="togglePassword('password')" style="position: absolute; right: 10px; top: 44px; cursor: pointer;">
+        <!-- SVG icon mắt -->
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22">
+            <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/>
+        </svg>
+    </span>
+</div>
+<div class="form-group" style="position: relative;">
+    <label for="confirmPassword">Xác nhận mật khẩu *</label>
+    <input type="password" id="confirmPassword" placeholder="Nhập lại mật khẩu của bạn" required>
+    <span class="toggle-password" onclick="togglePassword('confirmPassword')" style="position: absolute; right: 10px; top: 44px; cursor: pointer;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22">
+            <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/>
+        </svg>
+    </span>
+</div>
+
+      <div class="form-group">
         <label for="fullname">Họ và tên *</label>
         <input type="text" id="fullname" placeholder="Nguyễn Văn A" required>
       </div>
-
       <div class="form-group">
         <label for="dob">Ngày sinh *</label>
         <input type="date" id="dob" required>
@@ -316,35 +348,36 @@
           <option value="">-- Chọn giới tính --</option>
           <option value="Nam">Nam</option>
           <option value="Nữ">Nữ</option>
-          <option value="Khác">Khác</option>
         </select>
       </div>
 
       <div class="form-group">
-        <label for="experience">Kinh nghiệm *</label>
+        <label for="experience">Khu vực *</label>
         <select id="experience" required>
-          <option value="">-- Chọn kinh nghiệm của bạn --</option>
-          <option value="Chăm sóc trẻ em">Chăm sóc trẻ em</option>
-          <option value="Sửa chữa đồ điện tử">Sửa chữa đồ điện tử</option>
-          <option value="Dọn dẹp, giúp việc nhà">Dọn dẹp, giúp việc nhà</option>
-          <option value="Nấu ăn, làm bếp">Nấu ăn, làm bếp</option>
-          <option value="Chăm sóc người cao tuổi">Chăm sóc người cao tuổi</option>
-          <option value="Làm vườn, chăm sóc cây cảnh">Làm vườn, chăm sóc cây cảnh</option>
-          <option value="Giặt ủi quần áo">Giặt ủi quần áo</option>
-          <option value="Lái xe, tài xế cá nhân">Lái xe, tài xế cá nhân</option>
-          <option value="Gia sư, dạy kèm">Gia sư, dạy kèm</option>
-          <option value="Chăm sóc thú cưng">Chăm sóc thú cưng</option>
-          <option value="Sửa chữa điện nước">Sửa chữa điện nước</option>
-          <option value="Sửa chữa, vệ sinh máy lạnh">Sửa chữa, vệ sinh máy lạnh</option>
-          <option value="Sơn nhà, trang trí">Sơn nhà, trang trí</option>
-          <option value="Chuyển nhà, vận chuyển">Chuyển nhà, vận chuyển</option>
-          <option value="Massage, chăm sóc sức khỏe">Massage, chăm sóc sức khỏe</option>
-          <option value="Kế toán, làm sổ sách">Kế toán, làm sổ sách</option>
-          <option value="Sửa máy tính, laptop">Sửa máy tính, laptop</option>
-          <option value="Tổ chức sự kiện, tiệc">Tổ chức sự kiện, tiệc</option>
-          <option value="Mua sắm hộ, đi chợ">Mua sắm hộ, đi chợ</option>
-          <option value="Bảo vệ, an ninh">Bảo vệ, an ninh</option>
-          <option value="Khác">Khác</option>
+          <option value="">-- Chọn khu vực bạn sẽ làm việc --</option>
+          <option value="Quận 1">Quận 1</option>
+          <option value="Quận 2">Quận 2</option>
+          <option value="Quận 3">Quận 3</option>
+          <option value="Quận 4">Quận 4</option>
+          <option value="Quận 5">Quận 5</option>
+          <option value="Quận 6">Quận 6</option>
+          <option value="Quận 7">Quận 7</option>
+          <option value="Quận 8">Quận 8</option>
+          <option value="Quận 10">Quận 10</option>
+          <option value="Quận 11">Quận 11</option>
+          <option value="Quận 12">Quận 12</option>
+          <option value="TP Thủ Đức">TP Thủ Đức</option>
+          <option value="Quận Bình Tân">Quận Bình Tân</option>
+          <option value="Quận Tân Bình">Quận Tân Bình</option>
+          <option value="Quận Tân Phú">Quận Tân Phú</option>
+          <option value="Quận Gò Vấp">Quận Gò Vấp</option>
+          <option value="Quận Phú Nhuận">Quận Phú Nhuận</option>
+          <option value="Quận Bình Thạnh">Quận Bình Thạnh</option>
+          <option value="Huyện Củ Chi">Huyện Củ Chi</option>
+          <option value="Huyện Hóc Môn">Huyện Hóc Môn</option>
+          <option value="Huyện Bình Chánh">Huyện Bình Chánh</option>
+          <option value="Huyện Nhà Bè">Huyện Nhà Bè</option>
+          <option value="Huyện Cần Giờ">Huyện Cần Giờ</option>
         </select>
       </div>
 
@@ -1141,6 +1174,15 @@ document.getElementById("detailForm").addEventListener("submit", async function(
         setSalary();
       }
     });
+    function togglePassword(fieldId) {
+    var input = document.getElementById(fieldId);
+    if (input.type === "password") {
+        input.type = "text";
+    } else {
+        input.type = "password";
+    }
+}
+
   </script>
 </body>
 </html>

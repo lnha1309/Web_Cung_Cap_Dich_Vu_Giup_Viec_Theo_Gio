@@ -504,6 +504,60 @@
             overflow: auto;
         }
 
+        .cash-success-modal {
+            max-width: 420px;
+            text-align: center;
+            padding-bottom: 24px;
+        }
+
+        .cash-success-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: #e8f5e9;
+            color: #2e7d32;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin: 16px auto 12px;
+        }
+
+        .cash-success-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #2e7d32;
+        }
+
+        .cash-success-text {
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 4px;
+        }
+
+        .cash-success-note {
+            font-size: 13px;
+            color: #777;
+            margin-top: 4px;
+        }
+
+        .cash-success-btn {
+            margin-top: 16px;
+            padding: 10px 18px;
+            border-radius: 999px;
+            border: none;
+            background-color: #004d2e;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .cash-success-btn:hover {
+            background-color: #003d24;
+        }
+
         /* Modal task layout - prettier */
         .modal-body .task-grid {
             display: grid;
@@ -545,80 +599,54 @@
             color: #2d5f4f;
         }
 
-        /* Choose For Me Card */
-        .choose-for-me-card {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-            text-align: left;
-        }
-
-        .choose-for-me-card .avatar {
-            width: 90px;
-            height: 90px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #d4e8e4 0%, #a8c9c2 100%);
+        /* Payment method modal */
+        .payment-method-options {
             display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 0 16px 0;
-            float: left;
-            margin-right: 16px;
+            flex-direction: column;
+            gap: 12px;
         }
 
-        .choose-for-me-card .avatar svg {
-            width: 40px;
-            height: 40px;
-        }
-
-        .choose-for-me-card h3 {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: #333;
-            padding-top: 8px;
-        }
-
-        .choose-for-me-card .stats {
-            display: block;
-            margin-bottom: 16px;
-        }
-
-        .choose-for-me-card .stat-item {
-            display: block;
-            font-size: 14px;
-            margin-bottom: 4px;
-        }
-
-        .choose-for-me-card .description {
-            font-size: 13px;
-            line-height: 1.6;
-            color: #666;
-            margin-bottom: 16px;
-            clear: both;
-        }
-
-        .choose-for-me-card .btn-choose {
-            width: 100%;
-            padding: 12px;
-            background-color: #004d2e;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 15px;
-            font-weight: 600;
+        .payment-method-option {
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 12px 16px;
             cursor: pointer;
             transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
+            background-color: #fafafa;
         }
 
-        .choose-for-me-card .btn-choose:hover {
-            background-color: #003d24;
+        .payment-method-option:hover {
+            border-color: #004d2e;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            background-color: #f5f5f5;
         }
+
+        .payment-method-option h4 {
+            margin: 0 0 6px 0;
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .payment-method-option p {
+            margin: 0;
+            font-size: 13px;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .payment-method-modal .modal-body {
+            padding-bottom: 8px;
+        }
+
+        .payment-method-modal .modal-footer {
+            padding: 10px 20px 16px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        /* Choose For Me Card - removed */
 
         /* Payment Screen Styles */
         .payment-screen {
@@ -757,6 +785,18 @@
 
         .voucher-discount-row.show {
             display: flex;
+        }
+
+        .voucher-list {
+            margin-top: 4px;
+            padding-left: 12px;
+            font-size: 12px;
+            color: #2e7d32;
+            display: none;
+        }
+
+        .voucher-list-item {
+            margin-top: 2px;
         }
 
         .total-due {
@@ -1648,6 +1688,23 @@
             gap: 4px;
         }
 
+        .no-staff-banner {
+            margin-top: 16px;
+            padding: 14px 16px;
+            border-radius: 8px;
+            background: #fff1f0;
+            border: 1px solid #ffa39e;
+            color: #a8071a;
+            font-size: 14px;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        .no-staff-actions {
+            margin-top: 12px;
+            text-align: center;
+        }
+
         .progress-bar {
             width: 600px;
             height: 8px;
@@ -1694,11 +1751,11 @@
         }
 
         .worker-card {
-            background: white;
-            border-radius: 12px;
-            padding: 24px;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-            display: flex;
+              background: white;
+              border-radius: 12px;
+              padding: 24px;
+              box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+              display: flex;
             align-items: center;
             gap: 24px;
             transition: all 0.3s ease;
@@ -2083,7 +2140,7 @@
                         <label>Dịch vụ:</label>
                         <div class="value">Giúp việc theo giờ</div>
                         <!-- Khối lượng công việc - CHỈ HIỂN THỊ Ở PAYMENT SCREEN -->
-                        <div class="sub-info" id="workloadInfo" style="display: none;">Khối lượng công việc: <span id="workloadValue">5.5 giờ @ 07:00</span></div>
+                        <div class="sub-info" id="workloadInfo" style="display: none;">Khối lượng công việc: <span id="workloadValue">5.5 giờ </span></div>
                     </div>
                 </div>
 
@@ -2197,11 +2254,11 @@
             <!-- Price Card - Hiển thị ở tất cả màn hình trừ Payment -->
             <div class="price-card" id="priceCard" style="display: none;">
                 <div class="price-item">
-                    <div class="price-value" id="totalHours">2</div>
+                    <div class="price-value" id="totalHours">-</div>
                     <div class="price-label">Tổng thời lượng</div>
                 </div>
                 <div class="price-item">
-                    <div class="price-value" id="totalPrice">50.000</div>
+                    <div class="price-value" id="totalPrice">-</div>
                     <div class="price-label">Giá tạm tính (VNĐ)</div>
                 </div>
             </div>
@@ -2211,7 +2268,7 @@
                 <h3>Áp dụng ưu đãi</h3>
                 <div class="voucher-input-wrapper">
                     <input type="text" id="voucherInputLeft" placeholder="Thêm mã khuyến mãi">
-                    <button class="btn-apply-voucher" onclick="applyVoucher()">Áp dụng</button>
+                    <button class="btn-apply-voucher" onclick="handleApplyVoucherClick()">Áp dụng</button>
                 </div>
                 <div class="voucher-status" id="voucherStatus"></div>
             </div>
@@ -2224,7 +2281,7 @@
 
 
             <!-- Choose For Me Card (Hidden initially) -->
-            <div class="choose-for-me-card" id="chooseForMeCard" style="display: none;">
+            <div class="choose-for-me-card" id="chooseForMeCard" style="display: none; /* removed */">
                 <div class="avatar">
                     <svg viewBox="0 0 24 24" fill="#004d2e">
                         <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
@@ -2348,6 +2405,9 @@
                             </div>
 
 
+                            <div class="error-message" id="durationError"></div>
+
+
                             <div class="error-message" id="errorMessage">
                                 Thời lượng tối đa cho một lần thực hiện dịch vụ là 4 tiếng. Vui lòng chỉnh sửa đơn đặt của bạn.
                             </div>
@@ -2379,11 +2439,10 @@
                             </div>
                         </div>
 
-                        <div class="form-group">
+                        <div class="form-group" id="noteGroup">
                             <label>Chọn ngày bắt dầu:</label>
                             <input type="date" id="startDate">
                         </div>
-
                         <div class="form-group">
                             <label>Chọn thời gian bắt đầu:</label>
                             <div class="custom-select" id="selectStartTime">
@@ -2433,64 +2492,83 @@
             </div>
 
             <!-- Worker Selection Screen -->
-            <div class="worker-selection-screen" id="workerSelectionScreen">
-                <div class="worker-selection-header">
-                    <h1>Chọn nhân viên của bạn</h1>
-                </div>
+            <!-- Worker Selection Screen -->
+<div class="worker-selection-screen" id="workerSelectionScreen">
+    <div class="worker-selection-header">
+        <h1>Chon nhan vien cua ban</h1>
+    </div>
 
-                <div class="worker-list">
-                    <div class="worker-card">
-                        <img src="https://i.pravatar.cc/150?img=1" alt="Roselyne Thelma Maengehama">
-                        <div class="worker-info">
-                            <h3>Roselyne Thelma Maengehama</h3>
-                            <div class="worker-stats">
-                                <div class="stat-item">👍 96% Recommend</div>
-                                <div class="stat-item"><strong>103</strong> Jobs Completed</div>
-                            </div>
-                        </div>
-                        <div class="worker-actions">
-                            <button class="btn-view">Xem hồ sơ</button>
-                            <button class="btn-choose" onclick="showPaymentScreen()">Chọn nhân viên</button>
-                        </div>
-                    </div>
-
-                    <div class="worker-card">
-                        <img src="https://i.pravatar.cc/150?img=5" alt="Sukoluhle Sibanda">
-                        <div class="worker-info">
-                            <h3>Sukoluhle Sibanda</h3>
-                            <div class="worker-stats">
-                                <div class="stat-item">👍 99% Recommend</div>
-                                <div class="stat-item"><strong>133</strong> Jobs Completed</div>
-                            </div>
-                        </div>
-                        <div class="worker-actions">
-                            <button class="btn-view">View profile</button>
-                            <button class="btn-choose" onclick="showPaymentScreen()">Choose me</button>
-                        </div>
-                    </div>
-
-                    <div class="worker-card">
-                        <img src="https://i.pravatar.cc/150?img=9" alt="Gaudencia Madimbu">
-                        <div class="worker-info">
-                            <h3>Gaudencia Madimbu</h3>
-                            <div class="worker-stats">
-                                <div class="stat-item">👍 100% Recommend</div>
-                                <div class="stat-item"><strong>308</strong> Jobs Completed</div>
-                            </div>
-                        </div>
-                        <div class="worker-actions">
-                            <button class="btn-view">View profile</button>
-                            <button class="btn-choose" onclick="showPaymentScreen()">Choose me</button>
-                        </div>
-                    </div>
+    <div class="worker-list">
+        <div class="worker-card" style="display: none;">
+            <img src="https://i.pravatar.cc/150?img=1" alt="Roselyne Thelma Maengehama">
+            <div class="worker-info">
+                <h3>Roselyne Thelma Maengehama</h3>
+                <div class="worker-stats">
+                    <div class="stat-item">96% Recommend</div>
+                    <div class="stat-item"><strong>103</strong> Jobs Completed</div>
                 </div>
             </div>
+            <div class="worker-actions">
+                <button class="btn-view">Xem ho so</button>
+                <button class="btn-choose" onclick="showPaymentScreen()">Chon nhan vien</button>
+            </div>
+        </div>
+
+        <div class="worker-card" style="display: none;">
+            <img src="https://i.pravatar.cc/150?img=5" alt="Sukoluhle Sibanda">
+            <div class="worker-info">
+                <h3>Sukoluhle Sibanda</h3>
+                <div class="worker-stats">
+                    <div class="stat-item">99% Recommend</div>
+                    <div class="stat-item"><strong>133</strong> Jobs Completed</div>
+                </div>
+            </div>
+            <div class="worker-actions">
+                <button class="btn-view">Xem ho so</button>
+                <button class="btn-choose" onclick="showPaymentScreen()">Chon nhan vien</button>
+            </div>
+        </div>
+
+        <div class="worker-card" style="display: none;">
+            <img src="https://i.pravatar.cc/150?img=9" alt="Gaudencia Madimbu">
+            <div class="worker-info">
+                <h3>Gaudencia Madimbu</h3>
+                <div class="worker-stats">
+                    <div class="stat-item">100% Recommend</div>
+                    <div class="stat-item"><strong>308</strong> Jobs Completed</div>
+                </div>
+            </div>
+            <div class="worker-actions">
+                <button class="btn-view">Xem ho so</button>
+                <button class="btn-choose" onclick="showPaymentScreen()">Chon nhan vien</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="noStaffMessage" class="no-staff-banner" style="display: none;">
+        Hiện chưa có nhân viên phù hợp trong khung giờ này. Bạn vẫn có thể tiếp tục đặt dịch vụ, hệ thống sẽ phân công nhân viên sau.
+    </div>
+</div>
+
+<!-- Modal ho so nhan vien -->
+<div class="modal-overlay" id="profileModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="profileModalTitle">
+        <div class="modal-header">
+            <h3 id="profileModalTitle">Ho so nhan vien</h3>
+            <button class="modal-close" id="closeProfileModal" aria-label="Dong">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="profileModalContent"></div>
+        </div>
+    </div>
+</div>
+
 
             <!-- PAYMENT SCREEN -->
             <div class="payment-screen" id="paymentScreen">
                 <div class="payment-card">
                     <div class="payment-header">
-                        <h3>Thông tin đơn đặt</h3>
+                        <h3>Chi tiết đơn đặt</h3>
                     </div>
 
                     <div class="worker-profile-section">
@@ -2514,9 +2592,9 @@
 
                         <div class="price-row">
                             <div class="label">Phí đặt dịch vụ</div>
-                            <div class="value">R316</div>
+                            <div class="value" id="serviceFeeAmount">-</div>
                         </div>
-                        <div class="price-detail">Tue 5.5 hrs @ 07:00</div>
+                        {{-- Ẩn chi tiết giờ cố định ở payment screen --}}
 
                         <div class="other-costs-section">
                             <div class="price-row" style="margin-bottom: 8px;">
@@ -2535,6 +2613,7 @@
                                 <div class="label">Voucher</div>
                                 <div class="value" style="color: #4caf50;" id="voucherDiscountAmount">-R0</div>
                             </div>
+                            <div class="voucher-list" id="voucherList"></div>
                         </div>
 
                         <div class="total-due">
@@ -2550,7 +2629,7 @@
                     </div>
 
                     <div class="payment-buttons">
-                        <button class="btn btn-primary">Tiến hành thanh toán</button>
+                        <button class="btn btn-primary">Chọn phương thức thanh toán</button>
                         <button class="btn btn-secondary" onclick="goBackToWorkerSelection()">Quay lại</button>
                     </div>
                 </div>
@@ -2940,6 +3019,7 @@
                 durationOptions.forEach(opt => opt.classList.remove('selected'));
                 this.classList.add('selected');
                 selectedDuration = parseInt(this.getAttribute('data-hours'));
+                window.selectedDuration = selectedDuration;
                 updateExtraTasks();
                 updatePrice();
             });
@@ -3009,6 +3089,8 @@
                     this.classList.add('selected');
                     selectedOptions.push(optionName);
                 }
+                // Đồng bộ với state toàn cục để màn thanh toán đọc được
+                window.selectedOptions = selectedOptions;
             });
         });
 
@@ -3030,7 +3112,11 @@
                 (paymentScreen && paymentScreen.classList.contains('active'));
             if (!isActive) return;
 
-            const totalHours = (selectedDuration || 2) + (selectedExtraTasks ? selectedExtraTasks.length : 0);
+            if (!selectedDuration) {
+                return;
+            }
+
+            const totalHours = selectedDuration + (selectedExtraTasks ? selectedExtraTasks.length : 0);
 
             const [sh, sm] = startTimeInput.value.split(':').map(Number);
             const start = new Date(dateInput.value + 'T00:00:00');
@@ -3048,15 +3134,52 @@
 
         // ==================== PRICE CALCULATION ====================
         function updatePrice() {
-            const totalHours = selectedDuration + selectedExtraTasks.length;
-            document.getElementById('totalHours').textContent = totalHours || '2';
-            const pricePerHour = 158;
-            const totalPrice = totalHours * pricePerHour || 316;
-            document.getElementById('totalPrice').textContent = totalPrice;
+            const hours = selectedDuration || 0;
+            const hoursEl = document.getElementById('totalHours');
+            const priceEl = document.getElementById('totalPrice');
+
+            if (!hours) {
+                if (hoursEl) {
+                    hoursEl.textContent = '-';
+                }
+                if (priceEl) {
+                    priceEl.textContent = '-';
+                }
+
+                // Clear giá đơn trong state khi chưa chọn giờ
+                window.bookingState = window.bookingState || {};
+                window.bookingState.totalPrice = 0;
+                window.bookingState.id_dv = null;
+                return;
+            }
+
+            let totalPrice = 0;
+            let idDv = null;
+            if (hours === 2) {
+                totalPrice = 192000;
+                idDv = 'DV001';
+            } else if (hours === 3) {
+                totalPrice = 240000;
+                idDv = 'DV002';
+            } else if (hours === 4) {
+                totalPrice = 320000;
+                idDv = 'DV003';
+            }
+
+            if (hoursEl) {
+                hoursEl.textContent = hours.toString();
+            }
+            if (priceEl) {
+                priceEl.textContent = totalPrice.toLocaleString('vi-VN');
+            }
+
+            // Lưu giá đơn và dịch vụ vào state để áp voucher và gửi về backend
+            window.bookingState = window.bookingState || {};
+            window.bookingState.totalPrice = totalPrice;
+            window.bookingState.id_dv = idDv;
+
             updateBookingCardTime();
         }
-
-        updatePrice();
 
         // ==================== NAVIGATION BUTTONS ====================
         document.getElementById('backBtn').addEventListener('click', function() {
@@ -3069,84 +3192,89 @@
         });
 
         document.getElementById('findWorkerBtn').addEventListener('click', function() {
-            // ẨN REPEAT NOTE NGAY LẬP TỨC
+            // Bat buoc chon thoi luong truoc khi tim nhan vien
+            if (!selectedDuration) {
+                alert('Vui lòng chọn thời lượng dịch vụ trước khi tìm nhân viên.');
+                return;
+            }
+
             const repeatNote = document.getElementById('repeatNote');
             if (repeatNote) {
                 repeatNote.style.display = 'none';
             }
 
-            const dateInput = document.getElementById('startDate');
-            const date = new Date(dateInput.value);
-            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-            const dayName = days[date.getDay()];
-            const day = date.getDate();
-            const monthName = months[date.getMonth()];
-            const time = document.getElementById('startTime').value;
-
-            const formattedDateTime = `${dayName} ${day} ${monthName} @ ${time}`;
-
-            // Update booking card with start-end range
+            // cap nhat lai card thoi gian
             updateBookingCardTime();
-            document.getElementById('bookingFormContainer').classList.remove('active');
-            document.getElementById('loadingScreen').classList.add('active');
-            document.getElementById('step2').classList.add('active');
 
-            animateLoadingScreen();
+            const bookingForm = document.getElementById('bookingFormContainer');
+            const loadingScreen = document.getElementById('loadingScreen');
+            const step2 = document.getElementById('step2');
+
+            if (bookingForm) bookingForm.classList.remove('active');
+            if (loadingScreen) loadingScreen.classList.add('active');
+            if (step2) step2.classList.add('active');
+
+            if (typeof window.animateLoadingScreen === 'function') {
+                window.animateLoadingScreen();
+            } else {
+                console.error('window.animateLoadingScreen is not defined');
+            }
         });
 
+
+
+
         // ==================== LOADING SCREEN ====================
-        function animateLoadingScreen() {
-            const worker1 = document.getElementById('worker1');
-            const worker2 = document.getElementById('worker2');
-            const worker3 = document.getElementById('worker3');
-            const progressFill = document.getElementById('progressFill');
-            const loadingScreen = document.getElementById('loadingScreen');
-            const workerSelectionScreen = document.getElementById('workerSelectionScreen');
-            const repeatNote = document.getElementById('repeatNote'); // THÊM DÒNG NÀY
+function animateLoadingScreenFallback() {
+    // chi chay animation, tranh loi null.style
+    const worker1 = document.getElementById('worker1');
+    const worker2 = document.getElementById('worker2');
+    const worker3 = document.getElementById('worker3');
+    const progressFill = document.getElementById('progressFill');
+    const loadingScreen = document.getElementById('loadingScreen');
+    const workerSelectionScreen = document.getElementById('workerSelectionScreen');
 
-            setTimeout(() => {
-                worker1.classList.add('show');
-                progressFill.style.width = '33%';
-            }, 500);
+    setTimeout(() => {
+        if (worker1) worker1.classList.add('show');
+        if (progressFill) progressFill.style.width = '33%';
+    }, 500);
 
-            setTimeout(() => {
-                worker2.classList.add('show');
-                progressFill.style.width = '66%';
-            }, 1500);
+    setTimeout(() => {
+        if (worker2) worker2.classList.add('show');
+        if (progressFill) progressFill.style.width = '66%';
+    }, 1500);
 
-            setTimeout(() => {
-                worker3.classList.add('show');
-                progressFill.style.width = '100%';
-            }, 2500);
+    setTimeout(() => {
+        if (worker3) worker3.classList.add('show');
+        if (progressFill) progressFill.style.width = '100%';
+    }, 2500);
 
-            setTimeout(() => {
-                loadingScreen.classList.remove('active');
-                workerSelectionScreen.classList.add('active');
+    setTimeout(() => {
+        if (loadingScreen) loadingScreen.classList.remove('active');
+        if (workerSelectionScreen) workerSelectionScreen.classList.add('active');
 
-                document.getElementById('timeInfo').style.display = 'flex';
-                document.getElementById('discountCard').style.display = 'none';
-                document.getElementById('chooseForMeCard').style.display = 'block';
+        const timeInfo = document.getElementById('timeInfo');
+        const discountCard = document.getElementById('discountCard');
+        // const chooseForMeCard = document.getElementById('chooseForMeCard');
 
-                // ẨN REPEAT NOTE HOÀN TOÀN
-                const repeatNote = document.getElementById('repeatNote');
-                if (repeatNote) {
-                    repeatNote.style.display = 'none';
-                }
+        if (timeInfo) timeInfo.style.display = 'flex';
+        if (discountCard) discountCard.style.display = 'none';
+        
 
-                worker1.classList.remove('show');
-                worker2.classList.remove('show');
-                worker3.classList.remove('show');
-                progressFill.style.width = '0%';
-            }, 4000);
+        const repeatNote = document.getElementById('repeatNote');
+        if (repeatNote) repeatNote.style.display = 'none';
 
-        }
+        [worker1, worker2, worker3].forEach(el => {
+            if (el) el.classList.remove('show');
+        });
+        if (progressFill) progressFill.style.width = '0%';
+    }, 4000);
+}
 
         // ==================== PAYMENT SCREEN ====================
         function showPaymentScreen() {
             document.getElementById('workerSelectionScreen').classList.remove('active');
-            document.getElementById('chooseForMeCard').style.display = 'none';
+            
 
             document.getElementById('paymentScreen').classList.add('active');
             document.getElementById('step3').classList.add('active');
@@ -3172,7 +3300,7 @@
 
             const totalHours = selectedDuration + selectedExtraTasks.length;
             const time = document.getElementById('startTime').value;
-            document.getElementById('workloadValue').textContent = `${totalHours} giờ @ ${time}`;
+            document.getElementById('workloadValue').textContent = `${totalHours} giờ `;
 
             if (selectedOptions.includes('pets')) {
                 document.getElementById('surchargeRow').style.display = 'flex';
@@ -3194,7 +3322,7 @@
             document.getElementById('step3').classList.remove('active');
 
             document.getElementById('workerSelectionScreen').classList.add('active');
-            document.getElementById('chooseForMeCard').style.display = 'block';
+            
 
             document.getElementById('bookerInfo').style.display = 'none';
             document.getElementById('workloadInfo').style.display = 'none';
@@ -3209,73 +3337,165 @@
             resetVoucher();
         }
 
+
         // ==================== VOUCHER SYSTEM ====================
-        function applyVoucher() {
-            const voucherInput = document.getElementById('voucherInputLeft');
-            const voucherCode = voucherInput.value.trim().toUpperCase();
-            const voucherStatus = document.getElementById('voucherStatus');
+        // Bridge function cho nút onclick trong HTML.
+// ==================== VOUCHER SYSTEM ====================
 
-            voucherStatus.className = 'voucher-status';
-            voucherStatus.textContent = '';
+// Định nghĩa window.applyVoucher NGAY TẠI ĐÂY (trước handleApplyVoucherClick)
+window.applyVoucher = async function () {
+    const voucherInput = document.getElementById('voucherInputLeft');
+    const statusEl = document.getElementById('voucherStatus');
 
-            if (!voucherCode) {
-                voucherStatus.className = 'voucher-status error';
-                voucherStatus.textContent = 'Vui lòng nhập mã voucher';
-                return;
-            }
+    if (!statusEl) {
+        return;
+    }
 
-            if (!validVouchers[voucherCode]) {
-                voucherStatus.className = 'voucher-status error';
-                voucherStatus.textContent = 'Mã voucher không hợp lệ';
-                return;
-            }
+    const raw = voucherInput ? voucherInput.value.trim() : '';
+    const code = raw.toUpperCase();
 
-            const voucher = validVouchers[voucherCode];
-            appliedVoucher = voucherCode;
+    statusEl.className = 'voucher-status';
+    statusEl.textContent = '';
 
-            const bookingCost = 316000;
-            const surcharge = selectedOptions.includes('pets') ? 30000 : 0;
-            const subtotal = bookingCost + surcharge;
+    if (!code) {
+        statusEl.className = 'voucher-status error';
+        statusEl.textContent = 'Vui lòng nhập mã khuyến mãi';
+        return;
+    }
 
-            if (voucher.type === 'fixed') {
-                voucherDiscount = voucher.discount * 1000;
-            } else if (voucher.type === 'percent') {
-                voucherDiscount = Math.round(subtotal * (voucher.discount / 100));
-            }
+    const baseAmount = window.bookingState.totalPrice || 0;
+    const amount = window.bookingState.totalAfterDiscount || baseAmount;
+    if (!amount) {
+        statusEl.className = 'voucher-status error';
+        statusEl.textContent = 'Chưa có giá đơn để áp dụng mã';
+        return;
+    }
 
-            document.getElementById('voucherDiscountRow').classList.add('show');
-            document.getElementById('voucherDiscountAmount').textContent = `-${voucherDiscount.toLocaleString('vi-VN')} VNĐ`;
+    try {
+        const res = await fetch('{{ route('booking.applyVoucher') }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            },
+            body: JSON.stringify({
+                code,
+                amount,
+            }),
+        });
 
-            const newTotal = subtotal - voucherDiscount;
-            // Show original total (strikethrough) and discounted total
-            (function() {
-                const totalDueBlock = document.querySelector('.total-due');
-                if (totalDueBlock) totalDueBlock.classList.add('has-discount');
-                const originalTotalEl = document.getElementById('originalTotalAmount');
-                if (originalTotalEl) originalTotalEl.textContent = `${subtotal.toLocaleString('vi-VN')} VND`;
-                const finalEl = document.getElementById('totalDueAmount');
-                if (finalEl) finalEl.textContent = `${newTotal.toLocaleString('vi-VN')} VND`;
-            })();
-            document.getElementById('totalDueAmount').textContent = `${newTotal.toLocaleString('vi-VN')} VNĐ`;
-
-            const newOtherCosts = surcharge - voucherDiscount;
-            document.getElementById('otherCostsTotal').textContent = `${newOtherCosts.toLocaleString('vi-VN')} VNĐ`;
-
-            voucherStatus.className = 'voucher-status success';
-            voucherStatus.textContent = `✓ Áp dụng mã "${voucherCode}" thành công! Bạn được giảm ${voucherDiscount.toLocaleString('vi-VN')} VNĐ`;
-
-            voucherInput.disabled = true;
+        const data = await res.json();
+        if (data.error) {
+            statusEl.className = 'voucher-status error';
+            statusEl.textContent = data.error;
+            return;
         }
 
+        window.bookingState.vouchers = Array.isArray(window.bookingState.vouchers)
+            ? window.bookingState.vouchers
+            : [];
+
+        // Tránh áp dụng trùng cùng một mã
+        if (window.bookingState.vouchers.some(v => v.id_km === data.id_km)) {
+            statusEl.className = 'voucher-status error';
+            statusEl.textContent = 'Mã khuyến mãi này đã được áp dụng.';
+            return;
+        }
+
+        window.bookingState.voucherId = window.bookingState.voucherId || data.id_km;
+        window.bookingState.vouchers.push({
+            code,
+            id_km: data.id_km,
+            tien_giam: data.discount_amount,
+        });
+
+        const discountRow = document.getElementById('voucherDiscountRow');
+        const discountAmountEl = document.getElementById('voucherDiscountAmount');
+        const voucherListEl = document.getElementById('voucherList');
+
+        const totalDiscount = window.bookingState.vouchers
+            .reduce((sum, v) => sum + (v.tien_giam || 0), 0);
+
+        if (discountRow && discountAmountEl) {
+            discountRow.classList.add('show');
+            discountAmountEl.textContent = `-${totalDiscount.toLocaleString('vi-VN')} VND`;
+        }
+
+        if (voucherListEl) {
+            voucherListEl.innerHTML = '';
+            window.bookingState.vouchers.forEach(v => {
+                const item = document.createElement('div');
+                item.className = 'voucher-list-item';
+                item.textContent = `${v.code}: -${v.tien_giam.toLocaleString('vi-VN')} VND`;
+                voucherListEl.appendChild(item);
+            });
+            voucherListEl.style.display = 'block';
+        }
+
+        const totalDueBlock = document.querySelector('.total-due');
+        const originalTotalEl = document.getElementById('originalTotalAmount');
+        const totalDueEl = document.getElementById('totalDueAmount');
+
+        const hasPets = (window.selectedOptions || []).includes('pets');
+        const surcharge = hasPets ? 30000 : 0;
+
+        const originalTotal = baseAmount + surcharge;
+        const finalBeforeSurcharge = Math.max(0, baseAmount - totalDiscount);
+        const finalTotal = finalBeforeSurcharge + surcharge;
+
+        window.bookingState.totalAfterDiscount = finalBeforeSurcharge;
+
+        if (totalDueBlock) {
+            totalDueBlock.classList.add('has-discount');
+        }
+        if (originalTotalEl) {
+            originalTotalEl.textContent = `${originalTotal.toLocaleString('vi-VN')} VND`;
+        }
+        if (totalDueEl) {
+            totalDueEl.textContent = `${finalTotal.toLocaleString('vi-VN')} VND`;
+        }
+
+        const otherCostsTotalEl = document.getElementById('otherCostsTotal');
+        if (otherCostsTotalEl) {
+            const otherCosts = hasPets ? surcharge : 0;
+            otherCostsTotalEl.textContent = `${otherCosts.toLocaleString('vi-VN')} VND`;
+        }
+
+
+        statusEl.className = 'voucher-status success';
+        statusEl.textContent = 'Áp dụng mã khuyến mãi thành công';
+    } catch (e) {
+        console.error('Lỗi áp dụng mã khuyến mãi', e);
+        statusEl.className = 'voucher-status error';
+        statusEl.textContent = 'Có lỗi khi áp dụng mã khuyến mãi';
+    }
+};
+
+// Bridge function cho nút onclick
+function handleApplyVoucherClick() {
+    if (typeof window.applyVoucher === 'function') {
+        window.applyVoucher();
+    } else {
+        console.error('❌ window.applyVoucher chưa được định nghĩa. Kiểm tra lỗi script trước đó.');
+        alert('Có lỗi khi khởi tạo chức năng voucher. Vui lòng tải lại trang.');
+    }
+}
+
         function resetVoucher() {
-            appliedVoucher = null;
-            voucherDiscount = 0;
+            window.bookingState = window.bookingState || {};
+            window.bookingState.voucherId = null;
+            window.bookingState.vouchers = [];
 
             document.getElementById('voucherInputLeft').value = '';
             document.getElementById('voucherInputLeft').disabled = false;
             document.getElementById('voucherStatus').className = 'voucher-status';
             document.getElementById('voucherStatus').textContent = '';
             document.getElementById('voucherDiscountRow').classList.remove('show');
+            const voucherListEl = document.getElementById('voucherList');
+            if (voucherListEl) {
+                voucherListEl.innerHTML = '';
+                voucherListEl.style.display = 'none';
+            }
             // reset discount UI
             (function() {
                 const totalDueBlock = document.querySelector('.total-due');
@@ -3446,6 +3666,1494 @@
             }
         }
     </script>
+
+    <script>
+        (function () {
+            const params = new URLSearchParams(window.location.search);
+            const address = params.get('address');
+            if (!address) {
+                return;
+            }
+
+            const valueNodes = document.querySelectorAll('.booking-card .booking-item .value');
+            if (valueNodes.length >= 2) {
+                // index 0: người đặt (ẩn), index 1: địa chỉ
+                valueNodes[1].textContent = address;
+            }
+        })();
+    </script>
+
+    <script>
+        (function () {
+            window.bookingState = window.bookingState || {};
+
+            const bookingCard = document.querySelector('.booking-card');
+            const bookingValues = bookingCard ? bookingCard.querySelectorAll('.booking-item .value') : [];
+            const serviceValueEl = bookingValues.length >= 3 ? bookingValues[2] : null;
+
+            const serviceOptions = document.querySelectorAll('.service-option');
+            serviceOptions.forEach(option => {
+                option.addEventListener('click', () => {
+                    const type = option.getAttribute('data-option') === 'repeat' ? 'month' : 'hour';
+                    window.bookingState.type = type;
+                    if (serviceValueEl) {
+                        serviceValueEl.textContent = type === 'hour'
+                            ? 'Giúp việc theo giờ (một lần)'
+                            : 'Giúp việc theo tháng';
+                    }
+                });
+            });
+
+            const originalUpdateBookingCardTime = typeof updateBookingCardTime === 'function'\n                ? updateBookingCardTime\n                : null;\n\n            
+                const voucherInput = document.getElementById('voucherInputLeft');
+                const statusEl = document.getElementById('voucherStatus');
+
+                if (!statusEl) {
+                    return;
+                }
+
+                const raw = voucherInput ? voucherInput.value.trim() : '';
+                const code = raw.toUpperCase();
+
+                statusEl.className = 'voucher-status';
+                statusEl.textContent = '';
+
+                if (!code) {
+                    statusEl.className = 'voucher-status error';
+                    statusEl.textContent = 'Vui lòng nhập mã khuyến mãi';
+                    return;
+                }
+
+                const amount = window.bookingState.totalPrice || 0;
+                if (!amount) {
+                    statusEl.className = 'voucher-status error';
+                    statusEl.textContent = 'Chưa có giá đơn để áp dụng mã';
+                    return;
+                }
+
+                try {
+                    const res = await fetch('{{ route('booking.applyVoucher') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        },
+                        body: JSON.stringify({
+                            code,
+                            amount,
+                        }),
+                    });
+
+                    const data = await res.json();
+                    if (data.error) {
+                        statusEl.className = 'voucher-status error';
+                        statusEl.textContent = data.error;
+                        return;
+                    }
+
+                    window.bookingState.voucherId = data.id_km;
+                    window.bookingState.totalAfterDiscount = data.final_amount;
+
+                    const discountRow = document.getElementById('voucherDiscountRow');
+                    const discountAmountEl = document.getElementById('voucherDiscountAmount');
+                    if (discountRow && discountAmountEl) {
+                        discountRow.classList.add('show');
+                        discountAmountEl.textContent = `-${data.discount_amount.toLocaleString('vi-VN')} VND`;
+                    }
+
+                    const totalDueBlock = document.querySelector('.total-due');
+                    const originalTotalEl = document.getElementById('originalTotalAmount');
+                    const totalDueEl = document.getElementById('totalDueAmount');
+
+                    if (totalDueBlock) {
+                        totalDueBlock.classList.add('has-discount');
+                    }
+                    if (originalTotalEl) {
+                        originalTotalEl.textContent = `${amount.toLocaleString('vi-VN')} VND`;
+                    }
+                    if (totalDueEl) {
+                        totalDueEl.textContent = `${data.final_amount.toLocaleString('vi-VN')} VND`;
+                    }
+
+                    const hasPets = (window.selectedOptions || []).includes('pets');
+                    const surcharge = hasPets ? 30000 : 0;
+                    const originalTotal = amount + surcharge;
+                    const finalTotal = data.final_amount + surcharge;
+
+                    window.bookingState.totalAfterDiscount = finalTotal;
+
+                    const otherCostsTotalEl = document.getElementById('otherCostsTotal');
+                    if (otherCostsTotalEl) {
+                        const otherCosts = hasPets ? -surcharge : 0;
+                        otherCostsTotalEl.textContent = `${otherCosts.toLocaleString('vi-VN')} VND`;
+                    }
+                    if (originalTotalEl) {
+                        originalTotalEl.textContent = `${originalTotal.toLocaleString('vi-VN')} VND`;
+                    }
+                    if (totalDueEl) {
+                        totalDueEl.textContent = `${finalTotal.toLocaleString('vi-VN')} VND`;
+                    }
+
+
+                    statusEl.className = 'voucher-status success';
+                    statusEl.textContent = 'Áp dụng mã khuyến mãi thành công';
+                } catch (e) {
+                    console.error('Lỗi áp dụng mã khuyến mãi', e);
+                    statusEl.className = 'voucher-status error';
+                    statusEl.textContent = 'Có lỗi khi áp dụng mã khuyến mãi';
+                }
+            };
+
+            // ==================== LOADING SCREEN (HAM CHINH) ====================
+function animateLoadingScreen() {
+    console.log('animateLoadingScreen start');
+
+    const worker1 = document.getElementById('worker1');
+    const worker2 = document.getElementById('worker2');
+    const worker3 = document.getElementById('worker3');
+    const progressFill = document.getElementById('progressFill');
+    const loadingScreen = document.getElementById('loadingScreen');
+    const workerSelectionScreen = document.getElementById('workerSelectionScreen');
+    const noStaffMessage = document.getElementById('noStaffMessage');
+
+    const timeInfo = document.getElementById('timeInfo');
+    const discountCard = document.getElementById('discountCard');
+    // const chooseForMeCard = document.getElementById('chooseForMeCard');
+
+    const dateInput = document.getElementById('startDate');
+    const timeInput = document.getElementById('startTime');
+
+    const ngayLam = dateInput ? dateInput.value : null;
+    const gioBatDau = timeInput ? (timeInput.value || '07:00') : '07:00';
+    const thoiLuong = window.selectedDuration || 2;
+
+    window.bookingState = window.bookingState || {};
+    window.bookingState.date = ngayLam;
+    window.bookingState.startTime = gioBatDau;
+    window.bookingState.duration = thoiLuong;
+
+    const addressNodes = document.querySelectorAll('.booking-card .booking-item .value');
+    const diaChiText = addressNodes.length >= 2 ? addressNodes[1].textContent : '';
+
+    // reset UI truoc moi lan tim
+    const cards = Array.from(document.querySelectorAll('.worker-card'));
+    cards.forEach(card => { card.style.display = 'none'; });
+    if (noStaffMessage) noStaffMessage.style.display = 'none';
+
+    // GOI API TIM NHAN VIEN
+    fetch('{{ route('booking.findStaff') }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+        },
+        body: JSON.stringify({
+            ngay_lam: ngayLam,
+            gio_bat_dau: gioBatDau,
+            thoi_luong: thoiLuong,
+            dia_chi: diaChiText,
+        }),
+    })
+        .then(res => res.json())
+        .then(staff => {
+            console.log('findStaff response:', staff);
+            const list = Array.isArray(staff) ? staff : [];
+            window.bookingState.staffList = list;
+
+            if (!list.length) {
+                // khong co nhan vien
+                window.bookingState.noStaff = true;
+
+                // an cac the nhan vien o man chon nhan vien
+                cards.forEach(card => { card.style.display = 'none'; });
+
+                // an 3 nhan vien mac dinh o man loading
+                [worker1, worker2, worker3].forEach(function (avatar) {
+                    if (!avatar) return;
+                    avatar.classList.remove('show');
+                    avatar.style.display = 'none';
+                });
+                if (progressFill) {
+                    progressFill.style.width = '0%';
+                }
+
+                if (noStaffMessage) {
+                    noStaffMessage.style.display = 'block';
+                } else {
+                    alert('Hien chua co nhan vien phu hop trong khung gio nay, vui long chon thoi gian khac.');
+                }
+                return;
+            }
+
+            // co nhan vien: hien card
+            if (noStaffMessage) noStaffMessage.style.display = 'none';
+
+            list.slice(0, cards.length).forEach((nv, idx) => {
+    const card = cards[idx];
+    if (!card) return;
+
+    card.style.display = 'flex';
+
+    // ID nhân viên từ DB
+    card.dataset.idNv = nv.ID_NV;
+
+    // Ảnh và tên nhân viên
+    const imgEl = card.querySelector('img');
+    if (imgEl && nv.HinhAnh) {
+        imgEl.src = nv.HinhAnh;
+    }
+
+    const nameEl = card.querySelector('h3');
+    if (nameEl && nv.Ten_NV) {
+        nameEl.textContent = nv.Ten_NV;
+    }
+
+    // Nếu có điểm phù hợp thì hiển thị
+    const statEls = card.querySelectorAll('.worker-stats .stat-item');
+    if (statEls.length > 0 && typeof nv.score !== 'undefined') {
+        statEls[0].textContent = 'Do phu hop ' + Math.round(nv.score) + '%';
+    }
+});
+
+
+            if (list.length < cards.length) {
+                cards.slice(list.length).forEach(card => {
+                    card.style.display = 'none';
+                });
+            }
+        })
+        .catch(e => {
+            console.error('Loi tim nhan vien', e);
+            alert('Co loi khi tim nhan vien. Vui long thu lai sau.');
+        });
+
+    // animation loading
+    setTimeout(() => {
+        if (worker1) worker1.classList.add('show');
+        if (progressFill) progressFill.style.width = '33%';
+    }, 500);
+
+    setTimeout(() => {
+        if (worker2) worker2.classList.add('show');
+        if (progressFill) progressFill.style.width = '66%';
+    }, 1500);
+
+    setTimeout(() => {
+        if (worker3) worker3.classList.add('show');
+        if (progressFill) progressFill.style.width = '100%';
+    }, 2500);
+
+    setTimeout(() => {
+        if (loadingScreen) loadingScreen.classList.remove('active');
+        if (workerSelectionScreen) workerSelectionScreen.classList.add('active');
+
+        if (timeInfo) timeInfo.style.display = 'flex';
+        if (discountCard) discountCard.style.display = 'none';
+        
+
+        const repeatNote = document.getElementById('repeatNote');
+        if (repeatNote) repeatNote.style.display = 'none';
+
+        [worker1, worker2, worker3].forEach(el => {
+            if (el) el.classList.remove('show');
+        });
+        if (progressFill) progressFill.style.width = '0%';
+    }, 3500);
+}
+
+
+            window.showPaymentScreen = function () {
+                const staffList = window.bookingState.staffList || [];
+let chosen = window.bookingState.selectedStaff || null;
+
+if (!chosen && staffList.length > 0) {
+    chosen = staffList[0];
+    window.bookingState.selectedStaffId = chosen.ID_NV;
+    window.bookingState.selectedStaff = chosen;
+}
+                const workerSelectionScreen = document.getElementById('workerSelectionScreen');
+                // const chooseForMeCard = document.getElementById('chooseForMeCard');
+                const paymentScreen = document.getElementById('paymentScreen');
+
+                if (workerSelectionScreen) {
+                    workerSelectionScreen.classList.remove('active');
+                }
+                if (chooseForMeCard) {
+                    chooseForMeCard.style.display = 'none';
+                }
+                if (paymentScreen) {
+                    paymentScreen.classList.add('active');
+                }
+
+                const step3 = document.getElementById('step3');
+                if (step3) {
+                    step3.classList.add('active');
+                }
+
+                const bookerInfo = document.getElementById('bookerInfo');
+                const workloadInfo = document.getElementById('workloadInfo');
+                const priceCard = document.getElementById('priceCard');
+                const voucherCard = document.getElementById('voucherCard');
+
+                if (bookerInfo) {
+                    bookerInfo.style.display = 'flex';
+                }
+                if (workloadInfo) {
+                    workloadInfo.style.display = 'block';
+                }
+                if (priceCard) {
+                    priceCard.style.display = 'none';
+                }
+                if (voucherCard) {
+                    voucherCard.classList.add('show');
+                }
+
+                const totalHours = (window.selectedDuration || 0) + (Array.isArray(window.selectedExtraTasks) ? window.selectedExtraTasks.length : 0);
+                const timeInput = document.getElementById('startTime');
+                const time = timeInput ? (timeInput.value || '07:00') : '07:00';
+                const workloadValue = document.getElementById('workloadValue');
+                if (workloadValue) {
+                    workloadValue.textContent = `${totalHours} giờ `;
+                }
+
+                if (chosen) {
+    const profile = document.querySelector('.worker-profile-section');
+    if (profile) {
+        const imgEl = profile.querySelector('img');
+        const nameEl = profile.querySelector('h4');
+        const statItems = profile.querySelectorAll('.worker-stats-payment .stat-item');
+
+        // Neu khong co nhan vien phu hop (noStaff = true) thi khong hien thong tin nhan vien tren man thanh toan
+        //const noStaff = !!(window.bookingState -and $null -ne window.bookingState.noStaff -and window.bookingState.noStaff);
+        if (noStaff) {
+            profile.style.display = 'none';
+            return;
+        } else {
+            profile.style.display = 'flex';
+        }
+
+
+        // Map sang field trong DB: HinhAnh, Ten_NV
+        if (imgEl && chosen.HinhAnh) {
+            imgEl.src = chosen.HinhAnh;
+        }
+
+        if (nameEl && chosen.Ten_NV) {
+            nameEl.textContent = chosen.Ten_NV;
+        }
+
+        // Nếu API có thêm score / jobs_completed thì dùng; nếu chưa có cũng không sao
+        const score = typeof chosen.score !== 'undefined' ? Math.round(chosen.score) : null;
+        const jobs = typeof chosen.jobs_completed !== 'undefined' ? chosen.jobs_completed : null;
+
+        if (statItems.length > 0 && score !== null) {
+            const firstSpan = statItems[0].querySelector('span:last-child');
+            if (firstSpan) {
+                firstSpan.textContent = score + '% Khuyen dung';
+            }
+        }
+        if (statItems.length > 1 && jobs !== null) {
+            const secondSpan = statItems[1].querySelector('span');
+            if (secondSpan) {
+                secondSpan.innerHTML = '<strong>' + jobs + '</strong> cong viec';
+            }
+        }
+    }
+}
+
+
+                const total = window.bookingState.totalAfterDiscount || window.bookingState.totalPrice || 0;
+                const totalDueEl = document.getElementById('totalDueAmount');
+                if (totalDueEl) {
+                    totalDueEl.textContent = `${total.toLocaleString('vi-VN')} VND`;
+                }
+            };
+
+            const payButton = document.querySelector('.payment-buttons .btn.btn-primary');
+            if (payButton) {
+                payButton.addEventListener('click', async function () {
+                    const dateInput = document.getElementById('startDate');
+                    const timeInput = document.getElementById('startTime');
+                    const noteInput = document.querySelector('textarea');
+
+                    const body = {
+                        loai_don: window.bookingState.type || 'hour',
+                        id_dv: window.bookingState.id_dv,
+                        id_dc: null,
+                        ngay_lam: dateInput ? dateInput.value : null,
+                        gio_bat_dau: timeInput ? timeInput.value : null,
+                        thoi_luong: window.bookingState.duration || window.selectedDuration || 2,
+                        tong_tien: window.bookingState.totalPrice || 0,
+                        tong_sau_giam: window.bookingState.totalAfterDiscount || window.bookingState.totalPrice || 0,
+                        id_nv: window.bookingState.selectedStaffId || (window.bookingState.staffList && window.bookingState.staffList[0] ? window.bookingState.staffList[0].id_nv : null),
+                        id_km: window.bookingState.voucherId || null,
+                        ghi_chu: noteInput ? noteInput.value : '',
+                    };
+
+                    try {
+                        const res = await fetch('{{ route('booking.confirm') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            },
+                            body: JSON.stringify(body),
+                        });
+
+                        const data = await res.json();
+                        if (!data.success) {
+                            alert(data.error || 'Có lỗi khi lưu đơn');
+                            return;
+                        }
+
+                        alert('Thanh toán thành công! Mã đơn: ' + data.id_dd);
+                    } catch (e) {
+                        console.error('Lỗi khi thanh toán', e);
+                        alert('Có lỗi kết nối khi thanh toán');
+                    }
+                });
+            }
+        })();
+    </script>
+
+    <script>
+        (function () {
+            let staffApplied = false;
+
+            function applyStaffFromState() {
+                if (staffApplied) {
+                    return;
+                }
+
+                const state = window.bookingState || {};
+                const hasStaffList = Object.prototype.hasOwnProperty.call(state, 'staffList');
+                const list = Array.isArray(state.staffList) ? state.staffList : [];
+
+                // Chưa fetch xong
+                if (!hasStaffList) {
+                    return;
+                }
+
+                // Fetch xong nhưng không có nhân viên phù hợp
+                if (!list.length) {
+                    staffApplied = true;
+                    const cards = document.querySelectorAll('.worker-card');
+                    cards.forEach(card => {
+                        card.style.display = 'none';
+                    });
+                    const header = document.querySelector('.worker-selection-header h1');
+                    if (header) {
+                        header.textContent = 'Chưa có nhân viên phù hợp, hệ thống sẽ phân công sau';
+                    }
+                    return;
+                }
+
+                staffApplied = true;
+
+const worker1 = document.getElementById('worker1');
+const worker2 = document.getElementById('worker2');
+const worker3 = document.getElementById('worker3');
+
+const avatars = [worker1, worker2, worker3];
+avatars.forEach((avatar, idx) => {
+    if (!avatar) return;
+
+    const nv = list[idx];
+    if (!nv) {
+        // khong co nhan vien tuong ung -> an avatar
+        avatar.style.display = 'none';
+        return;
+    }
+
+    // co nhan vien -> show avatar va set data
+    avatar.style.display = 'flex';
+    const imgEl = avatar.querySelector('img');
+    const nameEl = avatar.querySelector('.name');
+    const ratingEl = avatar.querySelector('.rating');
+    if (imgEl && nv.hinh_anh) {
+        imgEl.src = nv.hinh_anh;
+    }
+    if (nameEl) {
+        nameEl.textContent = nv.ten_nv;
+    }
+    if (ratingEl) {
+        ratingEl.textContent = `Độ phù hợp ${Math.round(nv.score)}%`;
+    }
+});
+
+
+                const cards = document.querySelectorAll('.worker-card');
+cards.forEach((card, idx) => {
+    if (!card) return;
+
+    const nv = list[idx];
+    if (!nv) {
+        // khong co nhan vien tuong ung -> an the card
+        card.style.display = 'none';
+        return;
+    }
+
+    card.style.display = 'flex';
+    card.dataset.idNv = nv.id_nv;
+
+    const imgEl = card.querySelector('img');
+    const nameEl = card.querySelector('h3');
+    if (imgEl && nv.hinh_anh) {
+        imgEl.src = nv.hinh_anh;
+    }
+    if (nameEl) {
+        nameEl.textContent = nv.ten_nv;
+    }
+
+    const statEls = card.querySelectorAll('.worker-stats .stat-item');
+    if (statEls.length > 0) {
+        statEls[0].textContent = `Độ phù hợp ${Math.round(nv.score)}%`;
+    }
+    if (statEls.length > 1) {
+        const jobs = nv.jobs_completed || 0;
+        statEls[1].innerHTML = `<strong>${jobs}</strong> Công việc đã hoàn thành`;
+    }
+});
+
+            }
+
+            setInterval(applyStaffFromState, 400);
+        })();
+    </script>
+    <script>
+        // Modal xem ho so nhan vien
+        (function() {
+            const overlay = document.getElementById('profileModal');
+            const closeBtn = document.getElementById('closeProfileModal');
+            const content = document.getElementById('profileModalContent');
+
+            function openProfileModal(card) {
+                if (!overlay || !content || !card) return;
+
+                const idNv = card.dataset.idNv;
+                const list = (window.bookingState && Array.isArray(window.bookingState.staffList))
+                    ? window.bookingState.staffList
+                    : [];
+
+                let nv = null;
+                if (idNv) {
+                    nv = list.find(item => {
+                        const itemId = item.id_nv || item.ID_NV || item.idNv || item.Id_nv;
+                        return String(itemId) === String(idNv);
+                    });
+                }
+
+                // Lay thong tin co ban tu DOM lam fallback
+                const imgEl = card.querySelector('img');
+                const nameEl = card.querySelector('h3');
+                const statsEls = card.querySelectorAll('.worker-stats .stat-item');
+
+                const imgSrc = nv && (nv.hinh_anh || nv.HinhAnh)
+                    ? (nv.hinh_anh || nv.HinhAnh)
+                    : (imgEl ? imgEl.src : '');
+                const ten = nv && (nv.ten_nv || nv.Ten_NV)
+                    ? (nv.ten_nv || nv.Ten_NV)
+                    : (nameEl ? nameEl.textContent : 'Nhan vien');
+                const scoreRaw = nv && (nv.score != null ? nv.score : (nv.Score != null ? nv.Score : null));
+                const score = scoreRaw != null ? Math.round(scoreRaw) : null;
+                const jobs = nv && nv.jobs_completed != null ? nv.jobs_completed : null;
+
+                const phone = nv
+                    ? (nv.sdt || nv.SDT || nv.so_dien_thoai || nv.phone || nv.dien_thoai || 'SDT dang cap nhat')
+                    : 'SDT dang cap nhat';
+
+                const area = nv
+                    ? (nv.khu_vuc || nv.khuvuc || nv.khu_vuc_lam_viec || '')
+                    : '';
+
+                const experience = nv
+                    ? (nv.kinh_nghiem || nv.nam_kinh_nghiem || '')
+                    : '';
+
+                let recommendText = '';
+                if (score !== null) {
+                    recommendText = 'Do phu hop ' + score + '%';
+                } else if (statsEls.length > 0) {
+                    recommendText = statsEls[0].textContent;
+                }
+
+                let jobsText = '';
+                if (jobs !== null) {
+                    jobsText = jobs + ' cong viec da hoan thanh';
+                } else if (statsEls.length > 1) {
+                    jobsText = statsEls[1].textContent;
+                }
+
+                const description = nv && nv.mo_ta ? nv.mo_ta : '';
+
+                content.innerHTML = `
+                    <div class="worker-profile-section">
+                        <img src="${imgSrc}" alt="${ten}">
+                        <div class="worker-details">
+                            <h4>${ten}</h4>
+                            <p><strong>SDT:</strong> ${phone}</p>
+                            ${area ? `<p><strong>Khu vuc lam viec:</strong> ${area}</p>` : ''}
+                            ${experience ? `<p><strong>Kinh nghiem:</strong> ${experience}</p>` : ''}
+                            ${recommendText ? `<p><strong>Danh gia:</strong> ${recommendText}</p>` : ''}
+                            ${jobsText ? `<p><strong>So cong viec:</strong> ${jobsText}</p>` : ''}
+                        </div>
+                    </div>
+                    ${description ? `<p style="margin-top:16px; font-size:14px; color:#555;">${description}</p>` : ''}
+                `;
+
+                overlay.classList.add('show');
+                overlay.setAttribute('aria-hidden', 'false');
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeProfileModal() {
+                if (!overlay) return;
+                overlay.classList.remove('show');
+                overlay.setAttribute('aria-hidden', 'true');
+                document.body.style.overflow = '';
+            }
+
+            document.addEventListener('click', function(e) {
+    // Nut xem ho so
+    const viewBtn = e.target.closest('.btn-view');
+    if (viewBtn) {
+        const card = viewBtn.closest('.worker-card');
+        openProfileModal(card);
+        return;
+    }
+
+    // Nut CHON NHAN VIEN
+    const chooseBtn = e.target.closest('.btn-choose');
+    if (chooseBtn) {
+        const card = chooseBtn.closest('.worker-card');
+        if (!card) return;
+
+        // Danh dau card dang duoc chon
+        document.querySelectorAll('.worker-card.selected').forEach(function (c) {
+            c.classList.remove('selected');
+        });
+        card.classList.add('selected');
+
+        // Lay thong tin hien thi tu DOM
+        const idNv   = card.dataset.idNv || null;
+        const imgEl  = card.querySelector('img');
+        const nameEl = card.querySelector('h3');
+        const statEls = card.querySelectorAll('.worker-stats .stat-item');
+
+        window.bookingState = window.bookingState || {};
+        window.bookingState.selectedWorkerView = {
+            idNv: idNv,
+            img:  imgEl  ? imgEl.src              : null,
+            name: nameEl ? nameEl.textContent     : null,
+            stat1: statEls[0] ? statEls[0].textContent : null,
+            stat2: statEls[1] ? statEls[1].textContent : null,
+        };
+
+        // Luu id nhan vien de gui ve backend
+        if (idNv) {
+            window.bookingState.selectedStaffId = idNv;
+        }
+
+        console.log('choose worker card', {
+            idNv,
+            selectedWorkerView: window.bookingState.selectedWorkerView,
+        });
+    }
+});
+
+
+            if (closeBtn) {
+                closeBtn.addEventListener('click', closeProfileModal);
+            }
+
+            if (overlay) {
+                overlay.addEventListener('click', function(e) {
+                    if (e.target === overlay) {
+                        closeProfileModal();
+                    }
+                });
+            }
+
+            window.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeProfileModal();
+                }
+            });
+        })();
+    </script>
+<script>
+// ========== 1. KHỞI TẠO STATE ==========
+window.bookingState = window.bookingState || {};
+
+// ========== 2. HÀM TÌM NHÂN VIÊN ==========
+window.animateLoadingScreen = function () {
+    console.log('animateLoadingScreen start');
+
+    const worker1 = document.getElementById('worker1');
+    const worker2 = document.getElementById('worker2');
+    const worker3 = document.getElementById('worker3');
+    const progressFill = document.getElementById('progressFill');
+    const loadingScreen = document.getElementById('loadingScreen');
+    const workerSelectionScreen = document.getElementById('workerSelectionScreen');
+    const noStaffMessage = document.getElementById('noStaffMessage');
+
+    const dateInput = document.getElementById('startDate');
+    const timeInput = document.getElementById('startTime');
+    const addressNodes = document.querySelectorAll('.booking-card .booking-item .value');
+    
+    const ngayLam = dateInput?.value || null;
+    const gioBatDau = timeInput?.value || '07:00';
+    const thoiLuong = window.selectedDuration || 2;
+    const diaChiText = addressNodes[1]?.textContent || '';
+
+    window.bookingState.date = ngayLam;
+    window.bookingState.startTime = gioBatDau;
+    window.bookingState.duration = thoiLuong;
+
+    // Reset UI
+    const cards = Array.from(document.querySelectorAll('.worker-card'));
+    cards.forEach(card => { card.style.display = 'none'; });
+    if (noStaffMessage) noStaffMessage.style.display = 'none';
+
+    // Gọi API tìm nhân viên
+    fetch('{{ route('booking.findStaff') }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+        },
+        body: JSON.stringify({ ngay_lam: ngayLam, gio_bat_dau: gioBatDau, thoi_luong: thoiLuong, dia_chi: diaChiText }),
+    })
+    .then(res => res.json())
+    .then(staff => {
+        console.log('findStaff response:', staff);
+        const list = Array.isArray(staff) ? staff : [];
+        window.bookingState.staffList = list;
+
+        if (!list.length) {
+            window.bookingState.noStaff = true;
+            cards.forEach(card => card.style.display = 'none');
+            [worker1, worker2, worker3].forEach(avatar => {
+                if (avatar) {
+                    avatar.classList.remove('show');
+                    avatar.style.display = 'none';
+                }
+            });
+            if (progressFill) progressFill.style.width = '0%';
+            if (noStaffMessage) noStaffMessage.style.display = 'block';
+            return;
+        }
+
+        // Có nhân viên
+        if (noStaffMessage) noStaffMessage.style.display = 'none';
+        
+        list.slice(0, cards.length).forEach((nv, idx) => {
+            const card = cards[idx];
+            if (!card) return;
+
+            const idNv = nv.id_nv || nv.ID_NV;
+            const ten = nv.ten_nv || nv.Ten_NV;
+            const img = nv.hinh_anh || nv.HinhAnh;
+            const score = nv.score != null ? Math.round(nv.score) : null;
+
+            card.style.display = 'flex';
+            if (idNv) card.dataset.idNv = idNv;
+            if (card.querySelector('img') && img) card.querySelector('img').src = img;
+            if (card.querySelector('h3') && ten) card.querySelector('h3').textContent = ten;
+            
+            const statEls = card.querySelectorAll('.worker-stats .stat-item');
+            if (statEls[0] && score !== null) {
+                statEls[0].textContent = 'Độ phù hợp ' + score + '%';
+            }
+        });
+    })
+    .catch(e => {
+        console.error('Lỗi tìm nhân viên', e);
+        alert('Có lỗi khi tìm nhân viên. Vui lòng thử lại sau.');
+    });
+
+    // Animation loading
+    [500, 1500, 2500, 3500].forEach((delay, idx) => {
+        setTimeout(() => {
+            if (idx < 3) {
+                const worker = [worker1, worker2, worker3][idx];
+                if (worker) worker.classList.add('show');
+                if (progressFill) progressFill.style.width = ((idx + 1) * 33) + '%';
+            } else {
+                if (loadingScreen) loadingScreen.classList.remove('active');
+                if (workerSelectionScreen) workerSelectionScreen.classList.add('active');
+                const timeInfo = document.getElementById('timeInfo');
+                if (timeInfo) timeInfo.style.display = 'flex';
+                const discountCard = document.getElementById('discountCard');
+                if (discountCard) discountCard.style.display = 'none';
+                if (repeatNote) repeatNote.style.display = 'none';
+                [worker1, worker2, worker3].forEach(el => el?.classList.remove('show'));
+                if (progressFill) progressFill.style.width = '0%';
+            }
+        }, delay);
+    });
+};
+
+// ========== 3. XỬ LÝ CHỌN NHÂN VIÊN ==========
+document.addEventListener('click', function(e) {
+    const chooseBtn = e.target.closest('.btn-choose');
+    if (!chooseBtn) return;
+
+    const card = chooseBtn.closest('.worker-card');
+    if (!card) return;
+
+    // Đánh dấu card được chọn
+    document.querySelectorAll('.worker-card.selected').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+
+    // Lưu thông tin vào state
+    const statEls = card.querySelectorAll('.worker-stats .stat-item');
+    window.bookingState.selectedWorkerView = {
+        idNv: card.dataset.idNv || null,
+        img: card.querySelector('img')?.src || null,
+        name: card.querySelector('h3')?.textContent || null,
+        stat1: statEls[0]?.textContent || null,
+        stat2: statEls[1]?.textContent || null,
+    };
+
+    if (card.dataset.idNv) {
+        window.bookingState.selectedStaffId = card.dataset.idNv;
+    }
+
+    // Reset flag "không nhân viên" khi có chọn nhân viên thực sự
+    window.bookingState.isNoStaffContinue = false;
+
+    console.log('✓ Chọn nhân viên:', window.bookingState.selectedWorkerView);
+}, true);
+
+// ========== 4. HÀM SHOW PAYMENT - DUY NHẤT ==========
+window.showPaymentScreen = function () {
+    console.log('showPaymentScreen bắt đầu', {
+        selectedWorkerView: window.bookingState?.selectedWorkerView,
+        selectedStaffId: window.bookingState?.selectedStaffId,
+        staffList: window.bookingState?.staffList,
+        isNoStaffContinue: window.bookingState?.isNoStaffContinue
+    });
+
+    window.bookingState = window.bookingState || {};
+
+    // Chuyển màn hình
+    const workerSelectionScreen = document.getElementById('workerSelectionScreen');
+    const paymentScreen = document.getElementById('paymentScreen');
+    const step3 = document.getElementById('step3');
+    
+    if (workerSelectionScreen) workerSelectionScreen.classList.remove('active');
+    if (paymentScreen) paymentScreen.classList.add('active');
+    if (step3) step3.classList.add('active');
+
+    // Cập nhật UI
+    const bookerInfo = document.getElementById('bookerInfo');
+    const workloadInfo = document.getElementById('workloadInfo');
+    const priceCard = document.getElementById('priceCard');
+    const voucherCard = document.getElementById('voucherCard');
+    
+    if (bookerInfo) bookerInfo.style.display = 'flex';
+    if (workloadInfo) workloadInfo.style.display = 'block';
+    if (priceCard) priceCard.style.display = 'none';
+    if (voucherCard) voucherCard.classList.add('show');
+
+    // Ẩn repeat note
+    const repeatNote = document.getElementById('repeatNote');
+    if (repeatNote) repeatNote.style.display = 'none';
+
+    // Tính tổng giờ - KHÔNG CÓ @ GIỜ BẮT ĐẦU
+    const totalHours = (window.selectedDuration || 0) + 
+                      (Array.isArray(window.selectedExtraTasks) ? window.selectedExtraTasks.length : 0);
+    const workloadValue = document.getElementById('workloadValue');
+    if (workloadValue) {
+        workloadValue.textContent = `${totalHours} giờ`; // Đã bỏ @ giờ bắt đầu
+    }
+
+    // Reset discount UI
+    const totalDueBlock = document.querySelector('.total-due');
+    const originalTotalEl = document.getElementById('originalTotalAmount');
+    if (totalDueBlock) totalDueBlock.classList.remove('has-discount');
+    if (originalTotalEl) originalTotalEl.textContent = '';
+
+    // Xử lý phí thú cưng
+    const selectedOptions = window.selectedOptions || [];
+    if (selectedOptions.includes('pets')) {
+        const surchargeRow = document.getElementById('surchargeRow');
+        const otherCostsTotal = document.getElementById('otherCostsTotal');
+        const totalDueAmount = document.getElementById('totalDueAmount');
+        
+        if (surchargeRow) surchargeRow.style.display = 'flex';
+        if (otherCostsTotal) otherCostsTotal.textContent = '30.000 VNĐ';
+        
+        const baseTotal = 316000;
+        const surcharge = 30000;
+        const newTotal = baseTotal + surcharge;
+        if (totalDueAmount) totalDueAmount.textContent = `${newTotal.toLocaleString('vi-VN')} VNĐ`;
+    } else {
+        const surchargeRow = document.getElementById('surchargeRow');
+        const otherCostsTotal = document.getElementById('otherCostsTotal');
+        const totalDueAmount = document.getElementById('totalDueAmount');
+        
+        if (surchargeRow) surchargeRow.style.display = 'none';
+        if (otherCostsTotal) otherCostsTotal.textContent = '0 VNĐ';
+        if (totalDueAmount) totalDueAmount.textContent = '316.000 VNĐ';
+    }
+
+    // CẬP NHẬT THÔNG TIN NHÂN VIÊN
+    const profile = document.querySelector('.worker-profile-section');
+    if (profile) {
+        // Kiểm tra xem có phải đang ở chế độ "không có nhân viên" và chọn tiếp tục không
+        if (window.bookingState.isNoStaffContinue) {
+            console.log('🚫 Đang ở chế độ không có nhân viên, ẨN profile section');
+            profile.style.display = 'none'; // Ẩn toàn bộ phần thông tin nhân viên
+        } else {
+            console.log('✓ Đang ở chế độ có nhân viên, HIỂN THỊ profile section');
+            profile.style.display = 'flex'; // Hiện phần thông tin nhân viên
+            
+            const imgEl = profile.querySelector('img');
+            const nameEl = profile.querySelector('h4');
+            const statItems = profile.querySelectorAll('.worker-stats-payment .stat-item');
+            const view = window.bookingState.selectedWorkerView;
+
+            if (view) {
+                console.log('✓ Có selectedWorkerView, cập nhật DOM', view);
+                if (imgEl && view.img) imgEl.src = view.img;
+                if (nameEl && view.name) nameEl.textContent = view.name;
+                
+                if (statItems.length > 0 && view.stat1) {
+                    const span1 = statItems[0].querySelector('span:last-child') || statItems[0];
+                    span1.textContent = view.stat1;
+                }
+                
+                if (statItems.length > 1 && view.stat2) {
+                    const span2 = statItems[1].querySelector('span') || statItems[1];
+                    span2.textContent = view.stat2;
+                }
+            } else {
+                // Fallback: nếu không có view, tự động chọn nhân viên đầu tiên
+                console.log('⚠ Không có selectedWorkerView, fallback về staffList[0]');
+                const staffList = window.bookingState.staffList || [];
+                if (staffList.length > 0) {
+                    const firstStaff = staffList[0];
+                    if (imgEl && firstStaff.hinh_anh) imgEl.src = firstStaff.hinh_anh;
+                    if (nameEl && firstStaff.ten_nv) nameEl.textContent = firstStaff.ten_nv;
+                    
+                    if (statItems.length > 0 && firstStaff.score != null) {
+                        const span1 = statItems[0].querySelector('span:last-child') || statItems[0];
+                        span1.textContent = `Độ phù hợp ${Math.round(firstStaff.score)}%`;
+                    }
+                }
+            }
+        }
+    }
+};
+
+// ========== 5. XỬ LÝ KHÔNG CÓ NHÂN VIÊN ==========
+(function() {
+    function ensureNoStaffActions() {
+        let actions = document.getElementById('noStaffActions');
+        if (actions) return actions;
+        
+        const container = document.getElementById('workerSelectionScreen');
+        if (!container) return null;
+        
+        actions = document.createElement('div');
+        actions.id = 'noStaffActions';
+        actions.className = 'no-staff-actions';
+        
+        const btn = document.createElement('button');
+        btn.id = 'continueWithoutStaffBtn';
+        btn.className = 'btn btn-primary';
+        btn.textContent = 'Tiếp tục';
+        btn.addEventListener('click', () => {
+            // Đánh dấu là đang tiếp tục mà không có nhân viên
+            window.bookingState.isNoStaffContinue = true;
+            window.showPaymentScreen();
+        });
+        
+        actions.appendChild(btn);
+        container.appendChild(actions);
+        return actions;
+    }
+
+    function applyNoStaffUI() {
+        const state = window.bookingState || {};
+        const hasStaffList = Object.prototype.hasOwnProperty.call(state, 'staffList');
+        const list = Array.isArray(state.staffList) ? state.staffList : [];
+        const workerSelectionScreen = document.getElementById('workerSelectionScreen');
+        
+        if (!workerSelectionScreen || !workerSelectionScreen.classList.contains('active')) return;
+        if (!hasStaffList) return;
+
+        const noStaffMessage = document.getElementById('noStaffMessage');
+        const cards = document.querySelectorAll('.worker-card');
+
+        if (!list.length) {
+            if (noStaffMessage) noStaffMessage.style.display = 'block';
+            const actions = ensureNoStaffActions();
+            if (actions) actions.style.display = 'block';
+            cards.forEach(card => card.style.display = 'none');
+            window.bookingState.noStaff = true;
+        } else {
+            if (noStaffMessage) noStaffMessage.style.display = 'none';
+            const actions = document.getElementById('noStaffActions');
+            if (actions) actions.style.display = 'none';
+            window.bookingState.noStaff = false;
+        }
+    }
+
+    setInterval(applyNoStaffUI, 500);
+})();
+</script>
+
+<!-- Modal chon phuong thuc thanh toan -->
+<div class="modal-overlay" id="paymentMethodModal" aria-hidden="true">
+    <div class="modal payment-method-modal" role="dialog" aria-modal="true" aria-labelledby="paymentMethodTitle">
+        <div class="modal-header">
+            <h3 id="paymentMethodTitle">Chọn phương thức thanh toán</h3>
+            <button class="modal-close" id="closePaymentMethodModal" aria-label="Đóng">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="payment-method-options">
+                <div class="payment-method-option" data-method="cash">
+                    <h4>Thanh toán tiền mặt</h4>
+                    <p>Thanh toán trực tiếp bằng tiền mặt với nhân viên sau khi hoàn thành công việc.</p>
+                </div>
+                <div class="payment-method-option" data-method="vnpay">
+                    <h4>Thanh toán qua VNPAY</h4>
+                    <p>Thanh toán online qua VNPAY (thẻ ngân hàng, QR Pay...) trên môi trường sandbox.</p>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" type="button" id="cancelPaymentMethod">Hủy</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal thong bao thanh toan tien mat thanh cong -->
+<div class="modal-overlay" id="cashSuccessModal" aria-hidden="true">
+    <div class="modal cash-success-modal" role="dialog" aria-modal="true" aria-labelledby="cashSuccessTitle">
+        <div class="modal-header">
+            <h3 id="cashSuccessTitle">Thanh toán thành công</h3>
+        </div>
+        <div class="modal-body">
+            <div class="cash-success-icon">&#10003;</div>
+            <div class="cash-success-title">Thanh toán tiền mặt khi hoàn thành công việc</div>
+            <p class="cash-success-text">Cảm ơn bạn đã tin tưởng dịch vụ của chúng tôi.</p>
+            <p class="cash-success-note">Bạn sẽ được chuyển về trang chủ sau <span id="cashSuccessCountdown">3</span> giây.</p>
+            <button type="button" class="cash-success-btn" id="cashSuccessGoHome">Về trang chủ ngay</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        const originalShowPayment = window.showPaymentScreen;
+
+        window.showPaymentScreen = function () {
+            if (typeof originalShowPayment === 'function') {
+                originalShowPayment();
+            }
+
+            let baseTotal = 0;
+            if (window.bookingState && typeof window.bookingState.totalPrice === 'number' && window.bookingState.totalPrice > 0) {
+                baseTotal = window.bookingState.totalPrice;
+            } else {
+                const tempPriceEl = document.getElementById('totalPrice');
+                if (tempPriceEl) {
+                    const raw = tempPriceEl.textContent.replace(/[^0-9]/g, '');
+                    if (raw) baseTotal = parseInt(raw, 10);
+                }
+            }
+
+            const serviceFeeAmountEl = document.getElementById('serviceFeeAmount');
+            if (serviceFeeAmountEl && baseTotal) {
+                serviceFeeAmountEl.textContent = `${baseTotal.toLocaleString('vi-VN')} VND`;
+            }
+
+            const otherCostsTotalEl = document.getElementById('otherCostsTotal');
+            const totalDueAmountEl = document.getElementById('totalDueAmount');
+            const hasPets = (window.selectedOptions || []).includes('pets');
+            const surcharge = hasPets ? 30000 : 0;
+
+            if (otherCostsTotalEl) {
+                otherCostsTotalEl.textContent = `${surcharge.toLocaleString('vi-VN')} VND`;
+            }
+
+            if (totalDueAmountEl && baseTotal) {
+                const total = baseTotal + surcharge;
+                totalDueAmountEl.textContent = `${total.toLocaleString('vi-VN')} VND`;
+            }
+        };
+    })();
+</script>
+
+<script>
+    (function () {
+        const originalButton = document.querySelector('.payment-buttons .btn.btn-primary');
+        if (!originalButton) return;
+
+        const payButton = originalButton.cloneNode(true);
+        originalButton.parentNode.replaceChild(payButton, originalButton);
+
+        payButton.addEventListener('click', async function () {
+            const dateInput = document.getElementById('startDate');
+            const timeInput = document.getElementById('startTime');
+            const noteInput = document.querySelector('textarea');
+
+            const body = {
+                loai_don: window.bookingState?.type || 'hour',
+                id_dv: window.bookingState?.id_dv,
+                id_dc: null,
+                ngay_lam: dateInput ? dateInput.value : null,
+                gio_bat_dau: timeInput ? timeInput.value : null,
+                thoi_luong: window.bookingState?.duration || window.selectedDuration || 2,
+                tong_tien: window.bookingState?.totalPrice || 0,
+                tong_sau_giam: window.bookingState?.totalAfterDiscount || window.bookingState?.totalPrice || 0,
+                id_nv: window.bookingState?.selectedStaffId || (window.bookingState?.staffList && window.bookingState.staffList[0] ? window.bookingState.staffList[0].id_nv : null),
+                id_km: window.bookingState?.voucherId || null,
+                ghi_chu: noteInput ? noteInput.value : '',
+            };
+
+            try {
+                const res = await fetch('{{ route('booking.confirm') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    },
+                    body: JSON.stringify(body),
+                });
+
+                const data = await res.json();
+                if (!data.success || !data.payment_url) {
+                    alert(data.error || 'Có lỗi khi tạo đơn hoặc URL thanh toán.');
+                    return;
+                }
+
+                window.location.href = data.payment_url;
+            } catch (e) {
+                console.error('Lỗi khi thanh toán qua VNPAY', e);
+                alert('Có lỗi kết nối khi thanh toán.');
+            }
+        });
+    })();
+</script>
+
+<script>
+    (function () {
+        const originalButton = document.querySelector('.payment-buttons .btn.btn-primary');
+        if (!originalButton) return;
+
+        const payButton = originalButton.cloneNode(true);
+        originalButton.parentNode.replaceChild(payButton, originalButton);
+
+        const modal = document.getElementById('paymentMethodModal');
+        const closeBtn = document.getElementById('closePaymentMethodModal');
+        const cancelBtn = document.getElementById('cancelPaymentMethod');
+        const options = modal ? modal.querySelectorAll('.payment-method-option') : [];
+
+        function openModal() {
+            if (!modal) return;
+            modal.classList.add('show');
+            modal.setAttribute('aria-hidden', 'false');
+        }
+
+        function closeModal() {
+            if (!modal) return;
+            modal.classList.remove('show');
+            modal.setAttribute('aria-hidden', 'true');
+        }
+
+        payButton.addEventListener('click', function () {
+            openModal();
+        });
+
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function () {
+                closeModal();
+            });
+        }
+
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', function () {
+                closeModal();
+            });
+        }
+
+        if (modal) {
+            modal.addEventListener('click', function (e) {
+                if (e.target === modal) {
+                    closeModal();
+                }
+            });
+        }
+
+        async function buildBody() {
+            const dateInput = document.getElementById('startDate');
+            const timeInput = document.getElementById('startTime');
+            const noteInput = document.querySelector('textarea');
+
+            return {
+                loai_don: window.bookingState?.type || 'hour',
+                id_dv: window.bookingState?.id_dv,
+                id_dc: null,
+                ngay_lam: dateInput ? dateInput.value : null,
+                gio_bat_dau: timeInput ? timeInput.value : null,
+                thoi_luong: window.bookingState?.duration || window.selectedDuration || 2,
+                tong_tien: window.bookingState?.totalPrice || 0,
+                tong_sau_giam: window.bookingState?.totalAfterDiscount || window.bookingState?.totalPrice || 0,
+                id_nv: window.bookingState?.selectedStaffId || (window.bookingState?.staffList && window.bookingState.staffList[0] ? window.bookingState.staffList[0].id_nv : null),
+                id_km: window.bookingState?.voucherId || null,
+                ghi_chu: noteInput ? noteInput.value : '',
+            };
+        }
+
+        async function buildBodyWithAddress() {
+            const base = await buildBody();
+            const addressNodes = document.querySelectorAll('.booking-card .booking-item .value');
+            const diaChiText = addressNodes.length >= 2 ? addressNodes[1].textContent : '';
+            base.dia_chi_text = diaChiText;
+
+            // truyen them unit + street neu co (phuc vu luu CanHo va Quan)
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const street = params.get('street');
+                const unit = params.get('unit');
+                if (street) {
+                    base.dia_chi_street = street;
+                }
+                if (unit) {
+                    base.dia_chi_unit = unit;
+                }
+            } catch (e) {
+                // bo qua neu URLSearchParams khong ho tro
+            }
+            return base;
+        }
+
+        async function handleVnPayPayment() {
+            const body = await buildBodyWithAddress();
+            body.payment_method = 'vnpay';
+
+            try {
+                const res = await fetch('{{ route('booking.confirm') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    },
+                    body: JSON.stringify(body),
+                });
+
+                const data = await res.json();
+                if (!data.success || !data.payment_url) {
+                    alert(data.error || 'Có lỗi khi tạo đơn hoặc URL thanh toán.');
+                    return;
+                }
+
+                window.location.href = data.payment_url;
+            } catch (e) {
+                console.error('Lỗi khi thanh toán qua VNPAY', e);
+                alert('Có lỗi kết nối khi thanh toán.');
+            }
+        }
+
+        async function handleCashPayment() {
+            const body = await buildBodyWithAddress();
+            body.payment_method = 'cash';
+
+            try {
+                const res = await fetch('{{ route('booking.confirm') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    },
+                    body: JSON.stringify(body),
+                });
+
+                const data = await res.json();
+                if (!data.success) {
+                    alert(data.error || 'Có lỗi khi tạo đơn.');
+                    return;
+                }
+
+                closeModal();
+                alert('Đặt đơn thành công! Mã đơn: ' + data.id_dd + '. Bạn sẽ thanh toán tiền mặt cho nhân viên.');
+            } catch (e) {
+                console.error('Lỗi khi tạo đơn thanh toán tiền mặt', e);
+                alert('Có lỗi kết nối khi tạo đơn.');
+            }
+        }
+
+        if (options && options.length) {
+            options.forEach(function (opt) {
+                opt.addEventListener('click', function () {
+                    const method = this.getAttribute('data-method');
+                    closeModal();
+                    if (method === 'vnpay') {
+                        handleVnPayPayment();
+                    } else if (method === 'cash') {
+                        handleCashPaymentNew();
+                    }
+                });
+            });
+        }
+
+        async function handleCashPaymentNew() {
+            const body = await buildBodyWithAddress();
+            body.payment_method = 'cash';
+
+            try {
+                const res = await fetch('{{ route('booking.confirm') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    },
+                    body: JSON.stringify(body),
+                });
+
+                const data = await res.json();
+                if (!data.success) {
+                    alert(data.error || 'CA3 l��-i khi t���o �`��n.');
+                    return;
+                }
+
+                if (window.showCashSuccessModal) {
+                    window.showCashSuccessModal(data.id_dd);
+                }
+            } catch (e) {
+                console.error('L��-i khi t���o �`��n thanh toA�n ti��?n m���t', e);
+                alert('CA3 l��-i k���t n��`i khi t���o �`��n.');
+            }
+        }
+    })();
+</script>
+
+<script>
+    (function () {
+        const cashModal = document.getElementById('cashSuccessModal');
+        const goHomeBtn = document.getElementById('cashSuccessGoHome');
+        const countdownEl = document.getElementById('cashSuccessCountdown');
+        const homeUrl = '{{ url('/') }}';
+
+        function showCashSuccessModal() {
+            if (!cashModal) {
+                window.location.href = homeUrl;
+                return;
+            }
+
+            cashModal.classList.add('show');
+            cashModal.setAttribute('aria-hidden', 'false');
+
+            let seconds = 3;
+            if (countdownEl) {
+                countdownEl.textContent = String(seconds);
+            }
+
+            const intervalId = setInterval(function () {
+                seconds -= 1;
+                if (countdownEl && seconds >= 0) {
+                    countdownEl.textContent = String(seconds);
+                }
+                if (seconds <= 0) {
+                    clearInterval(intervalId);
+                }
+            }, 1000);
+
+            setTimeout(function () {
+                window.location.href = homeUrl;
+            }, seconds * 1000);
+        }
+
+        const originalAlert = window.alert;
+        window.alert = function (message) {
+            try {
+                if (typeof message === 'string' && message.indexOf('MA� �`��n:') !== -1) {
+                    showCashSuccessModal();
+                    return;
+                }
+            } catch (e) {
+                // ignore and fallback to default alert
+            }
+
+            return originalAlert(message);
+        };
+
+        if (goHomeBtn) {
+            goHomeBtn.addEventListener('click', function () {
+                window.location.href = homeUrl;
+            });
+        }
+    })();
+</script>
+
+<script>
+    (function () {
+        const cashModal = document.getElementById('cashSuccessModal');
+        const goHomeBtn = document.getElementById('cashSuccessGoHome');
+        const countdownEl = document.getElementById('cashSuccessCountdown');
+        const homeUrl = '{{ url('/') }}';
+
+        window.showCashSuccessModal = function (orderId) {
+            if (!cashModal) {
+                window.location.href = homeUrl;
+                return;
+            }
+
+            cashModal.classList.add('show');
+            cashModal.setAttribute('aria-hidden', 'false');
+
+            let seconds = 5;
+            if (countdownEl) {
+                countdownEl.textContent = String(seconds);
+            }
+
+            const intervalId = setInterval(function () {
+                seconds -= 1;
+                if (countdownEl && seconds >= 0) {
+                    countdownEl.textContent = String(seconds);
+                }
+                if (seconds <= 0) {
+                    clearInterval(intervalId);
+                }
+            }, 1000);
+
+            setTimeout(function () {
+                window.location.href = homeUrl;
+            }, seconds * 1000);
+        };
+
+        if (goHomeBtn) {
+            goHomeBtn.addEventListener('click', function () {
+                window.location.href = homeUrl;
+            });
+        }
+
+        // Override alert to use cash-success modal for cash payments
+        const originalAlert = window.alert;
+        window.alert = function (message) {
+            try {
+                if (typeof message === 'string' && message.indexOf('MA� �`��n:') !== -1 && typeof window.showCashSuccessModal === 'function') {
+                    window.showCashSuccessModal();
+                    return;
+                }
+            } catch (e) {
+                // fallback below
+            }
+
+            return originalAlert(message);
+        };
+    })();
+</script>
 
 </body>
 

@@ -282,7 +282,7 @@ Tất cả nhân viên đều có kinh nghiệm và được kiểm duyệt rõ 
             <div class="want-to-work-left">
                 <h2>Muốn làm việc cùng bTaskee? </h2>
                 <p>Trở thành “ông chủ” của chính mình, tự chọn lịch làm việc và làm việc ở những khu vực bạn yêu thích.</p>
-                <a href="workerintroduction.html"> <button class="want-to-work-button">Ứng tuyển ngay</button> </a>
+                <a href="{{ url('/workerintroduction') }}"> <button class="want-to-work-button">Ứng tuyển ngay</button> </a>
             </div>
             <div class="want-to-work-right">
                 <div class="want-to-work-image">
@@ -303,50 +303,60 @@ Tất cả nhân viên đều có kinh nghiệm và được kiểm duyệt rõ 
             </div>
 
             <div class="blog-grid">
-                <div class="blog-card">
-                    <div class="blog-image">
-                        <img src="{{ asset('assets/baiBao1.jpg') }}" alt="Bài báo 1">
-                    </div>
-                    <div class="blog-content">
-                        <div class="blog-meta">
-                            <span class="blog-meta-author">bTaskee Cleaning House</span>
-                            <span class="blog-meta-date">Tháng Sáu 25, 2025</span>
-                        </div>
-                        <h3>bTaskee ra mắt bBeauty, đánh dấu bước tiến mới trong hệ sinh thái dịch vụ gia đình</h3>
-                        <p>Ngày 25 tháng 6 năm 2025, bTaskee chính thức ra mắt bBeauty – dịch vụ làm đẹp tại nhà tích hợp trên ứng dụng...</p>
-                        <a href="{{ url('/post-detail-1') }}" class="blog-read-more">Xem thêm</a>
-                    </div>
+    <!-- Card 1 -->
+    <a href="{{ url('/post-detail-1') }}" style="text-decoration: none; color: inherit;">
+        <div class="blog-card">
+            <div class="blog-image">
+                <img src="{{ asset('assets/baiBao1.jpg') }}" alt="Bài báo 1">
+            </div>
+            <div class="blog-content">
+                <div class="blog-meta">
+                    <span class="blog-meta-author">bTaskee Cleaning House</span>
+                    <span class="blog-meta-date">Tháng Sáu 25, 2025</span>
                 </div>
+                <h3>bTaskee ra mắt bBeauty, đánh dấu bước tiến mới trong hệ sinh thái dịch vụ gia đình</h3>
+                <p>Ngày 25 tháng 6 năm 2025, bTaskee chính thức ra mắt bBeauty – dịch vụ làm đẹp tại nhà tích hợp trên ứng dụng...</p>
+                <span class="blog-read-more">Xem thêm</span>
+            </div>
+        </div>
+    </a>
 
-                <div class="blog-card">
-                    <div class="blog-image">
-                        <img src="{{ asset('assets/baiBao2.jpg') }}" alt="Bài báo 2">
-                    </div>
-                    <div class="blog-content">
-                        <div class="blog-meta">
-                            <span class="blog-meta-author">bTaskee Cleaning House</span>
-                            <span class="blog-meta-date">Tháng Một 13, 2025</span>
-                        </div>
-                        <h3>bTaskee Chính Thức Ra Mắt Dịch Vụ Vệ Sinh Công Nghiệp</h3>
-                        <p>bTaskee đã chính thức ra mắt dịch vụ vệ sinh công nghiệp, mở rộng hệ sinh thái dịch vụ gia đình để đáp ứng nhu cầu ngày càng cao của khách hàng.</p>
-                        <a href="{{ url('/post-detail-2') }}" class="blog-read-more">Xem thêm</a>
-                    </div>
+    <!-- Card 2 -->
+    <a href="{{ url('/post-detail-2') }}" style="text-decoration: none; color: inherit;">
+        <div class="blog-card">
+            <div class="blog-image">
+                <img src="{{ asset('assets/baiBao2.jpg') }}" alt="Bài báo 2">
+            </div>
+            <div class="blog-content">
+                <div class="blog-meta">
+                    <span class="blog-meta-author">bTaskee Cleaning House</span>
+                    <span class="blog-meta-date">Tháng Một 13, 2025</span>
                 </div>
+                <h3>bTaskee Chính Thức Ra Mắt Dịch Vụ Vệ Sinh Công Nghiệp</h3>
+                <p>bTaskee đã chính thức ra mắt dịch vụ vệ sinh công nghiệp, mở rộng hệ sinh thái dịch vụ gia đình để đáp ứng nhu cầu ngày càng cao của khách hàng.</p>
+                <span class="blog-read-more">Xem thêm</span>
+            </div>
+        </div>
+    </a>
 
-                <div class="blog-card">
-                    <div class="blog-image">
-                        <img src="{{ asset('assets/baiBao3.jpg') }}" alt="Bài báo 3">
-                    </div>
-                    <div class="blog-content">
-                        <div class="blog-meta">
-                            <span class="blog-meta-author">bTaskee Cleaning House</span>
-                            <span class="blog-meta-date">Tháng Sáu 14, 2025</span>
-                        </div>
-                        <h3>bTaskee ký kết hợp tác đào tạo và tuyển dụng với Trường Cao đẳng Văn Lang Sài Gòn</h3>
-                        <p>Sáng ngày 14/6/2025, trong khuôn khổ chuỗi sự kiện VLSC Career 2025 và hội thảo khoa học với chủ đề “Mô hình doanh nghiệp trong trường và giải pháp nâng cao chất lượng đào tạo thực hành”...</p>
-                        <a href="{{ url('/post-detail-3') }}" class="blog-read-more">Xem thêm</a>
-                    </div>
+    <!-- Card 3 -->
+    <a href="{{ url('/post-detail-3') }}" style="text-decoration: none; color: inherit;">
+        <div class="blog-card">
+            <div class="blog-image">
+                <img src="{{ asset('assets/baiBao3.jpg') }}" alt="Bài báo 3">
+            </div>
+            <div class="blog-content">
+                <div class="blog-meta">
+                    <span class="blog-meta-author">bTaskee Cleaning House</span>
+                    <span class="blog-meta-date">Tháng Sáu 14, 2025</span>
                 </div>
+                <h3>bTaskee ký kết hợp tác đào tạo và tuyển dụng với Trường Cao đẳng Văn Lang Sài Gòn</h3>
+                <p>Sáng ngày 14/6/2025, trong khuôn khổ chuỗi sự kiện VLSC Career 2025 và hội thảo khoa học...</p>
+                <span class="blog-read-more">Xem thêm</span>
+            </div>
+        </div>
+    </a>
+
             </div>
         </div>
     </section>
