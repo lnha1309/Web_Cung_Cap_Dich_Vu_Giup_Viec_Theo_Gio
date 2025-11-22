@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Đăng nhập</title>
     <style>
         * {
@@ -58,7 +59,8 @@
         }
 
         input[type="text"],
-        input[type="password"] {
+        input[type="password"],
+        input[type="email"] {
             width: 100%;
             padding: 15px 20px;
             border: 2px solid #ddd;
@@ -68,7 +70,8 @@
         }
 
         input[type="text"]:focus,
-        input[type="password"]:focus {
+        input[type="password"]:focus,
+        input[type="email"]:focus {
             outline: none;
             border-color: #004d2e;
         }
@@ -115,6 +118,93 @@
             color: #003d23;
             text-decoration: underline;
         }
+
+        .forgot-password {
+            margin-top: 10px;
+        }
+
+        .link-button {
+            background: none;
+            border: none;
+            color: #004d2e;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 0;
+            text-decoration: underline;
+        }
+
+        .forgot-panel {
+            margin-top: 12px;
+            padding: 14px;
+            border: 1px solid #e6e6e6;
+            border-radius: 10px;
+            background: #fafafa;
+            display: none;
+        }
+
+        .forgot-hint {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            background: #fff4e6;
+            border: 1px solid #ffd8a8;
+            color: #b35a00;
+            padding: 10px 12px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .inline-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .inline-actions input {
+            flex: 1;
+        }
+
+        .otp-button,
+        .reset-button {
+            background: #004d2e;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-weight: 600;
+            cursor: pointer;
+            min-width: 120px;
+            transition: all 0.2s ease;
+        }
+
+        .otp-button:hover,
+        .reset-button:hover {
+            background: #003d23;
+            transform: translateY(-1px);
+        }
+
+        .otp-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status-text {
+            margin-top: 8px;
+            font-size: 14px;
+            color: #c0392b;
+        }
+
+        .status-text.success {
+            color: #0b8a3c;
+        }
+
+        .small-note {
+            font-size: 13px;
+            color: #666;
+            margin-top: 6px;
+        }
     </style>
 </head>
 <body>
@@ -156,6 +246,44 @@
                     required
                 >
             </div>
+                        <div class="forgot-password">
+                <div id="failedHint" class="forgot-hint" style="display: {{ !empty($suggestReset) ? 'block' : 'none' }};">
+                    <span>Ban da nhap sai mat khau 3 lan cho tai khoan <strong>{{ $suggestReset }}</strong>.</span>
+                    <button type="button" class="link-button" id="openForgotFromHint">Lay lai mat khau</button>
+                </div>
+                <button type="button" class="link-button" id="toggleForgot">Quen mat khau?</button>
+                <div id="forgotPanel" class="forgot-panel">
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label for="forgotUsername">Ten tai khoan</label>
+                        <input type="text" id="forgotUsername" placeholder="Nhap ten tai khoan">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label for="forgotEmail">Email</label>
+                        <div class="inline-actions">
+                            <input type="email" id="forgotEmail" placeholder="Nhap email da dang ky">
+                            <button type="button" class="otp-button" id="sendOtpBtn">Gui OTP</button>
+                        </div>
+                        <div class="small-note">Ma OTP se duoc gui toi email cua ban.</div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label for="otpCode">Ma OTP</label>
+                        <input type="text" id="otpCode" placeholder="Nhap ma OTP" maxlength="6">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label for="newPassword">Mat khau moi</label>
+                        <input type="password" id="newPassword" placeholder="Nhap mat khau moi" minlength="6">
+                    </div>
+
+                    <div>
+                        <button type="button" class="reset-button" id="resetPwdBtn">Doi mat khau</button>
+                        <div id="forgotStatus" class="status-text"></div>
+                    </div>
+                </div>
+            </div>
+
+
 
             <button type="submit" class="login-button">Đăng nhập</button>
 
@@ -164,6 +292,169 @@
             </div>
         </form>
     </div>
+        <script>
+        (function() {
+            var csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+            var csrfToken = csrfTokenMeta ? csrfTokenMeta.getAttribute('content') : '';
+            var toggleForgot = document.getElementById('toggleForgot');
+            var openForgotFromHint = document.getElementById('openForgotFromHint');
+            var forgotPanel = document.getElementById('forgotPanel');
+            var forgotStatus = document.getElementById('forgotStatus');
+            var sendOtpBtn = document.getElementById('sendOtpBtn');
+            var resetPwdBtn = document.getElementById('resetPwdBtn');
+            var forgotEmailInput = document.getElementById('forgotEmail');
+            var forgotUsernameInput = document.getElementById('forgotUsername');
+            var otpInput = document.getElementById('otpCode');
+            var newPasswordInput = document.getElementById('newPassword');
+            var loginPasswordInput = document.getElementById('password');
+            var loginUsernameInput = document.getElementById('TenDN');
+            var suggestedUsername = @json($suggestReset ?? '');
+
+            function setForgotStatus(message, type) {
+                if (!forgotStatus) return;
+                forgotStatus.textContent = message || '';
+                forgotStatus.classList.remove('success');
+                if (type === 'success') {
+                    forgotStatus.classList.add('success');
+                }
+            }
+
+            function openForgotPanel(prefillUsername) {
+                if (!forgotPanel) return;
+                forgotPanel.style.display = 'block';
+                var usernameValue = prefillUsername || (loginUsernameInput ? loginUsernameInput.value : '');
+                if (forgotUsernameInput && usernameValue) {
+                    forgotUsernameInput.value = usernameValue;
+                }
+                if (forgotEmailInput) {
+                    forgotEmailInput.focus();
+                }
+                setForgotStatus('');
+            }
+
+            if (toggleForgot) {
+                toggleForgot.addEventListener('click', function() {
+                    var isOpen = forgotPanel && forgotPanel.style.display === 'block';
+                    if (isOpen) {
+                        forgotPanel.style.display = 'none';
+                    } else {
+                        openForgotPanel();
+                    }
+                });
+            }
+
+            if (openForgotFromHint) {
+                openForgotFromHint.addEventListener('click', function() {
+                    openForgotPanel(suggestedUsername || (loginUsernameInput ? loginUsernameInput.value : ''));
+                });
+            }
+
+            if (sendOtpBtn) {
+                sendOtpBtn.addEventListener('click', function() {
+                    var email = forgotEmailInput ? (forgotEmailInput.value || '').trim() : '';
+                    var username = forgotUsernameInput ? (forgotUsernameInput.value || '').trim() : '';
+                    if (!username && loginUsernameInput) {
+                        username = (loginUsernameInput.value || '').trim();
+                    }
+
+                    setForgotStatus('');
+                    if (!username || !email) {
+                        setForgotStatus('Vui long nhap ten dang nhap va email.');
+                        return;
+                    }
+
+                    sendOtpBtn.disabled = true;
+                    fetch("{{ route('password.sendOtp') }}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                        },
+                        body: JSON.stringify({ username: username, email: email }),
+                    })
+                        .then(function(res) {
+                            return res.json().then(function(data) {
+                                return { ok: res.ok, data: data };
+                            });
+                        })
+                        .then(function(result) {
+                            if (result.ok) {
+                                setForgotStatus(result.data.message || 'Da gui ma OTP.', 'success');
+                                if (otpInput) {
+                                    otpInput.focus();
+                                }
+                            } else {
+                                setForgotStatus(result.data.message || 'Khong gui duoc OTP, vui long thu lai.');
+                            }
+                        })
+                        .catch(function() {
+                            setForgotStatus('Khong gui duoc OTP, vui long thu lai.');
+                        })
+                        .finally(function() {
+                            sendOtpBtn.disabled = false;
+                        });
+                });
+            }
+
+            if (resetPwdBtn) {
+                resetPwdBtn.addEventListener('click', function() {
+                    var email = forgotEmailInput ? (forgotEmailInput.value || '').trim() : '';
+                    var username = forgotUsernameInput ? (forgotUsernameInput.value || '').trim() : '';
+                    if (!username && loginUsernameInput) {
+                        username = (loginUsernameInput.value || '').trim();
+                    }
+                    var otp = otpInput ? (otpInput.value || '').trim() : '';
+                    var newPassword = newPasswordInput ? newPasswordInput.value || '' : '';
+
+                    setForgotStatus('');
+
+                    if (!username || !email || !otp || !newPassword) {
+                        setForgotStatus('Vui long nhap day du ten dang nhap, email, OTP va mat khau moi.');
+                        return;
+                    }
+
+                    resetPwdBtn.disabled = true;
+                    fetch("{{ route('password.resetWithOtp') }}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                        },
+                        body: JSON.stringify({
+                            username: username,
+                            email: email,
+                            otp: otp,
+                            password: newPassword,
+                        }),
+                    })
+                        .then(function(res) {
+                            return res.json().then(function(data) {
+                                return { ok: res.ok, data: data };
+                            });
+                        })
+                        .then(function(result) {
+                            if (result.ok) {
+                                setForgotStatus(result.data.message || 'Doi mat khau thanh cong.', 'success');
+                                if (loginPasswordInput) {
+                                    loginPasswordInput.value = newPassword;
+                                }
+                            } else {
+                                setForgotStatus(result.data.message || 'Khong the doi mat khau, vui long thu lai.');
+                            }
+                        })
+                        .catch(function() {
+                            setForgotStatus('Khong the doi mat khau, vui long thu lai.');
+                        })
+                        .finally(function() {
+                            resetPwdBtn.disabled = false;
+                        });
+                });
+            }
+        })();
+    </script>
+
 </body>
 </html>
 

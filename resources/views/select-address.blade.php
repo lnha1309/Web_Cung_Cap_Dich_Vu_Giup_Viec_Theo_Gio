@@ -53,6 +53,27 @@
 
         .pac-container { border-radius: 8px; margin-top: 5px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15); border: none; font-family: Arial, sans-serif; z-index: 10000; }
 
+        .service-area-message {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background-color: #fff2f0;
+            border: 1px solid #ffccc7;
+            color: #a8071a;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .service-area-message .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #a8071a;
+        }
+
         .saved-addresses {
             margin-bottom: 12px;
             padding: 10px 12px;
@@ -140,6 +161,10 @@
         <div class="header">
             <h1>Vui lòng chọn địa chỉ của bạn</h1>
         </div>
+        <div id="service-area-message" class="service-area-message">
+            <span class="dot"></span>
+            <span>Dịch vụ hiện chỉ hoạt động ở TPHCM, vui lòng chọn lại địa chỉ.</span>
+        </div>
 
         @if(!empty($addresses) && count($addresses) > 0)
             <div class="saved-addresses">
@@ -197,6 +222,66 @@
         let marker;
         let geocoder;
         let autocomplete;
+        let isOutsideServiceArea = false;
+
+        function removeVietnameseAccents(value) {
+            if (!value) return '';
+
+            return value
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase();
+        }
+
+        function isInHoChiMinhText(text) {
+            const normalized = removeVietnameseAccents(text);
+            if (!normalized) return false;
+
+            const keywords = [
+                'ho chi minh',
+                'ho chi minh city',
+                'thanh pho ho chi minh',
+                'tp hcm',
+                'tp. hcm',
+                'tphcm',
+                'hcm'
+            ];
+
+            return keywords.some(keyword => normalized.includes(keyword));
+        }
+
+        function updateServiceAreaBanner(isOutside) {
+            const banner = document.getElementById('service-area-message');
+            if (!banner) return;
+
+            isOutsideServiceArea = !!isOutside;
+            banner.style.display = isOutside ? 'flex' : 'none';
+        }
+
+        function evaluateServiceArea(placeLike) {
+            let inService = false;
+
+            if (placeLike && Array.isArray(placeLike.address_components)) {
+                for (const component of placeLike.address_components) {
+                    if (isInHoChiMinhText(component.long_name) || isInHoChiMinhText(component.short_name)) {
+                        inService = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!inService && placeLike && placeLike.formatted_address) {
+                inService = isInHoChiMinhText(placeLike.formatted_address);
+            }
+
+            if (!inService) {
+                const inputValue = document.getElementById('street-address').value || '';
+                inService = isInHoChiMinhText(inputValue);
+            }
+
+            updateServiceAreaBanner(!inService);
+            return inService;
+        }
 
         function initMap() {
             const defaultLocation = { lat: 10.8231, lng: 106.6297 };
@@ -236,6 +321,8 @@
                 marker.setPosition(place.geometry.location);
                 marker.setAnimation(google.maps.Animation.BOUNCE);
                 setTimeout(() => marker.setAnimation(null), 750);
+
+                evaluateServiceArea(place);
             });
 
             map.addListener('click', function(event) {
@@ -268,6 +355,7 @@
             geocoder.geocode({ location: latLng }, function(results, status) {
                 if (status === 'OK' && results[0]) {
                     document.getElementById('street-address').value = results[0].formatted_address;
+                    evaluateServiceArea(results[0]);
                 }
             });
         }
@@ -312,6 +400,12 @@
             const street = streetAddress.trim();
             const unit = unitAddress.trim();
 
+            const inServiceArea = evaluateServiceArea({ formatted_address: street });
+            if (!inServiceArea) {
+                document.getElementById('street-address').focus();
+                return;
+            }
+
             let displayAddress = street;
             if (unit) {
                 displayAddress = unit + ', ' + street;
@@ -339,6 +433,8 @@
 
                     document.getElementById('street-address').value = full;
                     document.getElementById('unit-address').value = apartment;
+
+                    evaluateServiceArea({ formatted_address: full });
                 });
             });
         });

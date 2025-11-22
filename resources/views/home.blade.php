@@ -34,8 +34,19 @@
         </div>
             <div class="service-name">Dọn dẹp <br> phòng ngủ</div>
         </div>
-
     </section>
+
+    @if($showNewCustomerVoucher ?? true)
+        <!-- New Customer Voucher -->
+        <div class="voucher-banner">
+            <div class="voucher-content">
+                <div class="voucher-text">
+                    <span class="voucher-title">Nhập ngay mã "KHACHHANGMOI" khi đặt đơn để nhận ưu đãi cho lần đầu đặt lịch</span>
+                    <span class="voucher-desc">Giảm 20%, tối đa 100.000đ</span>
+                </div>
+            </div>
+        </div>
+    @endif
 
     <!-- CTA Buttons -->
         <section class="cta-section">
@@ -143,7 +154,7 @@
 
             <div class="showcase-image">
     <iframe 
-        src="https://www.youtube.com/embed/3uc1USyvrJQ" 
+        src="https://www.youtube.com/embed/3uc1USyvrJQ  " 
         title="YouTube video player" 
         frameborder="0" 
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
@@ -463,10 +474,68 @@ Tất cả nhân viên đều có kinh nghiệm và được kiểm duyệt rõ 
 </div>
                 <h3>Địa chỉ</h3>
                 <p>Văn phòng chính</p>
-                <a href="https://maps.app.goo.gl/nXUVHn2cR4Z6NGpo7">284/25/20 Lý Thường Kiệt, Phường Diên Hồng, TP. Hồ Chí Minh 72506</a>
+                <a href="https://maps.app.goo.gl/nXUVHn2cR4Z6NGpo7  ">284/25/20 Lý Thường Kiệt, Phường Diên Hồng, TP. Hồ Chí Minh 72506</a>
             </div>
         </div>
     </section>
 
     <!-- Footer -->
 @endsection
+
+<style>
+/* Voucher Banner Styles - Icon Removed, Centered, Shorter & Bolder */
+.voucher-banner {
+    background: #F8F6F2;
+    border: 1px solid #E8E2D5;
+    border-radius: 8px;
+    padding: 4px 12px;
+    margin: 12px auto 8px;
+    max-width: 60%; /* Shorter width */
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.voucher-content {
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Center content horizontally */
+}
+
+.voucher-text {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center text */
+    gap: 1px;
+}
+
+.voucher-title {
+    font-weight: 700; /* Extra bold for prominence */
+    font-size: 15px;
+    color: #3A3935;
+    letter-spacing: 0.5px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    margin-bottom: 2px;
+}
+
+.voucher-desc {
+    font-size: 14px;
+    color: #D9534F; /* Stronger red accent for advertisement feel */
+    font-weight: 700; /* Bold */
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .voucher-banner {
+        padding: 3px 10px;
+        margin: 10px auto 6px;
+        max-width: 65%;
+    }
+    
+    .voucher-title {
+        font-size: 11px;
+    }
+    
+    .voucher-desc {
+        font-size: 10px;
+    }
+}
+</style>

@@ -240,9 +240,7 @@ class BookingController extends Controller
             'tong_sau_giam'  => ['nullable', 'numeric', 'min:0'],
             'id_nv'          => ['nullable', 'string'],
             'id_km'          => ['nullable', 'string'],
-            'vouchers'                  => ['nullable', 'array'],
-            'vouchers.*.id_km'          => ['required_with:vouchers', 'string'],
-            'vouchers.*.tien_giam'      => ['required_with:vouchers', 'numeric', 'min:0'],
+            'vouchers'      => ['nullable'], // Chap nhan mang hoac JSON string, se tu xu ly ben duoi
             'ghi_chu'        => ['nullable', 'string'],
         ]);
 
@@ -260,13 +258,44 @@ class BookingController extends Controller
             : 'DD_hour_';
         $idDon = IdGenerator::next('DonDat', 'ID_DD', $prefix);
 
-        $appliedVouchers = $validated['vouchers'] ?? [];
+        
+        $singleVoucher   = $validated['id_km'] ?? null;
 
-        // Chan su dung lai ma khuyen mai o buoc confirm (phong truong hop front-end bo qua API applyVoucher)
-        if (!empty($validated['id_km'])) {
-            if ($this->voucherUsedByCustomer($customer->ID_KH, $validated['id_km'])) {
+        // Thu nhan vouchers (luon doc tu raw input de tranh bi filter bo)
+        $appliedVouchers = [];
+        $rawVouchers = $request->input('vouchers', []);
+        if (is_string($rawVouchers)) {
+            $decoded = json_decode($rawVouchers, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $rawVouchers = $decoded;
+            }
+        }
+        if (is_array($rawVouchers)) {
+            foreach ($rawVouchers as $voucher) {
+                if (is_string($voucher)) {
+                    $appliedVouchers[] = [
+                        'id_km'     => $voucher,
+                        'tien_giam' => null,
+                    ];
+                } elseif (is_array($voucher)) {
+                    $code = $voucher['id_km'] ?? $voucher['code'] ?? $voucher['ma'] ?? null;
+                    if (!$code) {
+                        continue;
+                    }
+                    $amount = $voucher['tien_giam'] ?? $voucher['discount_amount'] ?? $voucher['amount'] ?? null;
+                    $appliedVouchers[] = [
+                        'id_km'     => $code,
+                        'tien_giam' => is_numeric($amount) ? (float) $amount : null,
+                    ];
+                }
+            }
+        }
+
+// Chan su dung lai ma khuyen mai o buoc confirm (phong truong hop front-end bo qua API applyVoucher)
+        if (!empty($singleVoucher)) {
+            if ($this->voucherUsedByCustomer($customer->ID_KH, $singleVoucher)) {
                 return response()->json([
-                    'error' => 'Ma khuyen mai ' . $validated['id_km'] . ' ban da su dung truoc do nen khong the ap lai.',
+                    'error' => 'Ma khuyen mai ' . $singleVoucher . ' ban da su dung truoc do nen khong the ap lai.',
                 ], 422);
             }
         }
@@ -343,16 +372,7 @@ class BookingController extends Controller
             }
         }
 
-        $trangThaiDon = 'unpaid';
-        if ($paymentMethod === 'cash') {
-            $trangThaiDon = 'unpaid';
-        } elseif ($paymentMethod === 'vnpay') {
-            if ($selectedStaffId) {
-                $trangThaiDon = 'wait_confirm';
-            } else {
-                $trangThaiDon = 'finding_staff';
-            }
-        }
+        $trangThaiDon = $selectedStaffId ? 'assigned' : 'finding_staff';
 
         DonDat::create([
             'ID_DD'          => $idDon,
@@ -371,24 +391,44 @@ class BookingController extends Controller
             'TongTien'       => $tongTien,
             'TongTienSauGiam'=> $tongSauGiam,
             'ID_NV'          => $validated['id_nv'],
-            'ID_KM'          => $validated['id_km'] ?? null,
         ]);
 
-        // Luu chi tiet khuyen mai (ho tro nhieu voucher cho 1 don)
+        // Luu chi tiet khuyen mai (ho tro 1 hoac nhieu voucher cho 1 don)
+        $voucherRows = [];
+
+        // Neu front-end gui danh sach vouchers chi tiet thi luu theo danh sach nay
         if (!empty($appliedVouchers)) {
             foreach ($appliedVouchers as $voucher) {
-                if (empty($voucher['id_km'])) {
-                    continue;
+                // Chap nhan ca dang string (chi ma) va dang array (co id_km, tien_giam)
+                if (is_string($voucher)) {
+                    $voucherRows[] = [
+                        'id_km'     => $voucher,
+                        'tien_giam' => 0.0,
+                    ];
+                } elseif (is_array($voucher) && !empty($voucher['id_km'])) {
+                    $voucherRows[] = [
+                        'id_km'     => $voucher['id_km'],
+                        'tien_giam' => isset($voucher['tien_giam'])
+                            ? (float) $voucher['tien_giam']
+                            : 0.0,
+                    ];
                 }
-
-                ChiTietKhuyenMai::create([
-                    'ID_DD'    => $idDon,
-                    'ID_KM'    => $voucher['id_km'],
-                    'TienGiam' => isset($voucher['tien_giam'])
-                        ? (float) $voucher['tien_giam']
-                        : 0.0,
-                ]);
             }
+        } elseif (!empty($singleVoucher)) {
+            // Truong hop chi co 1 ma (id_km) va khong co mang vouchers: luu duy nhat 1 dong, tien giam = tong giam
+            $discountTotal = max(0, $tongTien - $tongSauGiam);
+            $voucherRows[] = [
+                'id_km'     => $singleVoucher,
+                'tien_giam' => $discountTotal,
+            ];
+        }
+
+        foreach ($voucherRows as $row) {
+            ChiTietKhuyenMai::create([
+                'ID_DD'    => $idDon,
+                'ID_KM'    => $row['id_km'],
+                'TienGiam' => $row['tien_giam'],
+            ]);
         }
 
         $paymentUrl = null;
@@ -418,10 +458,6 @@ class BookingController extends Controller
                 'ID_DD'               => $idDon,
             ]);
         }
-
-        DonDat::where('ID_DD', $idDon)->update([
-            'TrangThaiDon' => $trangThaiDon,
-        ]);
 
         $response = [
             'success' => true,
@@ -506,14 +542,11 @@ class BookingController extends Controller
     private function voucherUsedByCustomer(string $customerId, string $code): bool
     {
         return DonDat::where('ID_KH', $customerId)
-            ->where(function ($query) use ($code) {
-                $query->where('ID_KM', $code)
-                    ->orWhereExists(function ($sub) use ($code) {
-                        $sub->selectRaw('1')
-                            ->from('ChiTietKhuyenMai')
-                            ->whereColumn('ChiTietKhuyenMai.ID_DD', 'DonDat.ID_DD')
-                            ->where('ChiTietKhuyenMai.ID_KM', $code);
-                    });
+            ->whereExists(function ($sub) use ($code) {
+                $sub->selectRaw('1')
+                    ->from('ChiTietKhuyenMai')
+                    ->whereColumn('ChiTietKhuyenMai.ID_DD', 'DonDat.ID_DD')
+                    ->where('ChiTietKhuyenMai.ID_KM', $code);
             })
             ->exists();
     }

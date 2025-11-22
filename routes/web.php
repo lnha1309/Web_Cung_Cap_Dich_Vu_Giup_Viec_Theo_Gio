@@ -1,13 +1,34 @@
 <?php
 
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use App\Models\DonDat;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ProfileController;
 
 Route::get('/', function () {
-    return view('home');
+    $showNewCustomerVoucher = true;
+
+    if (Auth::check() && Auth::user()->khachHang) {
+        $customerId = Auth::user()->khachHang->ID_KH;
+
+        $hasUsedVoucher = DonDat::where('ID_KH', $customerId)
+            ->whereExists(function ($sub) {
+                $sub->selectRaw('1')
+                    ->from('ChiTietKhuyenMai')
+                    ->whereColumn('ChiTietKhuyenMai.ID_DD', 'DonDat.ID_DD')
+                    ->where('ChiTietKhuyenMai.ID_KM', 'KHACHHANGMOI');
+            })
+            ->exists();
+
+        $showNewCustomerVoucher = !$hasUsedVoucher;
+    }
+
+    return view('home', [
+        'showNewCustomerVoucher' => $showNewCustomerVoucher,
+    ]);
 });
 
 Route::get('/appintroduction', function () {
@@ -45,6 +66,8 @@ Route::get('/workerintroduction', function () {
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login'])->name('login.post');
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+Route::post('/password/send-otp', [LoginController::class, 'sendResetOtp'])->name('password.sendOtp');
+Route::post('/password/reset-with-otp', [LoginController::class, 'resetPasswordWithOtp'])->name('password.resetWithOtp');
 
 Route::get('/register', [RegisterController::class, 'showRegisterForm'])->name('register');
 Route::post('/register/send-otp', [RegisterController::class, 'sendOtp'])->name('register.sendOtp');

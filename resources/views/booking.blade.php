@@ -797,6 +797,33 @@
 
         .voucher-list-item {
             margin-top: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 8px;
+            background: #f1f8f4;
+            border-radius: 4px;
+        }
+
+        .voucher-list-item .voucher-code {
+            flex: 1;
+        }
+
+        .voucher-list-item .btn-remove-voucher {
+            background: transparent;
+            border: none;
+            color: #d32f2f;
+            cursor: pointer;
+            padding: 2px 6px;
+            font-size: 14px;
+            margin-left: 8px;
+            transition: all 0.2s;
+            border-radius: 3px;
+        }
+
+        .voucher-list-item .btn-remove-voucher:hover {
+            background: #ffebee;
+            color: #c62828;
         }
 
         .total-due {
@@ -3423,10 +3450,22 @@ window.applyVoucher = async function () {
 
         if (voucherListEl) {
             voucherListEl.innerHTML = '';
-            window.bookingState.vouchers.forEach(v => {
+            window.bookingState.vouchers.forEach((v, index) => {
                 const item = document.createElement('div');
                 item.className = 'voucher-list-item';
-                item.textContent = `${v.code}: -${v.tien_giam.toLocaleString('vi-VN')} VND`;
+                
+                const codeSpan = document.createElement('span');
+                codeSpan.className = 'voucher-code';
+                codeSpan.textContent = `${v.code}: -${v.tien_giam.toLocaleString('vi-VN')} VND`;
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'btn-remove-voucher';
+                removeBtn.innerHTML = '✕';
+                removeBtn.title = 'Xóa voucher';
+                removeBtn.onclick = () => window.removeVoucher(index);
+                
+                item.appendChild(codeSpan);
+                item.appendChild(removeBtn);
                 voucherListEl.appendChild(item);
             });
             voucherListEl.style.display = 'block';
@@ -3480,6 +3519,86 @@ function handleApplyVoucherClick() {
         alert('Có lỗi khi khởi tạo chức năng voucher. Vui lòng tải lại trang.');
     }
 }
+
+// Function to remove a voucher from the list
+window.removeVoucher = function(index) {
+    window.bookingState.vouchers = window.bookingState.vouchers || [];
+    
+    if (index < 0 || index >= window.bookingState.vouchers.length) {
+        return;
+    }
+    
+    // Remove voucher from array
+    window.bookingState.vouchers.splice(index, 1);
+    
+    // Recalculate total discount
+    const totalDiscount = window.bookingState.vouchers.reduce((sum, v) => sum + (v.tien_giam || 0), 0);
+    
+    const discountRow = document.getElementById('voucherDiscountRow');
+    const discountAmountEl = document.getElementById('voucherDiscountAmount');
+    const voucherListEl = document.getElementById('voucherList');
+    const totalDueBlock = document.querySelector('.total-due');
+    const originalTotalEl = document.getElementById('originalTotalAmount');
+    const totalDueEl = document.getElementById('totalDueAmount');
+    
+    const baseAmount = window.bookingState.totalPrice || 0;
+    const hasPets = (window.selectedOptions || []).includes('pets');
+    const surcharge = hasPets ? 30000 : 0;
+    
+    // Update discount display
+    if (window.bookingState.vouchers.length > 0) {
+        if (discountAmountEl) {
+            discountAmountEl.textContent = `-${totalDiscount.toLocaleString('vi-VN')} VND`;
+        }
+        
+        // Update voucher list
+        if (voucherListEl) {
+            voucherListEl.innerHTML = '';
+            window.bookingState.vouchers.forEach((v, idx) => {
+                const item = document.createElement('div');
+                item.className = 'voucher-list-item';
+                
+                const codeSpan = document.createElement('span');
+                codeSpan.className = 'voucher-code';
+                codeSpan.textContent = `${v.code}: -${v.tien_giam.toLocaleString('vi-VN')} VND`;
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'btn-remove-voucher';
+                removeBtn.innerHTML = '✕';
+                removeBtn.title = 'Xóa voucher';
+                removeBtn.onclick = () => window.removeVoucher(idx);
+                
+                item.appendChild(codeSpan);
+                item.appendChild(removeBtn);
+                voucherListEl.appendChild(item);
+            });
+        }
+        
+        const originalTotal = baseAmount + surcharge;
+        const finalBeforeSurcharge = Math.max(0, baseAmount - totalDiscount);
+        const finalTotal = finalBeforeSurcharge + surcharge;
+        
+        window.bookingState.totalAfterDiscount = finalBeforeSurcharge;
+        
+        if (totalDueBlock) totalDueBlock.classList.add('has-discount');
+        if (originalTotalEl) originalTotalEl.textContent = `${originalTotal.toLocaleString('vi-VN')} VND`;
+        if (totalDueEl) totalDueEl.textContent = `${finalTotal.toLocaleString('vi-VN')} VND`;
+    } else {
+        // No vouchers left - reset to original price
+        if (discountRow) discountRow.classList.remove('show');
+        if (voucherListEl) {
+            voucherListEl.innerHTML = '';
+            voucherListEl.style.display = 'none';
+        }
+        if (totalDueBlock) totalDueBlock.classList.remove('has-discount');
+        if (originalTotalEl) originalTotalEl.textContent = '';
+        if (totalDueEl) totalDueEl.textContent = `${(baseAmount + surcharge).toLocaleString('vi-VN')} VND`;
+        
+        window.bookingState.totalAfterDiscount = null;
+        window.bookingState.voucherId = null;
+    }
+};
+
 
         function resetVoucher() {
             window.bookingState = window.bookingState || {};
