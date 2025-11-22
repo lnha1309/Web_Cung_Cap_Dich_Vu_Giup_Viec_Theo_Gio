@@ -1247,6 +1247,13 @@
             margin-bottom: 4px;
         }
 
+        .duration-option .price {
+            margin-bottom: 4px;
+            font-weight: 700;
+            color: #004d2e;
+            font-size: 14px;
+        }
+
         .duration-option .description {
             font-size: 12px;
             color: #666;
@@ -2165,7 +2172,7 @@
                 <div class="booking-item">
                     <div>
                         <label>Dịch vụ:</label>
-                        <div class="value">Giúp việc theo giờ</div>
+                        <div class="value" id="serviceName">Giúp việc theo giờ</div>
                         <!-- Khối lượng công việc - CHỈ HIỂN THỊ Ở PAYMENT SCREEN -->
                         <div class="sub-info" id="workloadInfo" style="display: none;">Khối lượng công việc: <span id="workloadValue">5.5 giờ </span></div>
                     </div>
@@ -2279,7 +2286,7 @@
             </div>
 
             <!-- Price Card - Hiển thị ở tất cả màn hình trừ Payment -->
-            <div class="price-card" id="priceCard" style="display: none;">
+            <div class="price-card" id="priceCard">
                 <div class="price-item">
                     <div class="price-value" id="totalHours">-</div>
                     <div class="price-label">Tổng thời lượng</div>
@@ -2352,7 +2359,7 @@
                     </div>
                     <div class="service-option" data-option="repeat">
                         <img src="assets/repeat.svg" alt="Repeat icon">
-                        <h3>Lặp lại</h3>
+                        <h3>Gói tháng</h3>
                         <p>Chọn 1 thứ trong tuần và công việc sẽ lặp lại mỗi tuần</p>
                     </div>
                 </div>
@@ -2372,10 +2379,10 @@
 
                     <h4>Thời gian lặp lại</h4>
                     <div class="month-package-selector">
-                        <div class="month-option" data-months="1" data-days="31">1 tháng</div>
-                        <div class="month-option" data-months="2" data-days="62">2 tháng</div>
-                        <div class="month-option" data-months="3" data-days="93">3 tháng</div>
-                        <div class="month-option" data-months="6" data-days="186">6 tháng</div>
+                        <div class="month-option" data-months="1" data-days="30">1 tháng</div>
+                        <div class="month-option" data-months="2" data-days="60">2 tháng</div>
+                        <div class="month-option" data-months="3" data-days="90">3 tháng</div>
+                        <div class="month-option" data-months="6" data-days="180">6 tháng</div>
                     </div>
 
                     <!-- Nút xem lịch chi tiết -->
@@ -2418,14 +2425,17 @@
                                 <div class="duration-options">
                                     <div class="duration-option" data-hours="2">
                                         <div class="hours">2 giờ</div>
+                                        <div class="price">192.000 VND</div>
                                         <div class="description">Diện tích tối đa 55m² <br>hoặc 2 phòng</div>
                                     </div>
                                     <div class="duration-option" data-hours="3">
                                         <div class="hours">3 giờ</div>
+                                        <div class="price">240.000 VND</div>
                                         <div class="description">Diện tích tối đa 85m² <br>hoặc 3 phòng</div>
                                     </div>
                                     <div class="duration-option" data-hours="4">
                                         <div class="hours">4 giờ</div>
+                                        <div class="price">320.000 VND</div>
                                         <div class="description">Diện tích tối đa 105m² <br>hoặc 4 phòng</div>
                                     </div>
                                 </div>
@@ -2697,39 +2707,107 @@
             }
         };
 
-        // ==================== KHỞI TẠO NGÀY ====================
-        function initializeDates() {
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            const tomorrowStr = tomorrow.toISOString().split('T')[0];
-
-            // Booking form date
-            const dateInput = document.getElementById('startDate');
-            dateInput.min = tomorrowStr;
-            dateInput.value = tomorrowStr;
-
+        function formatDateISO(value) {
+            if (!value) return null;
+            const date = value instanceof Date ? value : new Date(value);
+            if (Number.isNaN(date.getTime())) {
+                return null;
+            }
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${date.getFullYear()}-${month}-${day}`;
         }
 
-        initializeDates();
+        // ==================== KHỞI TẠO NGÀY ====================
+        function initializeDates() {
+            try {
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+                // Booking form date
+                const dateInput = document.getElementById('startDate');
+                if (dateInput) {
+                    dateInput.min = tomorrowStr;
+                    dateInput.value = tomorrowStr;
+                }
+            } catch (e) {
+                console.error('Error initializing dates:', e);
+            }
+        }
+
+        try {
+            initializeDates();
+        } catch (e) {
+            console.error('Error calling initializeDates:', e);
+        }
 
         // ==================== SERVICE OPTIONS ====================
         const serviceOptions = document.querySelectorAll('.service-option');
         const nextButton = document.getElementById('nextButton');
         const repeatOptions = document.getElementById('repeatOptions');
+        const startDateGroup = document.getElementById('noteGroup');
+        const startDateInput = document.getElementById('startDate');
+
+        window.selectServiceOption = function selectServiceOption(type) {
+            if (!type) return;
+            
+            // Reset all booking info display when switching package types
+            if (typeof resetBookingInfoDisplay === 'function') {
+                resetBookingInfoDisplay();
+            }
+            
+            serviceOptions.forEach(opt => opt.classList.remove('selected'));
+
+            const isMonth = type === 'month' || type === 'repeat';
+            const target = Array.from(serviceOptions).find(opt => opt.getAttribute('data-option') === (isMonth ? 'repeat' : 'onetime'));
+            if (target) target.classList.add('selected');
+
+            const actualType = isMonth ? 'month' : 'hour';
+            selectedOption = isMonth ? 'repeat' : 'onetime';
+            window.bookingState = window.bookingState || {};
+            window.bookingState.type = actualType;
+
+            // Update button text
+            const findWorkerBtn = document.getElementById('findWorkerBtn');
+            if (findWorkerBtn) {
+                findWorkerBtn.textContent = isMonth ? 'Tiếp theo' : 'Tìm nhân viên';
+            }
+            
+            // Update service name display
+            if (typeof updateServiceName === 'function') {
+                updateServiceName(actualType);
+            }
+
+            if (actualType === 'month') {
+                repeatOptions.classList.add('show');
+                nextButton.classList.remove('show');
+                if (startDateGroup) startDateGroup.style.display = 'none';
+                if (startDateInput) {
+                    startDateInput.disabled = true;
+                    startDateInput.readOnly = true;
+                }
+                calculateRepeatSessions();
+            } else {
+                repeatOptions.classList.remove('show');
+                nextButton.classList.add('show');
+                window.bookingState.repeatDays = [];
+                window.bookingState.packageMonths = null;
+                window.bookingState.repeatStartDate = null;
+                window.bookingState.repeatEndDate = null;
+                if (startDateGroup) startDateGroup.style.display = 'block';
+                if (startDateInput) {
+                    startDateInput.disabled = false;
+                    startDateInput.readOnly = false;
+                    initializeDates();
+                }
+            }
+        }
 
         serviceOptions.forEach(option => {
             option.addEventListener('click', function() {
-                serviceOptions.forEach(opt => opt.classList.remove('selected'));
-                this.classList.add('selected');
-                selectedOption = this.getAttribute('data-option');
-
-                if (selectedOption === 'repeat') {
-                    repeatOptions.classList.add('show');
-                    nextButton.classList.remove('show');
-                } else {
-                    repeatOptions.classList.remove('show');
-                    nextButton.classList.add('show');
-                }
+                const type = this.getAttribute('data-option') === 'repeat' ? 'month' : 'hour';
+                selectServiceOption(type);
             });
         });
 
@@ -2773,14 +2851,16 @@
         // Chọn ngày trong tuần
         weekdayOptions.forEach(option => {
             option.addEventListener('click', function() {
-                const day = this.getAttribute('data-day');
+                const day = parseInt(this.getAttribute('data-day'), 10);
 
                 if (this.classList.contains('selected')) {
                     this.classList.remove('selected');
                     selectedWeekdays = selectedWeekdays.filter(d => d !== day);
                 } else {
                     this.classList.add('selected');
-                    selectedWeekdays.push(day);
+                    if (!selectedWeekdays.includes(day)) {
+                        selectedWeekdays.push(day);
+                    }
                 }
 
                 calculateRepeatSessions();
@@ -2799,33 +2879,25 @@
                 repeatSummary.style.display = 'none';
                 repeatNextButton.disabled = true;
                 viewCalendarBtn.style.display = 'none';
-                monthServiceNote.style.display = 'none';
+                if (monthServiceNote) monthServiceNote.style.display = 'none';
                 return;
             }
 
-            // Tính ngày bắt đầu
+            // Tinh ngay bat dau goi: bo qua 2 ngay sau ngay dat, bat dau tu ngay thu 3 (khong can trung thu da chon)
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
             const sortedWeekdays = selectedWeekdays.map(Number).sort((a, b) => a - b);
-            const firstWeekday = sortedWeekdays[0];
 
-            calculatedStartDate = new Date(today);
-            calculatedStartDate.setDate(calculatedStartDate.getDate() + 1); // bắt đầu từ ngày mai
+            const startSearch = new Date(today);
+            startSearch.setDate(startSearch.getDate() + 3);
 
-            while (calculatedStartDate.getDay() !== firstWeekday) {
-                calculatedStartDate.setDate(calculatedStartDate.getDate() + 1);
-            }
-
-            // Tính ngày kết thúc
-            const lastWeekday = sortedWeekdays[sortedWeekdays.length - 1];
-
-            calculatedEndDate = new Date(calculatedStartDate);
-            calculatedEndDate.setDate(calculatedEndDate.getDate() + selectedMonthDays - 1);
-
-            while (calculatedEndDate.getDay() !== lastWeekday) {
-                calculatedEndDate.setDate(calculatedEndDate.getDate() - 1);
-            }
+            calculatedStartDate = new Date(startSearch);
+            // Khoang hieu luc: [start, start + selectedMonthDays)
+            const endExclusive = new Date(calculatedStartDate);
+            endExclusive.setDate(endExclusive.getDate() + selectedMonthDays);
+            calculatedEndDate = new Date(endExclusive);
+            calculatedEndDate.setDate(calculatedEndDate.getDate() - 1);
 
             // Đếm số buổi
             let totalSessions = 0;
@@ -2881,13 +2953,21 @@
             repeatStartDate = calculatedStartDate;
             repeatEndDate = calculatedEndDate;
 
+            window.bookingState = window.bookingState || {};
+            window.bookingState.type = 'month';
+            window.bookingState.repeatDays = sortedWeekdays;
+            window.bookingState.repeatStartDate = formatDateISO(calculatedStartDate);
+            window.bookingState.repeatEndDate = formatDateISO(calculatedEndDate);
+            window.bookingState.packageMonths = selectedMonthPackage;
+
 
             repeatSummary.style.display = 'block';
             repeatNextButton.disabled = false;
             viewCalendarBtn.style.display = 'block';
-            monthServiceNote.style.display = 'block';
+            if (monthServiceNote) monthServiceNote.style.display = 'block';
 
             updateRepeatInfo();
+            updatePrice();
 
 
         }
@@ -2966,6 +3046,7 @@
 
             let start = new Date(calculatedStartDate);
             let end = new Date(calculatedEndDate);
+            const normalizedWeekdays = selectedWeekdays.map(Number);
 
             // Iterator month-by-month
             let monthCursor = new Date(start.getFullYear(), start.getMonth(), 1);
@@ -2996,7 +3077,7 @@
                 while (d <= lastDay) {
                     const isInRange = d >= calculatedStartDate && d <= calculatedEndDate;
                     const dow = d.getDay();
-                    const isService = isInRange && selectedWeekdays.includes(String(dow));
+                    const isService = isInRange && normalizedWeekdays.includes(dow);
                     const isWeekend = dow === 0 || dow === 6;
 
                     let cls = "calendar-day";
@@ -3121,6 +3202,114 @@
             });
         });
 
+        // ==================== RESET BOOKING INFO DISPLAY ====================
+        function resetBookingInfoDisplay() {
+            // Hide all booking info elements
+            const timeInfo = document.getElementById('timeInfo');
+            const repeatDaysInfo = document.getElementById('repeatDaysInfo');
+            const repeatSessionsInfo = document.getElementById('repeatSessionsInfo');
+            const repeatPeriodInfo = document.getElementById('repeatPeriodInfo');
+            
+            if (timeInfo) timeInfo.style.display = 'none';
+            if (repeatDaysInfo) repeatDaysInfo.style.display = 'none';
+            if (repeatSessionsInfo) repeatSessionsInfo.style.display = 'none';
+            if (repeatPeriodInfo) repeatPeriodInfo.style.display = 'none';
+            
+            // Clear text content
+            const timeValue = document.getElementById('timeValue');
+            const repeatDaysValue = document.getElementById('repeatDaysValue');
+            const repeatSessionsValue = document.getElementById('repeatSessionsValue');
+            const repeatPeriodValue = document.getElementById('repeatPeriodValue');
+            const workloadValue = document.getElementById('workloadValue');
+            
+            if (timeValue) timeValue.textContent = '';
+            if (repeatDaysValue) repeatDaysValue.textContent = '';
+            if (repeatSessionsValue) repeatSessionsValue.textContent = '';
+            if (repeatPeriodValue) repeatPeriodValue.textContent = '';
+            if (workloadValue) workloadValue.textContent = '';
+            
+            // Reset service name to default
+            const serviceName = document.getElementById('serviceName');
+            if (serviceName) serviceName.textContent = 'Giúp việc theo giờ';
+            
+            // Reset price information
+            const totalHours = document.getElementById('totalHours');
+            const totalPrice = document.getElementById('totalPrice');
+            if (totalHours) totalHours.textContent = '-';
+            if (totalPrice) totalPrice.textContent = '-';
+            
+            // Reset booking state price
+            if (window.bookingState) {
+                window.bookingState.totalPrice = 0;
+                window.bookingState.totalAfterDiscount = 0;
+            }
+        }
+
+        // ==================== UPDATE SERVICE NAME ====================
+        function updateServiceName(type) {
+            const serviceName = document.getElementById('serviceName');
+            if (!serviceName) return;
+            
+            const isMonth = type === 'month' || type === 'repeat';
+            if (isMonth) {
+                serviceName.textContent = 'Giúp việc theo giờ (Gói tháng)';
+            } else {
+                serviceName.textContent = 'Giúp việc theo giờ (Gói một lần)';
+            }
+        }
+
+        // ==================== UPDATE REPEAT INFO DISPLAY ====================
+        function updateRepeatInfo() {
+            // Only show repeat info if we're in monthly mode
+            if (selectedOption !== 'repeat') return;
+            
+            const repeatDaysInfo = document.getElementById('repeatDaysInfo');
+            const repeatSessionsInfo = document.getElementById('repeatSessionsInfo');
+            const repeatPeriodInfo = document.getElementById('repeatPeriodInfo');
+            const repeatDaysValue = document.getElementById('repeatDaysValue');
+            const repeatSessionsValue = document.getElementById('repeatSessionsValue');
+            const repeatPeriodValue = document.getElementById('repeatPeriodValue');
+            
+            // Get data from state or global variables
+            const dayNames = {
+                0: 'Chủ nhật',
+                1: 'Thứ 2',
+                2: 'Thứ 3',
+                3: 'Thứ 4',
+                4: 'Thứ 5',
+                5: 'Thứ 6',
+                6: 'Thứ 7'
+            };
+            
+            const days = window.bookingState?.repeatDays || selectedWeekdays || [];
+            const totalSessionsEl = document.getElementById('totalSessions');
+            const sessions = totalSessionsEl ? totalSessionsEl.textContent : '0';
+            const startDate = calculatedStartDate || (window.bookingState?.repeatStartDate ? new Date(window.bookingState.repeatStartDate) : null);
+            const endDate = calculatedEndDate || (window.bookingState?.repeatEndDate ? new Date(window.bookingState.repeatEndDate) : null);
+            
+            // Update repeat days
+            if (repeatDaysInfo && repeatDaysValue && days.length > 0) {
+                const sortedDays = days.map(Number).sort((a, b) => a - b);
+                const daysText = sortedDays.map(day => dayNames[day]).join(', ');
+                repeatDaysValue.textContent = daysText;
+                repeatDaysInfo.style.display = 'flex';
+            }
+            
+            // Update sessions count
+            if (repeatSessionsInfo && repeatSessionsValue && sessions) {
+                repeatSessionsValue.textContent = `${sessions} buổi`;
+                repeatSessionsInfo.style.display = 'flex';
+            }
+            
+            // Update period
+            if (repeatPeriodInfo && repeatPeriodValue && startDate && endDate) {
+                const startFormatted = startDate.toLocaleDateString('vi-VN');
+                const endFormatted = endDate.toLocaleDateString('vi-VN');
+                repeatPeriodValue.textContent = `Từ ${startFormatted} đến ${endFormatted}`;
+                repeatPeriodInfo.style.display = 'flex';
+            }
+        }
+
         // ==================== TIME RANGE DISPLAY (BOOKING CARD) ====================
         function updateBookingCardTime() {
             const timeInfoEl = document.getElementById('timeInfo');
@@ -3160,49 +3349,87 @@
         }
 
         // ==================== PRICE CALCULATION ====================
+        function getServicePricing(hours) {
+            if (hours === 2) return { price: 192000, id: "DV001" };
+            if (hours === 3) return { price: 240000, id: "DV002" };
+            if (hours === 4) return { price: 320000, id: "DV003" };
+            return { price: 0, id: null };
+        }
+
+        function getPackageDiscount(months) {
+            const map = { 1: 5, 2: 10, 3: 15, 6: 20 };
+            return map[months] || 0;
+        }
+
         function updatePrice() {
             const hours = selectedDuration || 0;
-            const hoursEl = document.getElementById('totalHours');
-            const priceEl = document.getElementById('totalPrice');
+            const hoursEl = document.getElementById("totalHours");
+            const priceEl = document.getElementById("totalPrice");
 
-            if (!hours) {
-                if (hoursEl) {
-                    hoursEl.textContent = '-';
-                }
-                if (priceEl) {
-                    priceEl.textContent = '-';
-                }
-
-                // Clear giá đơn trong state khi chưa chọn giờ
+            const resetPrice = () => {
+                if (hoursEl) hoursEl.textContent = "-";
+                if (priceEl) priceEl.textContent = "-";
                 window.bookingState = window.bookingState || {};
                 window.bookingState.totalPrice = 0;
+                window.bookingState.totalAfterDiscount = 0;
                 window.bookingState.id_dv = null;
+                window.bookingState.repeatStartDate = null;
+                window.bookingState.repeatEndDate = null;
+            };
+
+            if (!hours) {
+                resetPrice();
                 return;
             }
 
-            let totalPrice = 0;
-            let idDv = null;
-            if (hours === 2) {
-                totalPrice = 192000;
-                idDv = 'DV001';
-            } else if (hours === 3) {
-                totalPrice = 240000;
-                idDv = 'DV002';
-            } else if (hours === 4) {
-                totalPrice = 320000;
-                idDv = 'DV003';
+            const pricing = getServicePricing(hours);
+            const basePrice = pricing.price;
+            const idDv = pricing.id;
+
+            if (!basePrice) {
+                resetPrice();
+                return;
+            }
+
+            if (selectedOption === "repeat") {
+                const sessionsText = document.getElementById("totalSessions")
+                    ? document.getElementById("totalSessions").textContent
+                    : "0";
+                const sessions = parseInt(sessionsText || "0", 10) || 0;
+                const months = window.bookingState?.packageMonths || selectedMonthPackage || null;
+                const discountPercent = getPackageDiscount(months);
+
+                if (!sessions) {
+                    resetPrice();
+                    return;
+                }
+
+                const gross = basePrice * sessions;
+                const discountAmount = gross * (discountPercent / 100);
+                const total = Math.max(0, gross - discountAmount);
+
+                if (hoursEl) hoursEl.textContent = `${sessions} Buổi`;
+                if (priceEl) priceEl.textContent = total.toLocaleString("vi-VN");
+
+                window.bookingState = window.bookingState || {};
+                window.bookingState.totalPrice = total;
+                window.bookingState.totalAfterDiscount = total;
+                window.bookingState.id_dv = idDv;
+                window.bookingState.packageDiscountPercent = discountPercent;
+                updateBookingCardTime();
+                return;
             }
 
             if (hoursEl) {
                 hoursEl.textContent = hours.toString();
             }
             if (priceEl) {
-                priceEl.textContent = totalPrice.toLocaleString('vi-VN');
+                priceEl.textContent = basePrice.toLocaleString("vi-VN");
             }
 
-            // Lưu giá đơn và dịch vụ vào state để áp voucher và gửi về backend
             window.bookingState = window.bookingState || {};
-            window.bookingState.totalPrice = totalPrice;
+            window.bookingState.totalPrice = basePrice;
+            window.bookingState.totalAfterDiscount = basePrice;
             window.bookingState.id_dv = idDv;
 
             updateBookingCardTime();
@@ -3213,7 +3440,7 @@
             document.getElementById('serviceSelection').style.display = 'block';
             document.getElementById('bookingFormContainer').classList.remove('active');
             document.getElementById('infoCard').style.display = 'block';
-            document.getElementById('priceCard').style.display = 'none';
+            document.getElementById('priceCard').style.display = 'flex';
             document.getElementById('discountCard').style.display = 'none';
             document.getElementById('buttonGroup').classList.remove('show');
         });
@@ -3232,6 +3459,21 @@
 
             // cap nhat lai card thoi gian
             updateBookingCardTime();
+
+            // Kiem tra neu la goi thang -> bo qua chon nhan vien
+            if (selectedOption === 'repeat') {
+                const bookingForm = document.getElementById('bookingFormContainer');
+                if (bookingForm) bookingForm.classList.remove('active');
+                
+                // Reset staff list to empty/null so backend knows no specific staff is selected
+                window.bookingState = window.bookingState || {};
+                window.bookingState.selectedStaffId = null;
+                window.bookingState.staffList = [];
+                window.bookingState.isNoStaffContinue = true; // Treat as "system assigns later"
+
+                window.showPaymentScreen();
+                return;
+            }
 
             const bookingForm = document.getElementById('bookingFormContainer');
             const loadingScreen = document.getElementById('loadingScreen');
@@ -3347,6 +3589,25 @@ function animateLoadingScreenFallback() {
         function goBackToWorkerSelection() {
             document.getElementById('paymentScreen').classList.remove('active');
             document.getElementById('step3').classList.remove('active');
+
+            // Fix for monthly package: go back to booking form instead of worker selection
+            if (selectedOption === 'repeat') {
+                document.getElementById('bookingFormContainer').classList.add('active');
+                document.getElementById('buttonGroup').classList.add('show');
+                
+                document.getElementById('infoCard').style.display = 'none';
+                document.getElementById('priceCard').style.display = 'flex';
+                document.getElementById('voucherCard').classList.remove('show');
+                
+                // Ensure step 2 is active (should be already but just in case)
+                // document.getElementById('step2').classList.add('active'); 
+                
+                const repeatNote = document.getElementById('repeatNote');
+                if (repeatNote) repeatNote.style.display = 'block'; // Show repeat note again in booking form
+
+                resetVoucher();
+                return;
+            }
 
             document.getElementById('workerSelectionScreen').classList.add('active');
             
@@ -3670,7 +3931,7 @@ window.removeVoucher = function(index) {
         });
 
         // Update when date changes
-        const startDateInput = document.getElementById('startDate');
+        // Update when date changes
         if (startDateInput) {
             startDateInput.addEventListener('change', updateBookingCardTime);
         }
@@ -3803,7 +4064,7 @@ window.removeVoucher = function(index) {
     </script>
 
     <script>
-        (function () {
+        (async function () {
             window.bookingState = window.bookingState || {};
 
             const bookingCard = document.querySelector('.booking-card');
@@ -3823,7 +4084,7 @@ window.removeVoucher = function(index) {
                 });
             });
 
-            const originalUpdateBookingCardTime = typeof updateBookingCardTime === 'function'\n                ? updateBookingCardTime\n                : null;\n\n            
+            const originalUpdateBookingCardTime = typeof updateBookingCardTime === 'function'? updateBookingCardTime: null;            
                 const voucherInput = document.getElementById('voucherInputLeft');
                 const statusEl = document.getElementById('voucherStatus');
 
@@ -4195,19 +4456,36 @@ if (!chosen && staffList.length > 0) {
                     const timeInput = document.getElementById('startTime');
                     const noteInput = document.querySelector('textarea');
 
-                    const body = {
-                        loai_don: window.bookingState.type || 'hour',
-                        id_dv: window.bookingState.id_dv,
-                        id_dc: null,
-                        ngay_lam: dateInput ? dateInput.value : null,
-                        gio_bat_dau: timeInput ? timeInput.value : null,
-                        thoi_luong: window.bookingState.duration || window.selectedDuration || 2,
-                        tong_tien: window.bookingState.totalPrice || 0,
-                        tong_sau_giam: window.bookingState.totalAfterDiscount || window.bookingState.totalPrice || 0,
-                        id_nv: window.bookingState.selectedStaffId || (window.bookingState.staffList && window.bookingState.staffList[0] ? window.bookingState.staffList[0].id_nv : null),
-                        id_km: window.bookingState.voucherId || null,
-                        ghi_chu: noteInput ? noteInput.value : '',
-                    };
+                    let body;
+                    if (typeof window.buildBookingRequest === 'function') {
+                        body = await window.buildBookingRequest();
+                    } else {
+                        const type = window.bookingState.type || (selectedOption === 'repeat' ? 'month' : 'hour');
+                        body = {
+                            loai_don: type,
+                            id_dv: window.bookingState.id_dv,
+                            id_dc: null,
+                            ngay_lam: type === 'hour' && dateInput ? dateInput.value : null,
+                            gio_bat_dau: timeInput ? timeInput.value : null,
+                            thoi_luong: window.bookingState.duration || window.selectedDuration || 2,
+                            tong_tien: window.bookingState.totalPrice || 0,
+                            tong_sau_giam: window.bookingState.totalAfterDiscount || window.bookingState.totalPrice || 0,
+                            id_nv: window.bookingState.selectedStaffId || (window.bookingState.staffList && window.bookingState.staffList[0] ? window.bookingState.staffList[0].id_nv : null),
+                            id_km: window.bookingState.voucherId || null,
+                            ghi_chu: noteInput ? noteInput.value : '',
+                        };
+
+                        if (type === 'month') {
+                            const repeatDays = Array.isArray(window.bookingState.repeatDays)
+                                ? window.bookingState.repeatDays
+                                : selectedWeekdays;
+                            body.repeat_days = (repeatDays || []).map(d => parseInt(d, 10)).filter(d => !Number.isNaN(d));
+                            body.repeat_start_date = window.bookingState.repeatStartDate || formatDateISO(repeatStartDate || calculatedStartDate);
+                            body.repeat_end_date = window.bookingState.repeatEndDate || formatDateISO(repeatEndDate || calculatedEndDate);
+                            body.package_months = window.bookingState.packageMonths || selectedMonthPackage || null;
+                            body.ngay_lam = null;
+                        }
+                    }
 
                     try {
                         const res = await fetch('{{ route('booking.confirm') }}', {
@@ -4977,6 +5255,19 @@ window.showPaymentScreen = function () {
 
         function openModal() {
             if (!modal) return;
+
+            // Check if monthly package
+            const isMonth = (window.bookingState && window.bookingState.type === 'month') || (typeof selectedOption !== 'undefined' && selectedOption === 'repeat');
+            const cashOption = modal.querySelector('.payment-method-option[data-method="cash"]');
+            
+            if (cashOption) {
+                if (isMonth) {
+                    cashOption.style.display = 'none';
+                } else {
+                    cashOption.style.display = 'block';
+                }
+            }
+
             modal.classList.add('show');
             modal.setAttribute('aria-hidden', 'false');
         }
@@ -5016,11 +5307,13 @@ window.showPaymentScreen = function () {
             const timeInput = document.getElementById('startTime');
             const noteInput = document.querySelector('textarea');
 
-            return {
-                loai_don: window.bookingState?.type || 'hour',
+            const type = window.bookingState?.type || (selectedOption === 'repeat' ? 'month' : 'hour');
+
+            const body = {
+                loai_don: type,
                 id_dv: window.bookingState?.id_dv,
                 id_dc: null,
-                ngay_lam: dateInput ? dateInput.value : null,
+                ngay_lam: type === 'hour' && dateInput ? dateInput.value : null,
                 gio_bat_dau: timeInput ? timeInput.value : null,
                 thoi_luong: window.bookingState?.duration || window.selectedDuration || 2,
                 tong_tien: window.bookingState?.totalPrice || 0,
@@ -5029,6 +5322,26 @@ window.showPaymentScreen = function () {
                 id_km: window.bookingState?.voucherId || null,
                 ghi_chu: noteInput ? noteInput.value : '',
             };
+
+            if (type === 'month') {
+                const repeatDays = Array.isArray(window.bookingState?.repeatDays)
+                    ? window.bookingState.repeatDays
+                    : selectedWeekdays;
+
+                const start = window.bookingState?.repeatStartDate
+                    || formatDateISO(repeatStartDate || calculatedStartDate);
+                const end = window.bookingState?.repeatEndDate
+                    || formatDateISO(repeatEndDate || calculatedEndDate);
+                const packageMonths = window.bookingState?.packageMonths || selectedMonthPackage || null;
+
+                body.repeat_days = (repeatDays || []).map(d => parseInt(d, 10)).filter(d => !Number.isNaN(d));
+                body.repeat_start_date = start;
+                body.repeat_end_date = end;
+                body.package_months = packageMonths;
+                body.ngay_lam = null;
+            }
+
+            return body;
         }
 
         async function buildBodyWithAddress() {
@@ -5053,6 +5366,8 @@ window.showPaymentScreen = function () {
             }
             return base;
         }
+
+        window.buildBookingRequest = buildBodyWithAddress;
 
         async function handleVnPayPayment() {
             const body = await buildBodyWithAddress();
@@ -5277,3 +5592,7 @@ window.showPaymentScreen = function () {
 </body>
 
 </html>
+
+
+
+

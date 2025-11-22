@@ -36,8 +36,6 @@
         padding: 70px 0;
     }
 
-   
-
     h2 {
         font-size: 2.5rem;
         text-align: center;
@@ -167,10 +165,8 @@
         align-items: center;
         gap: 50px;
         margin-bottom: 60px;
-        /* Khoảng cách giữa các mục */
     }
 
-    /* Đảo ngược layout cho mục Nhà bếp */
     .included-row.row-reverse {
         flex-direction: row-reverse;
     }
@@ -181,18 +177,10 @@
 
     .included-image-wrapper img {
         width: 600px;
-        /* Bắt buộc lấp đầy chiều ngang */
         height: 350px;
-        /* Chiều cao cố định (bạn có thể đổi số này) */
         object-fit: cover;
-        /* Đây là key: ảnh sẽ tự cắt để vừa, không bị méo */
         box-shadow: 0 8px 25px rgba(0, 77, 46, 0.1);
         border-radius: 12px;
-        /* Giữ bo góc cho đẹp */
-    }
-
-    .included-image-wrapper img {
-        box-shadow: 0 8px 25px rgba(0, 77, 46, 0.1);
     }
 
     .included-content h3 {
@@ -237,11 +225,9 @@
         margin-bottom: 10px;
     }
 
-    /* Responsive cho layout xen kẽ */
     @media (max-width: 992px) {
         .included-row {
             flex-direction: column !important;
-            /* Luôn xếp chồng trên di động */
             gap: 30px;
             margin-bottom: 40px;
         }
@@ -295,13 +281,21 @@
         background-color: var(--background-white);
         box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
         transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
     }
 
-    .pricing-card:hover,
-    .pricing-card.popular {
-        border-color: var(--primary-color);
+    /* Chỉ hiệu ứng hover nhẹ, KHÔNG có màu xanh mặc định */
+    .pricing-card:hover {
         transform: translateY(-5px);
         box-shadow: 0 8px 25px rgba(0, 77, 46, 0.1);
+    }
+
+    /* Class mới cho card được chọn */
+    .pricing-card.selected {
+        border-color: var(--primary-color);
+        border-width: 2px;
+        box-shadow: 0 8px 25px rgba(0, 77, 46, 0.15);
     }
 
     .pricing-card h3 {
@@ -341,8 +335,10 @@
         left: 0;
         color: var(--primary-color);
     }
-
-
+    
+    .pricing-card .btn {
+        margin-top: auto;
+    }
 
     /* --- Responsive cho di động --- */
     @media (max-width: 992px) {
@@ -367,15 +363,6 @@
             text-align: center;
         }
 
-        .included-split {
-            flex-direction: column;
-        }
-
-        .included-image {
-            position: static;
-            margin-top: 30px;
-        }
-
         .pricing-grid {
             grid-template-columns: 1fr;
         }
@@ -383,14 +370,6 @@
         .pricing-card {
             max-width: 400px;
             margin: 0 auto;
-        }
-
-        .features-grid {
-            grid-template-columns: repeat(2, 1fr);
-        }
-
-        .testimonial-grid {
-            grid-template-columns: 1fr;
         }
     }
 
@@ -416,13 +395,39 @@
         .steps-grid {
             grid-template-columns: 1fr;
         }
-
-        .features-grid {
-            grid-template-columns: 1fr;
-        }
     }
 </style>
 @endpush
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const pricingCards = document.querySelectorAll('.pricing-card');
+    
+    pricingCards.forEach(card => {
+        const button = card.querySelector('.btn');
+        
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Bỏ class 'selected' khỏi tất cả các card
+            pricingCards.forEach(c => c.classList.remove('selected'));
+            
+            // Thêm class 'selected' vào card được click
+            card.classList.add('selected');
+            
+            // Có thể thêm logic chuyển trang hoặc lưu lựa chọn ở đây
+            const packageName = card.querySelector('h3').textContent;
+            console.log('Đã chọn:', packageName);
+            
+            // Nếu muốn chuyển trang đặt lịch:
+            // window.location.href = "{{ url('select-address') }}?package=" + encodeURIComponent(packageName);
+        });
+    });
+});
+</script>
+@endpush
+
 @section('content')
 <section class="hero-section container">
     <div class="hero-content">
@@ -446,10 +451,10 @@
         <div class="who-content">
             <h2>Dịch vụ này dành cho ai?</h2>
             <ul class="who-list">
-                <li><span class="icon">✓</span>Người bận rộn với công việc, không có thời gian dọn dẹp.</l>
-                <li><span class="icon">✓</span>Gia đình trẻ cần thêm thời gian chăm sóc con cái, nghỉ ngơi.</l>
-                <li><span class="icon">✓</span>Người sống một mình muốn dọn dẹp căn hộ nhanh chóng.</l>
-                <li><span class="icon">✓</span>Bất cứ ai muốn tận hưởng cuối tuần thảnh thơi mà nhà cửa vẫn sạch sẽ.</l>
+                <li><span class="icon">✓</span>Người bận rộn với công việc, không có thời gian dọn dẹp.</li>
+                <li><span class="icon">✓</span>Gia đình trẻ cần thêm thời gian chăm sóc con cái, nghỉ ngơi.</li>
+                <li><span class="icon">✓</span>Người sống một mình muốn dọn dẹp căn hộ nhanh chóng.</li>
+                <li><span class="icon">✓</span>Bất cứ ai muốn tận hưởng cuối tuần thảnh thơi mà nhà cửa vẫn sạch sẽ.</li>
             </ul>
         </div>
     </div>
@@ -539,7 +544,7 @@
     <div class="pricing-grid">
         <div class="pricing-card">
             <h3>Gói 2 giờ</h3>
-            <div class="price">120.000đ</div>
+            <div class="price">192.000đ</div>
             <p>Lý tưởng cho căn hộ studio hoặc 1 phòng ngủ.</p>
             <ul>
                 <li>Dọn dẹp cơ bản</li>
@@ -548,20 +553,20 @@
             <a href="#" class="btn btn-secondary">Chọn gói này</a>
         </div>
 
-        <div class="pricing-card popular">
+        <div class="pricing-card">
             <h3>Gói 3 giờ</h3>
-            <div class="price">180.000đ</div>
+            <div class="price">240.000đ</div>
             <p>Phổ biến nhất! Phù hợp cho nhà 2 phòng ngủ.</p>
             <ul>
                 <li>Dọn dẹp toàn diện</li>
                 <li>Đủ thời gian cho các khu vực</li>
             </ul>
-            <a href="#" class="btn btn-primary">Chọn gói này</a>
+            <a href="#" class="btn btn-secondary">Chọn gói này</a>
         </div>
 
         <div class="pricing-card">
             <h3>Gói 4 giờ</h3>
-            <div class="price">240.000đ</div>
+            <div class="price">320.000đ</div>
             <p>Dành cho nhà lớn, hoặc cần dọn dẹp kỹ.</p>
             <ul>
                 <li>Dọn dẹp sâu, chi tiết</li>

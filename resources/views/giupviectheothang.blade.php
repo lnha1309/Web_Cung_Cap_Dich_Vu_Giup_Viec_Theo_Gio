@@ -160,7 +160,7 @@
         }
         .included-image-wrapper img {
             width: 100%;
-            height: 350px; /* Ràng buộc chiều cao ảnh */
+            height: 350px;
             object-fit: cover;
             box-shadow: 0 8px 25px rgba(0, 77, 46, 0.1);
             border-radius: 12px;
@@ -193,18 +193,18 @@
         /* Hộp "Cam kết" - đổi màu xanh lá cây */
         .not-included {
             margin-top: 40px;
-            background-color: var(--background-pastel-light); /* Màu xanh lá pastel */
+            background-color: var(--background-pastel-light);
             border: 1px solid #cce0cc;
             border-radius: 8px;
             padding: 25px;
             text-align: center;
         }
         .not-included h4 {
-            color: var(--primary-color); /* Màu xanh lá đậm */
+            color: var(--primary-color);
             margin-bottom: 10px;
         }
 
-        /* --- 4. Bảng giá (Giữ nguyên) --- */
+        /* --- 4. Bảng giá --- */
         .pricing-intro {
             text-align: center;
             max-width: 600px;
@@ -223,12 +223,23 @@
             background-color: var(--background-white);
             box-shadow: 0 4px 10px rgba(0,0,0,0.03);
             transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
         }
-        .pricing-card:hover, .pricing-card.popular {
-            border-color: var(--primary-color);
+        
+        /* Chỉ hiệu ứng hover nhẹ, KHÔNG có màu xanh mặc định */
+        .pricing-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 8px 25px rgba(0, 77, 46, 0.1);
         }
+        
+        /* Class mới cho card được chọn */
+        .pricing-card.selected {
+            border-color: var(--primary-color);
+            border-width: 2px;
+            box-shadow: 0 8px 25px rgba(0, 77, 46, 0.15);
+        }
+        
         .pricing-card h3 {
             font-size: 1.5rem;
             color: var(--primary-color);
@@ -261,6 +272,10 @@
             left: 0;
             color: var(--primary-color);
         }
+        
+        .pricing-card .btn {
+            margin-top: auto;
+        }
 
         /* --- Responsive (Giữ nguyên) --- */
         @media (max-width: 992px) {
@@ -283,6 +298,36 @@
 
     </style>
 @endpush
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const pricingCards = document.querySelectorAll('.pricing-card');
+    
+    pricingCards.forEach(card => {
+        const button = card.querySelector('.btn');
+        
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Bỏ class 'selected' khỏi tất cả các card
+            pricingCards.forEach(c => c.classList.remove('selected'));
+            
+            // Thêm class 'selected' vào card được click
+            card.classList.add('selected');
+            
+            // Lấy tên gói để xử lý
+            const packageName = card.querySelector('h3').textContent;
+            console.log('Đã chọn gói:', packageName);
+            
+            // Có thể thêm logic chuyển trang hoặc mở form tư vấn ở đây
+            // window.location.href = "{{ url('contact-form') }}?package=" + encodeURIComponent(packageName);
+        });
+    });
+});
+</script>
+@endpush
+
 @section('content')
 <section class="hero-section container">
         <div class="hero-content">
@@ -306,10 +351,10 @@
             <div class="who-content">
                 <h2>Phù hợp với gia đình nào?</h2>
                 <ul class="who-list">
-                    <li><span class="icon">✓</span>Gia đình có con nhỏ, bận rộn cần người hỗ trợ đều đặn.</l>
-                    <li><span class="icon">✓</span>Mong muốn có nhân viên quen thuộc, tin cậy, hiểu rõ thói quen gia đình.</l>
-                    <li><span class="icon">✓</span>Cần người phụ giúp các công việc hàng ngày (nấu ăn, giặt ủi...).</l>
-                    <li><span class="icon">✓</span>Chủ nhà muốn có sự ổn định, không phải lo tìm người mới liên tục.</l>
+                    <li><span class="icon">✓</span>Gia đình có con nhỏ, bận rộn cần người hỗ trợ đều đặn.</li>
+                    <li><span class="icon">✓</span>Mong muốn có nhân viên quen thuộc, tin cậy, hiểu rõ thói quen gia đình.</li>
+                    <li><span class="icon">✓</span>Cần người phụ giúp các công việc hàng ngày (nấu ăn, giặt ủi...).</li>
+                    <li><span class="icon">✓</span>Chủ nhà muốn có sự ổn định, không phải lo tìm người mới liên tục.</li>
                 </ul>
             </div>
         </div>
@@ -386,7 +431,7 @@
                 <a href="#" class="btn btn-secondary">Yêu cầu tư vấn</a>
             </div>
 
-            <div class="pricing-card popular">
+            <div class="pricing-card">
                 <h3>Gói Toàn thời gian (8 tiếng)</h3>
                 <div class="price">Liên hệ</div>
                 <p>Giờ hành chính (T2 - T7). Chăm sóc toàn diện cho gia đình.</p>
@@ -396,7 +441,7 @@
                     <li>Nấu 2 bữa (trưa/tối)</li>
                     <li>Hợp đồng từ 12 tháng</li>
                 </ul>
-                <a href="#" class="btn btn-primary">Yêu cầu tư vấn</a>
+                <a href="#" class="btn btn-secondary">Yêu cầu tư vấn</a>
             </div>
 
             <div class="pricing-card">

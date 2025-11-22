@@ -8,8 +8,11 @@ use App\Models\DichVu;
 use App\Models\DonDat;
 use App\Models\ChiTietKhuyenMai;
 use App\Models\KhuyenMai;
+use App\Models\LichBuoiThang;
+use App\Models\GoiThang;
 use App\Models\LichLamViec;
 use App\Models\LichSuThanhToan;
+use App\Models\LichTheoTuan;
 use App\Models\Quan;
 use App\Services\VNPayService;
 use App\Support\IdGenerator;
@@ -234,12 +237,17 @@ class BookingController extends Controller
             'dia_chi_unit'   => ['nullable', 'string'],
             'dia_chi_street' => ['nullable', 'string'],
             'ngay_lam'       => ['nullable', 'date'],
-            'gio_bat_dau'    => ['nullable', 'date_format:H:i'],
+            'gio_bat_dau'    => ['required_if:loai_don,month', 'date_format:H:i'],
             'thoi_luong'     => ['nullable', 'integer', 'min:1'],
             'tong_tien'      => ['required', 'numeric', 'min:0'],
             'tong_sau_giam'  => ['nullable', 'numeric', 'min:0'],
             'id_nv'          => ['nullable', 'string'],
             'id_km'          => ['nullable', 'string'],
+            'repeat_days'    => ['required_if:loai_don,month', 'array', 'min:1'],
+            'repeat_days.*'  => ['integer', 'between:0,6'],
+            'repeat_start_date' => ['nullable', 'date'],
+            'repeat_end_date'   => ['nullable', 'date'],
+            'package_months' => ['required_if:loai_don,month', 'integer', 'in:1,2,3,6'],
             'vouchers'      => ['nullable'], // Chap nhan mang hoac JSON string, se tu xu ly ben duoi
             'ghi_chu'        => ['nullable', 'string'],
         ]);
@@ -315,12 +323,74 @@ class BookingController extends Controller
             }
         }
 
-        $tongTien = (float) $validated['tong_tien'];
+        $packageMonths = null;
+        $repeatDays = [];
+        $startDate = null;
+        $endDateExclusive = null;
+        $idGoi = null;
+
+        if ($validated['loai_don'] === 'month') {
+            $packageMonths = (int) ($validated['package_months'] ?? 0);
+            $repeatDays = array_values(array_unique(array_map('intval', $validated['repeat_days'] ?? [])));
+
+            if (empty($repeatDays)) {
+                return response()->json(['error' => 'Vui long chon thu lap lai.'], 422);
+            }
+
+            $goiMap = [
+                1 => 'GT01',
+                2 => 'GT02',
+                3 => 'GT03',
+                6 => 'GT04',
+            ];
+
+            $idGoi = $goiMap[$packageMonths] ?? null;
+            if ($idGoi === null) {
+                $idGoi = GoiThang::where('SoNgay', $packageMonths * 30)->value('ID_Goi');
+            }
+
+            if ($idGoi === null) {
+                return response()->json(['error' => 'Goi thang khong hop le.'], 422);
+            }
+
+            $defaultSoNgay = $packageMonths > 0 ? $packageMonths * 30 : 0;
+            $soNgayDb = GoiThang::where('ID_Goi', $idGoi)->value('SoNgay');
+            $soNgay = $soNgayDb ?: $defaultSoNgay;
+            if ($soNgay <= 0) {
+                return response()->json(['error' => 'So ngay hieu luc goi khong hop le.'], 422);
+            }
+            if ($soNgay <= 0) {
+                return response()->json(['error' => 'So ngay hieu luc goi khong hop le.'], 422);
+            }
+
+            $orderDate = Carbon::now();
+            $startDate = $this->computePackageStartDate($orderDate, $repeatDays);
+            $endDateExclusive = $startDate->copy()->addDays($soNgay);
+        }
+
+        $service = DichVu::findOrFail($validated['id_dv']);
+
+        if ($validated['loai_don'] === 'month') {
+            $basePrice = (float) $service->GiaDV;
+            $package = $idGoi ? GoiThang::find($idGoi) : null;
+            $packagePercent = $package && $package->PhanTramGiam !== null
+                ? (float) $package->PhanTramGiam
+                : 0.0;
+
+            $sessionCount = $this->countSessionsInRange($repeatDays, $startDate, $endDateExclusive);
+            $gross = $basePrice * $sessionCount;
+            $packageDiscount = $gross * $packagePercent / 100;
+            $tongTien = max(0, $gross - $packageDiscount);
+        } else {
+            $tongTien = (float) $validated['tong_tien'];
+        }
+
         $tongSauGiam = isset($validated['tong_sau_giam']) && $validated['tong_sau_giam'] !== null
             ? (float) $validated['tong_sau_giam']
             : $tongTien;
 
-        $gioBatDau = $validated['gio_bat_dau'] ?? null;
+        $gioBatDauRaw = $validated['gio_bat_dau'] ?? null;
+        $gioBatDau = $gioBatDauRaw ? $gioBatDauRaw . ':00' : null;
         $selectedStaffId = $validated['id_nv'] ?? null;
 
         // Xy ly dia chi: tim ID_DC phu hop hoac tao moi (dia chi don le, khong bat buoc la dia chi da luu)
@@ -381,17 +451,48 @@ class BookingController extends Controller
             'ID_KH'          => $customer->ID_KH,
             'ID_DC'          => $idDc,
             'GhiChu'         => $validated['ghi_chu'] ?? null,
-            'NgayLam'        => $validated['ngay_lam'] ?? null,
-            'GioBatDau'      => $gioBatDau ? $gioBatDau . ':00' : null,
+            'NgayLam'        => $validated['loai_don'] === 'hour' ? ($validated['ngay_lam'] ?? null) : null,
+            'GioBatDau'      => $gioBatDau,
             'ThoiLuongGio'   => $validated['thoi_luong'] ?? null,
-            'ID_Goi'         => null,
-            'NgayBatDauGoi'  => null,
-            'NgayKetThucGoi' => null,
+            'ID_Goi'         => $validated['loai_don'] === 'month' ? $idGoi : null,
+            'NgayBatDauGoi'  => $validated['loai_don'] === 'month' ? $startDate?->toDateString() : null,
+            'NgayKetThucGoi' => $validated['loai_don'] === 'month'
+                ? $endDateExclusive?->copy()->subDay()->toDateString()
+                : null,
             'TrangThaiDon'   => $trangThaiDon,
             'TongTien'       => $tongTien,
             'TongTienSauGiam'=> $tongSauGiam,
             'ID_NV'          => $validated['id_nv'],
         ]);
+
+        if ($validated['loai_don'] === 'month') {
+            foreach ($repeatDays as $day) {
+                LichTheoTuan::create([
+                    'ID_LichTuan' => IdGenerator::next('LichTheoTuan', 'ID_LichTuan', 'LTT'),
+                    'ID_DD'       => $idDon,
+                    'Thu'         => $day,
+                    'GioBatDau'   => $gioBatDau,
+                ]);
+            }
+
+            if ($startDate && $endDateExclusive) {
+                $cursor = $startDate->copy();
+                $endExclusive = $endDateExclusive->copy();
+                while ($cursor->lt($endExclusive)) {
+                    if (in_array($cursor->dayOfWeek, $repeatDays, true)) {
+                        LichBuoiThang::create([
+                            'ID_Buoi'      => IdGenerator::next('LichBuoiThang', 'ID_Buoi', 'LBT_'),
+                            'ID_DD'        => $idDon,
+                            'NgayLam'      => $cursor->toDateString(),
+                            'GioBatDau'    => $gioBatDau,
+                            'TrangThaiBuoi'=> 'scheduled',
+                            'ID_NV'        => null,
+                        ]);
+                    }
+                    $cursor->addDay();
+                }
+            }
+        }
 
         // Luu chi tiet khuyen mai (ho tro 1 hoac nhieu voucher cho 1 don)
         $voucherRows = [];
@@ -626,5 +727,35 @@ class BookingController extends Controller
         }
 
         return null;
+    }
+
+    private function countSessionsInRange(array $weekdays, $startDate, $endDateExclusive): int
+    {
+        $normalizedDays = array_unique(array_map('intval', $weekdays));
+        sort($normalizedDays);
+
+        $start = $startDate instanceof Carbon ? $startDate->copy()->startOfDay() : Carbon::parse($startDate)->startOfDay();
+        $endExclusive = $endDateExclusive instanceof Carbon ? $endDateExclusive->copy()->startOfDay() : Carbon::parse($endDateExclusive)->startOfDay();
+
+        $count = 0;
+        $cursor = $start->copy();
+
+        while ($cursor->lt($endExclusive)) {
+            if (in_array((int) $cursor->dayOfWeek, $normalizedDays, true)) {
+                $count++;
+            }
+            $cursor->addDay();
+        }
+
+        return $count;
+    }
+
+    private function computePackageStartDate(Carbon $orderDate, array $weekdays): Carbon
+    {
+        $normalizedDays = array_values(array_unique(array_map('intval', $weekdays)));
+        $normalizedDays = array_filter($normalizedDays, static fn ($d) => $d >= 0 && $d <= 6);
+
+        // Bo qua 2 ngay ngay sau ngay dat, bat dau tu ngay thu 3 (khong can trung thu da chon)
+        return $orderDate->copy()->addDays(3)->startOfDay();
     }
 }
