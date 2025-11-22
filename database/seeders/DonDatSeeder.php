@@ -27,7 +27,6 @@ class DonDatSeeder extends Seeder
                 'TongTien' => 192000,
                 'TongTienSauGiam' => 153600,
                 'ID_NV' => 'NV001',
-                'ID_KM' => 'KM001',
             ],
             [
                 'ID_DD' => 'DD002',
@@ -46,7 +45,6 @@ class DonDatSeeder extends Seeder
                 'TongTien' => 7200000,
                 'TongTienSauGiam' => 6120000,
                 'ID_NV' => 'NV002',
-                'ID_KM' => null,
             ],
         ]);
     }
