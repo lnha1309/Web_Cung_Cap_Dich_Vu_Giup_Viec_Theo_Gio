@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Support\Facades\Hash;
 
 class TaiKhoan extends Authenticatable
 {
@@ -27,6 +28,14 @@ class TaiKhoan extends Authenticatable
     ];
 
     public $timestamps = false;
+
+    public function setMatKhauAttribute(string $value): void
+    {
+        // Hash passwords on assignment while avoiding double hashing
+        $this->attributes['MatKhau'] = Hash::needsRehash($value)
+            ? Hash::make($value)
+            : $value;
+    }
 
     public function getAuthPassword()
     {
