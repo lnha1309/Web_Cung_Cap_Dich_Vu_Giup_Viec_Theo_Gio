@@ -8,6 +8,7 @@ use App\Models\TaiKhoan;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 
 class LoginController extends Controller
@@ -35,7 +36,24 @@ class LoginController extends Controller
 
         $account = TaiKhoan::where('TenDN', $username)->first();
 
-        if (!$account || $credentials['password'] !== $account->MatKhau) {
+        $passwordMatches = false;
+
+        if ($account) {
+            try {
+                $passwordMatches = Hash::check($credentials['password'], $account->MatKhau);
+            } catch (\RuntimeException $e) {
+                $passwordMatches = false; // non-bcrypt legacy value, handle below
+            }
+        }
+
+        if (!$passwordMatches && $account && $credentials['password'] === $account->MatKhau) {
+            // Legacy plaintext password: upgrade to hash and allow login
+            $account->MatKhau = $credentials['password'];
+            $account->save();
+            $passwordMatches = true;
+        }
+
+        if (!$passwordMatches) {
             $attempts++;
             $request->session()->put($attemptKey, $attempts);
 
@@ -52,6 +70,11 @@ class LoginController extends Controller
             return back()
                 ->withErrors(['login' => 'Tai khoan cua ban da bi khoa.'])
                 ->withInput($request->only('TenDN'));
+        }
+
+        if (Hash::needsRehash($account->MatKhau)) {
+            $account->MatKhau = $credentials['password'];
+            $account->save();
         }
 
         Auth::login($account);

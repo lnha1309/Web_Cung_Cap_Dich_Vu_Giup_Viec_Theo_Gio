@@ -144,7 +144,7 @@
         const sendBtn = document.getElementById('sendOtpBtn');
         sendBtn.disabled = true;
 
-        fetch('{{ route('register.sendOtp') }}', {
+        fetch('{{ route(register.sendOtp) }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -205,7 +205,7 @@
             return;
         }
 
-        fetch('{{ route('register.verifyOtp') }}', {
+        fetch('{{ route(register.verifyOtp) }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -252,7 +252,7 @@
             return;
         }
 
-        fetch('{{ route('register.checkUsername') }}', {
+        fetch('{{ route(register.checkUsername) }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -283,7 +283,7 @@
             return;
         }
 
-        fetch('{{ route('register.checkPhone') }}', {
+        fetch('{{ route(register.checkPhone) }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

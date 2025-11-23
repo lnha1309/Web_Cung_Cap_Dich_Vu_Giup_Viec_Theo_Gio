@@ -150,7 +150,7 @@ class RegisterController extends Controller
         $account = TaiKhoan::create([
             'ID_TK' => $idTk,
             'TenDN' => $validated['TenDN'],
-            'MatKhau' => $validated['password'], // hiện tại login đang so sánh plain text
+            'MatKhau' => $validated['password'],
             'ID_LoaiTK' => 'customer',
             'TrangThaiTK' => 'active',
         ]);
