@@ -155,10 +155,20 @@ class BookingController extends Controller
                 ->where('TrangThaiDon', 'done')
                 ->count();
 
+            // Xử lý ảnh nhân viên: nếu null hoặc rỗng, dùng ảnh mặc định
+            $hinhAnh = $nv->HinhAnh;
+            if (empty($hinhAnh)) {
+                // Ảnh mặc định nếu nhân viên chưa có ảnh
+                $hinhAnh = 'https://ui-avatars.com/api/?name=' . urlencode($nv->Ten_NV) . '&background=004d2e&color=fff&size=150';
+            } elseif (!str_starts_with($hinhAnh, 'http')) {
+                // Nếu là đường dẫn tương đối, thêm base URL
+                $hinhAnh = url('storage/' . ltrim($hinhAnh, '/'));
+            }
+
             $results[] = [
                 'id_nv'             => $nv->ID_NV,
                 'ten_nv'            => $nv->Ten_NV,
-                'hinh_anh'          => $nv->HinhAnh,
+                'hinh_anh'          => $hinhAnh,
                 'sdt'               => $nv->SDT,
                 'rating_percent'    => $ratingPercent,
                 'proximity_percent' => $proximityPercent,
