@@ -90,6 +90,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/booking/confirm', [BookingController::class, 'confirm'])->name('booking.confirm');
 
     Route::get('/admin/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
+    
+Route::get('/my-bookings', [BookingController::class, 'history'])->name('bookings.history');
+Route::get('/my-bookings/{id}', [BookingController::class, 'detail'])->name('bookings.detail');
+
 });
 
 Route::get('/payment/vnpay-return', [BookingController::class, 'vnpayReturn'])->name('vnpay.return');
