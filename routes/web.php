@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\AdminController;
 
 Route::get('/', function () {
     $showNewCustomerVoucher = true;
@@ -87,6 +88,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/booking/find-staff', [BookingController::class, 'findStaff'])->name('booking.findStaff');
     Route::post('/booking/apply-voucher', [BookingController::class, 'applyVoucher'])->name('booking.applyVoucher');
     Route::post('/booking/confirm', [BookingController::class, 'confirm'])->name('booking.confirm');
+
+    Route::get('/admin/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
 });
 
 Route::get('/payment/vnpay-return', [BookingController::class, 'vnpayReturn'])->name('vnpay.return');
