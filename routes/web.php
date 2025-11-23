@@ -102,3 +102,9 @@ Route::get('/giupviectheogio', function () {
 Route::get('/giupviectheothang', function () {
     return view('giupviectheothang');
 });
+
+// Debug routes
+if (file_exists(__DIR__ . '/web_test_debug.php')) {
+    require __DIR__ . '/web_test_debug.php';
+}
+

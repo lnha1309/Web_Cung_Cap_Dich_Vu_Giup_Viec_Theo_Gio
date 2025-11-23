@@ -4290,8 +4290,9 @@ avatars.forEach((avatar, idx) => {
     const imgEl = avatar.querySelector('img');
     const nameEl = avatar.querySelector('.name');
     const ratingEl = avatar.querySelector('.rating');
-    if (imgEl && nv.hinh_anh) {
-        imgEl.src = nv.hinh_anh;
+    // Luôn cập nhật ảnh, backend đã xử lý fallback
+    if (imgEl) {
+        imgEl.src = nv.hinh_anh || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(nv.ten_nv || 'NV') + '&background=004d2e&color=fff&size=150';
     }
     if (nameEl) {
         nameEl.textContent = nv.ten_nv;
@@ -4318,8 +4319,9 @@ cards.forEach((card, idx) => {
 
     const imgEl = card.querySelector('img');
     const nameEl = card.querySelector('h3');
-    if (imgEl && nv.hinh_anh) {
-        imgEl.src = nv.hinh_anh;
+    // Luôn cập nhật ảnh, backend đã xử lý fallback
+    if (imgEl) {
+        imgEl.src = nv.hinh_anh || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(nv.ten_nv || 'NV') + '&background=004d2e&color=fff&size=150';
     }
     if (nameEl) {
         nameEl.textContent = nv.ten_nv;
