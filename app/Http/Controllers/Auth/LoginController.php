@@ -82,6 +82,10 @@ class LoginController extends Controller
         $request->session()->forget($attemptKey);
         $request->session()->forget('login_reset_suggest');
 
+        if ($account->ID_LoaiTK === 'admin') {
+            return redirect()->route('admin.dashboard');
+        }
+
         return redirect()->intended('/');
     }
 

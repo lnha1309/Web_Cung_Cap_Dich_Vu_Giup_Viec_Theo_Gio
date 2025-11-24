@@ -880,4 +880,51 @@ class BookingController extends Controller
         // Bo qua 2 ngay ngay sau ngay dat, bat dau tu ngay thu 3 (khong can trung thu da chon)
         return $orderDate->copy()->addDays(3)->startOfDay();
     }
+    // =========================================================
+    // PHẦN CODE BẠN THÊM VÀO (QUẢN LÝ LỊCH SỬ ĐƠN HÀNG)
+    // =========================================================
+
+    public function history()
+    {
+        if (!Auth::check()) {
+            return redirect()->route('login'); 
+        }
+
+        $customer = Auth::user()->khachHang;
+        if (!$customer) {
+            return redirect('/')->with('error', 'Tài khoản chưa cập nhật thông tin khách hàng.');
+        }
+
+        // 1. Sửa created_at -> NgayTao
+        $currentBookings = DonDat::where('ID_KH', $customer->ID_KH)
+                            ->whereIn('TrangThaiDon', ['finding_staff', 'assigned', 'working']) 
+                            ->orderBy('NgayTao', 'desc') // <--- CHỖ NÀY
+                            ->get();
+        // 2. Sửa created_at -> NgayTao
+        $historyBookings = DonDat::where('ID_KH', $customer->ID_KH)
+                            ->whereIn('TrangThaiDon', ['done', 'cancelled', 'failed'])
+                            ->orderBy('NgayTao', 'desc') // <--- VÀ CHỖ NÀY
+                            ->get();
+
+        return view('account.history', compact('currentBookings', 'historyBookings'));
+    }
+
+    public function detail($id)
+    {
+        if (!Auth::check()) {
+            return redirect()->route('login');
+        }
+
+        // Tìm đơn hàng theo ID (ID_DD)
+        $booking = DonDat::where('ID_DD', $id)->first();
+
+        // Kiểm tra bảo mật: Đơn này có phải của người đang đăng nhập không?
+        $customer = Auth::user()->khachHang;
+        
+        if (!$booking || $booking->ID_KH !== $customer->ID_KH) {
+            return redirect()->route('bookings.history')->with('error', 'Không tìm thấy đơn hàng.');
+        }
+        
+        return view('account.detail', compact('booking'));
+    }
 }
