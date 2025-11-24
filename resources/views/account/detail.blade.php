@@ -102,14 +102,119 @@
                         @endif
                     </div>
 
+                    {{-- Hiển thị danh sách buổi nếu là gói tháng --}}
+                    @if($booking->LoaiDon === 'month' && count($sessions) > 0)
+                    <div class="mt-4">
+                        <button class="btn btn-primary w-100" type="button" data-bs-toggle="collapse" data-bs-target="#sessionsList" aria-expanded="false">
+                            <i class="bi bi-list-ul me-2"></i>Xem danh sách {{count($sessions)}} buổi của gói tháng
+                        </button>
+                        
+                        <div class="collapse mt-3" id="sessionsList">
+                            <div class="card card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover table-striped align-middle mb-0">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>#</th>
+                                                <th><i class="bi bi-calendar3"></i> Ngày làm</th>
+                                                <th><i class="bi bi-clock"></i> Giờ làm</th>
+                                                <th><i class="bi bi-info-circle"></i> Trạng thái</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($sessions as $index => $session)
+                                            @php
+                                                // Tính giờ kết thúc dựa vào giờ bắt đầu + thời lượng
+                                                $startTime = \Carbon\Carbon::parse($session->GioBatDau);
+                                                $duration = $booking->ThoiLuongGio ?? $booking->dichVu->ThoiLuong ?? 2;
+                                                $endTime = $startTime->copy()->addHours($duration);
+                                            @endphp
+                                            <tr>
+                                                <td>{{ $index + 1 }}</td>
+                                                <td>{{ \Carbon\Carbon::parse($session->NgayLam)->format('d/m/Y') }}</td>
+                                                <td>
+                                                    <strong>{{ $startTime->format('H:i') }}</strong>
+                                                    <span class="text-muted mx-1">→</span>
+                                                    <strong>{{ $endTime->format('H:i') }}</strong>
+                                                    <small class="text-muted">({{ $duration }}h)</small>
+                                                </td>
+                                                <td>
+                                                    @if($session->TrangThaiBuoi == 'scheduled')
+                                                        <span class="badge bg-info"><i class="bi bi-clock-history"></i> Đã lên lịch</span>
+                                                    @elseif($session->TrangThaiBuoi == 'completed')
+                                                        <span class="badge bg-success"><i class="bi bi-check-circle"></i> Hoàn thành</span>
+                                                    @elseif($session->TrangThaiBuoi == 'canceled')
+                                                        <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Đã hủy</span>
+                                                    @else
+                                                        <span class="badge bg-secondary">{{ $session->TrangThaiBuoi }}</span>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+
                     <div class="mt-5 text-center">
-                        @if($booking->TrangThaiDon == 'finding_staff')
+                        {{-- Show success/error messages --}}
+                        @if(session('success'))
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                <i class="bi bi-check-circle-fill me-2"></i>{{ session('success') }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        @endif
+                        @if(session('error'))
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ session('error') }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        @endif
+
+                        @if(in_array($booking->TrangThaiDon, ['finding_staff', 'assigned', 'confirmed']))
                             <hr class="my-4 text-muted opacity-25">
                             <p class="text-muted small mb-3">Nếu bạn muốn thay đổi ý định, bạn có thể hủy đơn hàng này.</p>
-                            <button class="btn btn-outline-danger px-5 py-2 rounded-pill fw-bold" onclick="alert('Chức năng hủy sẽ được cập nhật sau!')">
-                                <i class="bi bi-trash3 me-2"></i>Hủy đơn hàng này
-                            </button>
+                            
+                            <form id="cancelForm" action="{{ route('bookings.cancel', $booking->ID_DD) }}" method="POST" style="display: inline;">
+                                @csrf
+                                <button type="button" class="btn btn-outline-danger px-5 py-2 rounded-pill fw-bold" data-bs-toggle="modal" data-bs-target="#cancelModal">
+                                    <i class="bi bi-trash3 me-2"></i>Hủy đơn hàng này
+                                </button>
+                            </form>
                         @endif
+                    </div>
+
+                    {{-- Cancel Confirmation Modal --}}
+                    <div class="modal fade" id="cancelModal" tabindex="-1" aria-labelledby="cancelModalLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content">
+                                <div class="modal-header bg-danger text-white">
+                                    <h5 class="modal-title" id="cancelModalLabel">
+                                        <i class="bi bi-exclamation-triangle-fill me-2"></i>Xác nhận hủy đơn hàng
+                                    </h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p class="mb-2"><strong>Bạn có chắc chắn muốn hủy đơn hàng này?</strong></p>
+                                    <p class="text-muted small mb-0">
+                                        @if($booking->LoaiDon === 'hour')
+                                            Bạn sẽ được hoàn lại 100% số tiền đã thanh toán qua VNPay.
+                                        @else
+                                            Bạn sẽ được hoàn lại 80% giá trị các buổi chưa thực hiện.
+                                        @endif
+                                    </p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Không, giữ lại</button>
+                                    <button type="button" class="btn btn-danger" onclick="document.getElementById('cancelForm').submit();">
+                                        <i class="bi bi-check-circle me-1"></i>Có, hủy đơn hàng
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                 </div>
@@ -117,4 +222,6 @@
         </div>
     </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 @endsection

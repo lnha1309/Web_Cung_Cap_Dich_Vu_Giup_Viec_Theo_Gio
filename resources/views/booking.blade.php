@@ -65,7 +65,7 @@
         }
 
         .header-logo img {
-            height: 60px;
+            height: 75px;
             /* Kích thước logo */
             width: auto;
         }
@@ -138,6 +138,7 @@
             padding: 20px;
             gap: 40px;
             align-items: flex-start;
+            height: calc(100vh - 120px);
         }
 
         .left-panel {
@@ -146,14 +147,58 @@
             top: 80px;
         }
 
+        /* Chỉ hiện scrollbar cho left-panel khi là đơn đặt tháng */
+        .left-panel.month-booking {
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+        }
+
+        /* Tùy chỉnh scrollbar cho left-panel khi đặt tháng */
+        .left-panel.month-booking::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .left-panel.month-booking::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .left-panel.month-booking::-webkit-scrollbar-thumb {
+            background: #2d5f4f;
+            border-radius: 10px;
+        }
+
+        .left-panel.month-booking::-webkit-scrollbar-thumb:hover {
+            background: #1e4034;
+        }
+
         .right-panel {
             flex: 1;
             display: flex;
             justify-content: center;
             align-items: flex-start;
             padding-top: 20px;
-            min-height: calc(100vh - 120px);
+            height: 100%;
+            overflow-y: auto;
+        }
 
+        /* Tùy chỉnh scrollbar cho right-panel */
+        .right-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .right-panel::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .right-panel::-webkit-scrollbar-thumb {
+            background: #2d5f4f;
+            border-radius: 10px;
+        }
+
+        .right-panel::-webkit-scrollbar-thumb:hover {
+            background: #1e4034;
         }
 
         .booking-card {
@@ -909,7 +954,7 @@
             width: 100%;
             max-height: calc(100vh - 140px);
             /* Giới hạn chiều cao */
-            overflow-y: auto;
+            /* overflow-y: auto; */
             /* Bật scrollbar dọc */
             padding-right: 10px;
             /* Khoảng cách cho scrollbar */
@@ -1157,7 +1202,7 @@
 
         .form-scroll-wrapper {
             flex: 1;
-            overflow-y: auto;
+            /* overflow-y: auto; */
             padding-right: 10px;
         }
 
@@ -1647,8 +1692,8 @@
         }
 
         .loading-logo-img {
-            width: 300px;
-            height: 300px;
+            width: 350px;
+            height: 350px;
             margin-bottom: -100px;
             display: flex;
             align-items: center;
@@ -1656,8 +1701,8 @@
         }
 
         .loading-logo-img img {
-            width: 100%;
-            height: 100%;
+            width: 150%;
+            height: 150%;
             object-fit: contain;
         }
 
@@ -2309,7 +2354,7 @@
 
 
             <div class="repeat-note" id="repeatNote" style="display: none; background: #fff9e6; border-left: 3px solid #ffc107; padding: 12px 16px; font-size: 13px; color: #666; line-height: 1.6; margin-top: 16px; border-radius: 4px;">
-                <strong>Lưu ý nhỏ:</strong> Với dịch vụ lặp lại, quý khách vui lòng thanh toán trọn gói cho tất cả các buổi đã chọn để giữ lịch ổn định cho nhân viên giúp việc nhé!. Quý khách có thể lựa chọn nhân viên cho buổi đầu tiên, các buổi sau sẽ được hệ thống sắp xếp tự động dựa trên lịch làm việc của nhân viên.
+                <strong>Lưu ý nhỏ:</strong> Với dịch vụ lặp lại, quý khách vui lòng thanh toán trọn gói cho tất cả các buổi đã chọn để giữ lịch ổn định cho nhân viên giúp việc nhé!. Hiện tại, quý khách chỉ có thể chọn phương thức thanh toán qua VNPay đối với đơn đặt theo tháng.
             </div>
 
 
@@ -2636,13 +2681,13 @@
                         <div class="other-costs-section">
                             <div class="price-row" style="margin-bottom: 8px;">
                                 <div class="label">Phí khác</div>
-                                <div class="value" id="otherCostsTotal">30.000 VNĐ</div>
+                                <div class="value" id="otherCostsTotal">30.000 VND</div>
                             </div>
 
                             <!-- Phụ thu - NEW -->
                             <div class="cost-item" id="surchargeRow" style="display: none;">
                                 <div class="label">Phụ thu (Nhà có thú cưng)</div>
-                                <div class="value">30.000 VNĐ</div>
+                                <div class="value">30.000 VND</div>
                             </div>
 
                             <!-- Voucher Discount Row -->
@@ -2687,6 +2732,76 @@
         // Voucher System
         let appliedVoucher = null;
         let voucherDiscount = 0;
+
+        // Surcharge System
+        let surchargeAmounts = {
+            PT001: 30000,  // Peak hours - will be fetched from API
+            PT002: 30000,  // Pets - will be fetched from API
+            PT003: 30000   // Weekend - will be fetched from API
+        };
+        
+        let appliedSurcharges = {
+            PT001: false,  // Peak hours (before 8 AM or after 5 PM)
+            PT002: false,  // Pets (has pets option selected)
+            PT003: false   // Weekend (Saturday or Sunday)
+        };
+
+        // Fetch surcharge prices from backend on page load
+        (async function fetchSurchargePrices() {
+            try {
+                const response = await fetch('{{ route("booking.surcharges") }}');
+                if (response.ok) {
+                    const data = await response.json();
+                    surchargeAmounts.PT001 = data.PT001 || 30000;
+                    surchargeAmounts.PT002 = data.PT002 || 30000;
+                    surchargeAmounts.PT003 = data.PT003 || 30000;
+                    console.log('Surcharge prices loaded:', surchargeAmounts);
+                    
+                    // Trigger surcharge detection after prices are loaded
+                    // Use setTimeout to ensure the function is defined
+                    setTimeout(function() {
+                        if (typeof window.detectAndApplySurcharges === 'function') {
+                            window.detectAndApplySurcharges();
+                        }
+                    }, 100);
+                }
+            } catch (error) {
+                console.error('Error fetching surcharge prices:', error);
+            }
+        })();
+
+        // Helper function to format numbers in Vietnamese style (e.g., 30.000 instead of 30,000)
+        function formatVND(number) {
+            const num = Number(number);
+            if (isNaN(num)) {
+                return '0';
+            }
+            return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        }
+
+        // Helper function to check if a date is weekend
+        function isWeekend(dateString) {
+            if (!dateString) return false;
+            const date = new Date(dateString);
+            const day = date.getDay();
+            return day === 0 || day === 6; // Sunday or Saturday
+        }
+
+        // Helper function to check if time is peak hours
+        function isPeakHours(timeString) {
+            if (!timeString) return false;
+            const hour = parseInt(timeString.split(':')[0]);
+            return hour < 8 || hour >= 17;
+        }
+
+        // Function to calculate total surcharge
+        function calculateSurchargeTotal() {
+            let total = 0;
+            if (appliedSurcharges.PT003) total += Number(surchargeAmounts.PT003) || 0;
+            if (appliedSurcharges.PT001) total += Number(surchargeAmounts.PT001) || 0;
+            if (appliedSurcharges.PT002) total += Number(surchargeAmounts.PT002) || 0;
+            return total;
+        }
 
         const validVouchers = {
             'SAVE10': {
@@ -2767,6 +2882,16 @@
             selectedOption = isMonth ? 'repeat' : 'onetime';
             window.bookingState = window.bookingState || {};
             window.bookingState.type = actualType;
+
+            // Toggle scrollbar cho left-panel
+            const leftPanel = document.getElementById('leftPanel');
+            if (leftPanel) {
+                if (isMonth) {
+                    leftPanel.classList.add('month-booking');
+                } else {
+                    leftPanel.classList.remove('month-booking');
+                }
+            }
 
             // Update button text
             const findWorkerBtn = document.getElementById('findWorkerBtn');
@@ -3736,14 +3861,15 @@ window.applyVoucher = async function () {
         const originalTotalEl = document.getElementById('originalTotalAmount');
         const totalDueEl = document.getElementById('totalDueAmount');
 
-        const hasPets = (window.selectedOptions || []).includes('pets');
-        const surcharge = hasPets ? 30000 : 0;
+        // Calculate ALL surcharges (pets + weekend + peak hours)
+        const totalSurcharge = calculateSurchargeTotal();
 
-        const originalTotal = baseAmount + surcharge;
+        const originalTotal = baseAmount + totalSurcharge;
         const finalBeforeSurcharge = Math.max(0, baseAmount - totalDiscount);
-        const finalTotal = finalBeforeSurcharge + surcharge;
+        const finalTotal = finalBeforeSurcharge + totalSurcharge;
 
         window.bookingState.totalAfterDiscount = finalBeforeSurcharge;
+        window.bookingState.voucherApplied = true;  // Set flag to prevent updateTotalPrice() from overriding
 
         if (totalDueBlock) {
             totalDueBlock.classList.add('has-discount');
@@ -3757,8 +3883,7 @@ window.applyVoucher = async function () {
 
         const otherCostsTotalEl = document.getElementById('otherCostsTotal');
         if (otherCostsTotalEl) {
-            const otherCosts = hasPets ? surcharge : 0;
-            otherCostsTotalEl.textContent = `${otherCosts.toLocaleString('vi-VN')} VND`;
+            otherCostsTotalEl.textContent = `${totalSurcharge.toLocaleString('vi-VN')} VND`;
         }
 
 
@@ -3803,8 +3928,8 @@ window.removeVoucher = function(index) {
     const totalDueEl = document.getElementById('totalDueAmount');
     
     const baseAmount = window.bookingState.totalPrice || 0;
-    const hasPets = (window.selectedOptions || []).includes('pets');
-    const surcharge = hasPets ? 30000 : 0;
+    // Calculate ALL surcharges (pets + weekend + peak hours)
+    const totalSurcharge = calculateSurchargeTotal();
     
     // Update discount display
     if (window.bookingState.vouchers.length > 0) {
@@ -3835,9 +3960,9 @@ window.removeVoucher = function(index) {
             });
         }
         
-        const originalTotal = baseAmount + surcharge;
+        const originalTotal = baseAmount + totalSurcharge;
         const finalBeforeSurcharge = Math.max(0, baseAmount - totalDiscount);
-        const finalTotal = finalBeforeSurcharge + surcharge;
+        const finalTotal = finalBeforeSurcharge + totalSurcharge;
         
         window.bookingState.totalAfterDiscount = finalBeforeSurcharge;
         
@@ -3853,10 +3978,11 @@ window.removeVoucher = function(index) {
         }
         if (totalDueBlock) totalDueBlock.classList.remove('has-discount');
         if (originalTotalEl) originalTotalEl.textContent = '';
-        if (totalDueEl) totalDueEl.textContent = `${(baseAmount + surcharge).toLocaleString('vi-VN')} VND`;
+        if (totalDueEl) totalDueEl.textContent = `${(baseAmount + totalSurcharge).toLocaleString('vi-VN')} VND`;
         
         window.bookingState.totalAfterDiscount = null;
         window.bookingState.voucherId = null;
+        window.bookingState.voucherApplied = false;  // Clear flag when no vouchers
     }
 };
 
@@ -4083,106 +4209,6 @@ window.removeVoucher = function(index) {
                     }
                 });
             });
-
-            const originalUpdateBookingCardTime = typeof updateBookingCardTime === 'function'? updateBookingCardTime: null;            
-                const voucherInput = document.getElementById('voucherInputLeft');
-                const statusEl = document.getElementById('voucherStatus');
-
-                if (!statusEl) {
-                    return;
-                }
-
-                const raw = voucherInput ? voucherInput.value.trim() : '';
-                const code = raw.toUpperCase();
-
-                statusEl.className = 'voucher-status';
-                statusEl.textContent = '';
-
-                if (!code) {
-                    statusEl.className = 'voucher-status error';
-                    statusEl.textContent = 'Vui lòng nhập mã khuyến mãi';
-                    return;
-                }
-
-                const amount = window.bookingState.totalPrice || 0;
-                if (!amount) {
-                    statusEl.className = 'voucher-status error';
-                    statusEl.textContent = 'Chưa có giá đơn để áp dụng mã';
-                    return;
-                }
-
-                try {
-                    const res = await fetch('{{ route('booking.applyVoucher') }}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        },
-                        body: JSON.stringify({
-                            code,
-                            amount,
-                        }),
-                    });
-
-                    const data = await res.json();
-                    if (data.error) {
-                        statusEl.className = 'voucher-status error';
-                        statusEl.textContent = data.error;
-                        return;
-                    }
-
-                    window.bookingState.voucherId = data.id_km;
-                    window.bookingState.totalAfterDiscount = data.final_amount;
-
-                    const discountRow = document.getElementById('voucherDiscountRow');
-                    const discountAmountEl = document.getElementById('voucherDiscountAmount');
-                    if (discountRow && discountAmountEl) {
-                        discountRow.classList.add('show');
-                        discountAmountEl.textContent = `-${data.discount_amount.toLocaleString('vi-VN')} VND`;
-                    }
-
-                    const totalDueBlock = document.querySelector('.total-due');
-                    const originalTotalEl = document.getElementById('originalTotalAmount');
-                    const totalDueEl = document.getElementById('totalDueAmount');
-
-                    if (totalDueBlock) {
-                        totalDueBlock.classList.add('has-discount');
-                    }
-                    if (originalTotalEl) {
-                        originalTotalEl.textContent = `${amount.toLocaleString('vi-VN')} VND`;
-                    }
-                    if (totalDueEl) {
-                        totalDueEl.textContent = `${data.final_amount.toLocaleString('vi-VN')} VND`;
-                    }
-
-                    const hasPets = (window.selectedOptions || []).includes('pets');
-                    const surcharge = hasPets ? 30000 : 0;
-                    const originalTotal = amount + surcharge;
-                    const finalTotal = data.final_amount + surcharge;
-
-                    window.bookingState.totalAfterDiscount = finalTotal;
-
-                    const otherCostsTotalEl = document.getElementById('otherCostsTotal');
-                    if (otherCostsTotalEl) {
-                        const otherCosts = hasPets ? -surcharge : 0;
-                        otherCostsTotalEl.textContent = `${otherCosts.toLocaleString('vi-VN')} VND`;
-                    }
-                    if (originalTotalEl) {
-                        originalTotalEl.textContent = `${originalTotal.toLocaleString('vi-VN')} VND`;
-                    }
-                    if (totalDueEl) {
-                        totalDueEl.textContent = `${finalTotal.toLocaleString('vi-VN')} VND`;
-                    }
-
-
-                    statusEl.className = 'voucher-status success';
-                    statusEl.textContent = 'Áp dụng mã khuyến mãi thành công';
-                } catch (e) {
-                    console.error('Lỗi áp dụng mã khuyến mãi', e);
-                    statusEl.className = 'voucher-status error';
-                    statusEl.textContent = 'Có lỗi khi áp dụng mã khuyến mãi';
-                }
-            };
 
             // ==================== LOADING SCREEN (HAM CHINH) ====================
 function animateLoadingScreen() {
@@ -4916,7 +4942,7 @@ document.addEventListener('click', function(e) {
         stat2: statEls[1]?.textContent || null,
     };
 
-    if (card.dataset.idNv) {
+    if (card.dataset.idNv) {+30.000
         window.bookingState.selectedStaffId = card.dataset.idNv;
     }
 
@@ -5156,6 +5182,7 @@ window.showPaymentScreen = function () {
                 originalShowPayment();
             }
 
+            // Tinh lai tong tien du tren state hien tai (co voucher + phu thu)
             let baseTotal = 0;
             if (window.bookingState && typeof window.bookingState.totalPrice === 'number' && window.bookingState.totalPrice > 0) {
                 baseTotal = window.bookingState.totalPrice;
@@ -5167,23 +5194,39 @@ window.showPaymentScreen = function () {
                 }
             }
 
+            // Tong phu thu (da gom thu cung/cuoi tuan/gio cao diem neu co)
+            const surchargeTotal = typeof calculateSurchargeTotal === 'function'
+                ? Number(calculateSurchargeTotal()) || 0
+                : 0;
+
+            // Tong giam voucher
+            const vouchers = (window.bookingState && Array.isArray(window.bookingState.vouchers))
+                ? window.bookingState.vouchers
+                : [];
+            const discountTotal = vouchers.reduce((sum, v) => sum + (Number(v.tien_giam) || 0), 0);
+
             const serviceFeeAmountEl = document.getElementById('serviceFeeAmount');
             if (serviceFeeAmountEl && baseTotal) {
-                serviceFeeAmountEl.textContent = `${baseTotal.toLocaleString('vi-VN')} VND`;
+                serviceFeeAmountEl.textContent = `${formatVND(baseTotal)} VND`;
             }
 
             const otherCostsTotalEl = document.getElementById('otherCostsTotal');
-            const totalDueAmountEl = document.getElementById('totalDueAmount');
-            const hasPets = (window.selectedOptions || []).includes('pets');
-            const surcharge = hasPets ? 30000 : 0;
-
             if (otherCostsTotalEl) {
-                otherCostsTotalEl.textContent = `${surcharge.toLocaleString('vi-VN')} VND`;
+                otherCostsTotalEl.textContent = `${formatVND(surchargeTotal)} VND`;
             }
 
+            const totalDueAmountEl = document.getElementById('totalDueAmount');
+            const originalTotalEl = document.getElementById('originalTotalAmount');
+
+            const originalTotal = baseTotal + surchargeTotal;
+            const finalTotal = Math.max(0, baseTotal - discountTotal) + surchargeTotal;
+
+            if (originalTotalEl) {
+                // Chi hien original khi co giam gia
+                originalTotalEl.textContent = discountTotal > 0 ? `${formatVND(originalTotal)} VND` : '';
+            }
             if (totalDueAmountEl && baseTotal) {
-                const total = baseTotal + surcharge;
-                totalDueAmountEl.textContent = `${total.toLocaleString('vi-VN')} VND`;
+                totalDueAmountEl.textContent = `${formatVND(finalTotal)} VND`;
             }
         };
     })();
@@ -5322,6 +5365,8 @@ window.showPaymentScreen = function () {
                 tong_sau_giam: window.bookingState?.totalAfterDiscount || window.bookingState?.totalPrice || 0,
                 id_nv: window.bookingState?.selectedStaffId || (window.bookingState?.staffList && window.bookingState.staffList[0] ? window.bookingState.staffList[0].id_nv : null),
                 id_km: window.bookingState?.voucherId || null,
+                vouchers: window.bookingState?.vouchers || [],  // Send array of vouchers with amounts
+                has_pets: (window.selectedOptions || []).includes('pets') ? 1 : 0,
                 ghi_chu: noteInput ? noteInput.value : '',
             };
 
@@ -5591,10 +5636,286 @@ window.showPaymentScreen = function () {
     })();
 </script>
 
+<script>
+    // ==================== SURCHARGE DETECTION AND DISPLAY ====================
+    (function() {
+        // Function to detect and apply surcharges - MAKE IT GLOBAL
+        window.detectAndApplySurcharges = function detectAndApplySurcharges() {
+            const dateInput = document.getElementById('startDate');
+            
+            // Reset surcharges
+            appliedSurcharges.PT001 = false;
+            appliedSurcharges.PT002 = false;
+            appliedSurcharges.PT003 = false;
+            
+            // Check for weekend (PT003)
+            if (dateInput && dateInput.value) {
+                if (isWeekend(dateInput.value)) {
+                    appliedSurcharges.PT003 = true;
+                    console.log('Weekend detected, applying PT003');
+                }
+            }
+            
+            // Check for peak hours (PT001) - multiple detection methods
+            let selectedTime = null;
+            
+            console.log('=== TIME DETECTION START ===');
+            console.log('bookingState:', window.bookingState);
+            
+            // Method 1: Check bookingState
+            if (window.bookingState && window.bookingState.timeRaw) {
+                selectedTime = window.bookingState.timeRaw;
+                console.log('✓ Time from bookingState.timeRaw:', selectedTime);
+            } else {
+                console.log('✗ bookingState.timeRaw not found');
+            }
+            
+            // Check other bookingState properties
+            if (window.bookingState) {
+                console.log('bookingState.time:', window.bookingState.time);
+                console.log('bookingState.startTime:', window.bookingState.startTime);
+                console.log('bookingState.selectedTime:', window.bookingState.selectedTime);
+                
+                if (!selectedTime && window.bookingState.time) {
+                    selectedTime = window.bookingState.time;
+                    console.log('✓ Using bookingState.time:', selectedTime);
+                }
+                if (!selectedTime && window.bookingState.startTime) {
+                    selectedTime = window.bookingState.startTime;
+                    console.log('✓ Using bookingState.startTime:', selectedTime);
+                }
+            }
+            
+            // Method 2: Check selected time slot elements
+            if (!selectedTime) {
+                console.log('Trying to find selected time slot elements...');
+                const timeSlots = document.querySelectorAll('.time-slot.selected, .selected[data-time], .time-item.selected');
+                console.log('Found time slots:', timeSlots.length);
+                
+                if (timeSlots && timeSlots.length > 0) {
+                    console.log('First time slot element:', timeSlots[0]);
+                    const timeText = timeSlots[0].textContent.trim();
+                    const timeAttr = timeSlots[0].getAttribute('data-time');
+                    selectedTime = timeAttr || timeText;
+                    console.log('✓ Time from selected slot - text:', timeText, ', attr:', timeAttr, ', using:', selectedTime);
+                }
+            }
+            
+            console.log('Final selectedTime:', selectedTime);
+            
+            // Extract hour from time string (handles formats like "07:00", "7:00 AM", etc.)
+            if (selectedTime) {
+                // Remove AM/PM and extract hour
+                const cleanTime = selectedTime.replace(/\s*(AM|PM|am|pm)\s*/g, '').trim();
+                const hour = parseInt(cleanTime.split(':')[0]);
+                console.log('Extracted hour:', hour, 'from time:', selectedTime);
+                
+                if (!isNaN(hour) && (hour < 8 || hour >= 17)) {
+                    appliedSurcharges.PT001 = true;
+                    console.log('✓✓✓ Peak hours detected, applying PT001 ✓✓✓');
+                } else {
+                    console.log('✗ Not peak hours (hour must be < 8 or >= 17)');
+                }
+            } else {
+                console.log('✗✗✗ NO TIME DETECTED - Cannot apply PT001 ✗✗✗');
+            }
+            
+            console.log('=== TIME DETECTION END ===');
+            
+            // Check for pets surcharge (PT002)
+            const hasPets = (window.selectedOptions || []).includes('pets');
+            if (hasPets) {
+                appliedSurcharges.PT002 = true;
+                console.log('✓✓✓ Pets detected, applying PT002 ✓✓✓');
+            } else {
+                console.log('✗ No pets selected');
+            }
+            
+            // Update surcharge display
+            updateSurchargeDisplay();
+            
+            // Update total price
+            updateTotalPrice();
+        }
+        
+        // Function to update surcharge display in UI
+        function updateSurchargeDisplay() {
+            const surchargeContainer = document.getElementById('otherCostsTotal');
+            
+            if (!surchargeContainer) return;
+            
+            let surchargeTotal = calculateSurchargeTotal();
+            
+            // Update or create surcharge display elements
+            const existingPT001 = document.getElementById('surcharge-PT001');
+            const existingPT003 = document.getElementById('surcharge-PT003');
+            
+            // Remove old surcharge displays
+            if (existingPT001) existingPT001.remove();
+            if (existingPT003) existingPT003.remove();
+            
+            // Find the voucher row to insert before it
+            const voucherRow = document.getElementById('voucherDiscountRow');
+            const parentSection = voucherRow ? voucherRow.parentElement : null;
+            
+            if (parentSection) {
+                // Add PT003 (Weekend) if applicable
+                if (appliedSurcharges.PT003) {
+                    const pt003Row = document.createElement('div');
+                    pt003Row.className = 'cost-item';
+                    pt003Row.id = 'surcharge-PT003';
+                    const pt003Amount = surchargeAmounts.PT003 || 30000;
+                    console.log('PT003 weekend surcharge amount:', pt003Amount, 'from surchargeAmounts:', surchargeAmounts.PT003);
+                    pt003Row.innerHTML = `
+                        <div class="label">Phụ thu cuối tuần</div>
+                        <div class="value">${formatVND(pt003Amount)} VND</div>
+                    `;
+                    parentSection.insertBefore(pt003Row, voucherRow);
+                }
+                
+                // Add PT001 (Peak Hours) if applicable
+                if (appliedSurcharges.PT001) {
+                    const pt001Row = document.createElement('div');
+                    pt001Row.className = 'cost-item';
+                    pt001Row.id = 'surcharge-PT001';
+                    const pt001Amount = surchargeAmounts.PT001 || 30000;
+                    console.log('PT001 peak hour surcharge amount:', pt001Amount, 'from surchargeAmounts:', surchargeAmounts.PT001);
+                    pt001Row.innerHTML = `
+                        <div class="label">Phụ thu giờ cao điểm</div>
+                        <div class="value">${formatVND(pt001Amount)} VND</div>
+                    `;
+                    parentSection.insertBefore(pt001Row, voucherRow);
+                }
+            }
+            
+            // Update "Phí khác" total to show sum of all surcharges
+            const otherCostsTotalEl = document.getElementById('otherCostsTotal');
+            if (otherCostsTotalEl) {
+                // Display total of ALL surcharges (already includes PT001, PT002, PT003)
+                otherCostsTotalEl.textContent = formatVND(surchargeTotal) + ' VND';
+                console.log('Updated Phí khác:', surchargeTotal, '(all surcharges combined)');
+            }
+            
+            console.log('Surcharge display updated. Total:', surchargeTotal);
+        }
+        
+        // Function to update total price with surcharges
+        function updateTotalPrice() {
+            // Find total due element
+            const totalDueElement = document.querySelector('.total-due .final-amount, .total-due .value, #finalTotalAmount, #totalDueAmount');
+            
+            if (!totalDueElement) {
+                console.log('Total due element not found');
+                return;
+            }
+            
+            // Get current total (without surcharges) from bookingState or parse from element
+            let baseTotal = 0;
+            
+            if (window.bookingState && typeof window.bookingState.totalPrice !== 'undefined') {
+                baseTotal = parseFloat(window.bookingState.totalPrice) || 0;
+            } else {
+                // Try to parse from current element text
+                const currentText = totalDueElement.textContent.replace(/[^\d]/g, '');
+                baseTotal = parseFloat(currentText) || 0;
+            }
+            
+            // Ensure baseTotal is a number
+            if (isNaN(baseTotal) || baseTotal === 0) {
+                console.warn('Invalid base total, skipping total price update');
+                return;
+            }
+            
+            baseTotal = Number(baseTotal);
+            
+            // Voucher discount (if any)
+            const vouchers = (window.bookingState && Array.isArray(window.bookingState.vouchers))
+                ? window.bookingState.vouchers
+                : [];
+            const discountTotal = vouchers.reduce((sum, v) => sum + (Number(v.tien_giam) || 0), 0);
+
+            // Add surcharges (ensure numeric addition)
+            const surchargeTotal = Number(calculateSurchargeTotal());
+            const finalTotal = Math.max(0, baseTotal - discountTotal) + surchargeTotal;
+            
+            // Validate final total before updating
+            if (isNaN(finalTotal)) {
+                console.error('Final total is NaN, calculation failed');
+                return;
+            }
+            
+            // Update display with Vietnamese format
+            totalDueElement.textContent = formatVND(finalTotal) + ' VND';
+
+            const originalTotalEl = document.getElementById('originalTotalAmount');
+            if (originalTotalEl) {
+                if (discountTotal > 0) {
+                    originalTotalEl.textContent = formatVND(baseTotal + surchargeTotal) + ' VND';
+                } else {
+                    originalTotalEl.textContent = '';
+                }
+            }
+            
+            console.log('Total price updated:', {
+                base: baseTotal,
+                discount: discountTotal,
+                surcharges: surchargeTotal,
+                final: finalTotal
+            });
+        }
+        
+        // Monitor date changes
+        const dateInput = document.getElementById('startDate');
+        if (dateInput) {
+            dateInput.addEventListener('change', function() {
+                console.log('Date changed:', this.value);
+                detectAndApplySurcharges();
+            });
+        }
+        
+        // Monitor time slot selection
+        const timeSlotContainer = document.querySelector('.time-slots');
+        if (timeSlotContainer) {
+            timeSlotContainer.addEventListener('click', function(e) {
+                if (e.target.classList.contains('time-slot')) {
+                    setTimeout(() => {
+                        console.log('Time slot selected');
+                        detectAndApplySurcharges();
+                    }, 100);
+                }
+            });
+        }
+        
+        // Global click listener to catch time selections
+        document.addEventListener('click', function(e) {
+            // Check if clicked element or parent has time-related class
+            const target = e.target;
+            if (target.classList.contains('time-slot') || 
+                target.closest('.time-slot') ||
+                target.classList.contains('time-item') ||
+                target.closest('.time-item')) {
+                setTimeout(() => {
+                    console.log('Time element clicked, detecting surcharges...');
+                    detectAndApplySurcharges();
+                }, 200);
+            }
+        });
+        
+        // Periodic check (every 2 seconds) to catch state changes
+        setInterval(() => {
+            detectAndApplySurcharges();
+        }, 2000);
+        
+        // Initial check on page load
+        setTimeout(() => {
+            detectAndApplySurcharges();
+        }, 1000);
+    })();
+</script>
+
 </body>
 
 </html>
-
 
 
 

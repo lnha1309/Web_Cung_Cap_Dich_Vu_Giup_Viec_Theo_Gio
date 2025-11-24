@@ -18,7 +18,12 @@ class PhuThuSeeder extends Seeder
             [
                 'ID_PT' => 'PT002',
                 'Ten_PT' => 'Phụ thu thú cưng (chó, mèo)',
-                'GiaCuoc' => 20000,
+                'GiaCuoc' => 30000,
+            ],
+            [
+                'ID_PT' => 'PT003',
+                'Ten_PT' => 'Phụ thu cuối tuần (T7, CN)',
+                'GiaCuoc' => 30000
             ],
         ]);
     }

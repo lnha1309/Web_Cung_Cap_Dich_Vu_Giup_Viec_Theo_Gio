@@ -7,12 +7,14 @@ use App\Models\DiaChi;
 use App\Models\DichVu;
 use App\Models\DonDat;
 use App\Models\ChiTietKhuyenMai;
+use App\Models\ChiTietPhuThu;
 use App\Models\KhuyenMai;
 use App\Models\LichBuoiThang;
 use App\Models\GoiThang;
 use App\Models\LichLamViec;
 use App\Models\LichSuThanhToan;
 use App\Models\LichTheoTuan;
+use App\Models\PhuThu;
 use App\Models\Quan;
 use App\Models\NhanVien;
 use App\Models\User;
@@ -21,6 +23,7 @@ use App\Support\IdGenerator;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -204,6 +207,51 @@ class BookingController extends Controller
         return response()->json($results);
     }
 
+    /**
+     * Get surcharge prices (API endpoint)
+     */
+    public function getSurcharges()
+    {
+        $surcharges = PhuThu::whereIn('ID_PT', ['PT001', 'PT003'])
+            ->get()
+            ->keyBy('ID_PT');
+
+        return response()->json([
+            'PT001' => $surcharges->get('PT001')?->GiaCuoc ?? 30000,
+            'PT003' => $surcharges->get('PT003')?->GiaCuoc ?? 30000,
+        ]);
+    }
+
+    /**
+     * Check if a given date is a weekend (Saturday or Sunday)
+     *
+     * @param string $date Date in Y-m-d format
+     * @return bool
+     */
+    private function isWeekendBooking(string $date): bool
+    {
+        $carbon = Carbon::parse($date);
+        $dayOfWeek = $carbon->dayOfWeek;
+        
+        // Carbon: 0 = Sunday, 6 = Saturday
+        return $dayOfWeek === 0 || $dayOfWeek === 6;
+    }
+
+    /**
+     * Check if a given time is early (before 8 AM) or late (after 5 PM)
+     *
+     * @param string $time Time in H:i:s format
+     * @return bool
+     */
+    private function isEarlyOrLateTime(string $time): bool
+    {
+        $timeCarbon = Carbon::createFromFormat('H:i:s', $time);
+        $hour = $timeCarbon->hour;
+        
+        // Before 8 AM or after 17 (5 PM)
+        return $hour < 8 || $hour >= 17;
+    }
+
     public function applyVoucher(Request $request)
     {
         $validated = $request->validate([
@@ -218,7 +266,7 @@ class BookingController extends Controller
         $customer = $account?->khachHang;
 
         if (!$customer) {
-            return response()->json(['error' => 'Vui long dang nhap truoc khi ap ma khuyen mai.'], 403);
+            return response()->json(['error' => 'Vui lòng đăng nhập trước khi áp dụng mã khuyến mãi.'], 403);
         }
 
         $km = KhuyenMai::where('ID_KM', $code)
@@ -226,18 +274,18 @@ class BookingController extends Controller
             ->first();
 
         if (!$km) {
-            return response()->json(['error' => 'Ma khuyen mai khong hop le hoac da ngung hoat dong.'], 422);
+            return response()->json(['error' => 'Mã khuyến mãi không hộp lệ hoặc đã ngừng hoạt động.'], 422);
         }
 
         $today = Carbon::today();
         if (($km->NgayBatDau && $today->lt(Carbon::parse($km->NgayBatDau))) ||
             ($km->NgayKetThuc && $today->gt(Carbon::parse($km->NgayKetThuc)))) {
-            return response()->json(['error' => 'Ma khuyen mai da het han.'], 422);
+            return response()->json(['error' => 'Mã khuyến mãi đã hết hạn.'], 422);
         }
 
         // Khong cho khach hang ap lai ma da dung truoc do
         if ($this->voucherUsedByCustomer($customer->ID_KH, $code)) {
-            return response()->json(['error' => 'Ma khuyen mai nay ban da su dung truoc do nen khong the ap lai.'], 422);
+            return response()->json(['error' => 'Mã khuyến mãi này đã được sử dụng trước đó nên không thể áp dụng lại.'], 422);
         }
 
         $discount = $amount * ((float) $km->PhanTramGiam / 100);
@@ -279,6 +327,7 @@ class BookingController extends Controller
             'repeat_end_date'   => ['nullable', 'date'],
             'package_months' => ['required_if:loai_don,month', 'integer', 'in:1,2,3,6'],
             'vouchers'      => ['nullable'], // Chap nhan mang hoac JSON string, se tu xu ly ben duoi
+            'has_pets'      => ['nullable', 'boolean'],
             'ghi_chu'        => ['nullable', 'string'],
         ]);
 
@@ -419,6 +468,74 @@ class BookingController extends Controller
             ? (float) $validated['tong_sau_giam']
             : $tongTien;
 
+        // Tinh giam gia tu voucher (ap dung tren tong truoc phu thu)
+        $baseSubtotal = $tongTien;
+        $voucherRows = [];
+        $discountTotal = 0.0;
+
+        $resolveDiscount = static function (string $code, ?float $providedAmount) use ($baseSubtotal): float {
+            $amount = $providedAmount;
+
+            if ($amount === null) {
+                $km = KhuyenMai::where('ID_KM', $code)
+                    ->where('TrangThai', 'activated')
+                    ->first();
+
+                if ($km) {
+                    $amount = $baseSubtotal * ((float) $km->PhanTramGiam / 100);
+                    if ($km->GiamToiDa !== null) {
+                        $amount = min($amount, (float) $km->GiamToiDa);
+                    }
+                } else {
+                    $amount = 0.0;
+                }
+            }
+
+            return max(0.0, (float) $amount);
+        };
+
+        if (!empty($appliedVouchers)) {
+            foreach ($appliedVouchers as $voucher) {
+                $code = $voucher['id_km'] ?? null;
+                if (!$code) {
+                    continue;
+                }
+
+                $provided = isset($voucher['tien_giam']) && is_numeric($voucher['tien_giam'])
+                    ? (float) $voucher['tien_giam']
+                    : null;
+
+                $amount = $resolveDiscount($code, $provided);
+                $voucherRows[] = [
+                    'id_km'     => $code,
+                    'tien_giam' => $amount,
+                ];
+                $discountTotal += $amount;
+            }
+        } elseif (!empty($singleVoucher)) {
+            $amount = $resolveDiscount($singleVoucher, null);
+            $voucherRows[] = [
+                'id_km'     => $singleVoucher,
+                'tien_giam' => $amount,
+            ];
+            $discountTotal += $amount;
+        }
+
+        // Khong de tong giam lon hon gia tri truoc phu thu
+        if ($discountTotal > $baseSubtotal && !empty($voucherRows)) {
+            $excess = $discountTotal - $baseSubtotal;
+            $lastIndex = count($voucherRows) - 1;
+            $voucherRows[$lastIndex]['tien_giam'] = max(
+                0.0,
+                $voucherRows[$lastIndex]['tien_giam'] - $excess
+            );
+            $discountTotal = array_sum(array_column($voucherRows, 'tien_giam'));
+        }
+
+        if ($discountTotal > 0) {
+            $tongSauGiam = max(0, $baseSubtotal - $discountTotal);
+        }
+
         $gioBatDauRaw = $validated['gio_bat_dau'] ?? null;
         $gioBatDau = $gioBatDauRaw ? $gioBatDauRaw . ':00' : null;
         $selectedStaffId = $validated['id_nv'] ?? null;
@@ -471,6 +588,58 @@ class BookingController extends Controller
                 $idDc = $newIdDc;
             }
         }
+
+        // Automatically apply surcharges based on booking date and time
+        $surcharges = [];
+        $hasPets = array_key_exists('has_pets', $validated)
+            ? (bool) $validated['has_pets']
+            : false;
+
+        if ($validated['loai_don'] === 'hour') {
+            // For one-time bookings, check the specific date and time
+            $ngayLam = $validated['ngay_lam'];
+            
+            // Check for weekend surcharge (PT003)
+            if ($ngayLam && $this->isWeekendBooking($ngayLam)) {
+                $surcharges[] = 'PT003';
+            }
+            
+            // Check for early/late time surcharge (PT001)
+            if ($gioBatDau && $this->isEarlyOrLateTime($gioBatDau)) {
+                $surcharges[] = 'PT001';
+            }
+        } elseif ($validated['loai_don'] === 'month') {
+            // For monthly bookings
+            
+            // Check if any repeat day is a weekend (0 = Sunday, 6 = Saturday)
+            $hasWeekend = !empty(array_intersect($repeatDays, [0, 6]));
+            if ($hasWeekend) {
+                $surcharges[] = 'PT003';
+            }
+            
+            // Check for early/late time surcharge (PT001)
+            if ($gioBatDau && $this->isEarlyOrLateTime($gioBatDau)) {
+                $surcharges[] = 'PT001';
+            }
+        }
+        
+        // Check for pet surcharge (PT002) - applies to both hour and month bookings
+        if ($hasPets) {
+            $surcharges[] = 'PT002';
+        }
+        
+        // Calculate total surcharge amount
+        $totalSurchargeAmount = 0;
+        foreach ($surcharges as $idPt) {
+            $phuThu = PhuThu::find($idPt);
+            if ($phuThu) {
+                $totalSurchargeAmount += (float) $phuThu->GiaCuoc;
+            }
+        }
+        
+        // Add surcharges to total
+        $tongTien += $totalSurchargeAmount;
+        $tongSauGiam += $totalSurchargeAmount;
 
         $trangThaiDon = $selectedStaffId ? 'assigned' : 'finding_staff';
 
@@ -528,36 +697,31 @@ class BookingController extends Controller
             }
         }
 
-        // Luu chi tiet khuyen mai (ho tro 1 hoac nhieu voucher cho 1 don)
-        $voucherRows = [];
-
-        // Neu front-end gui danh sach vouchers chi tiet thi luu theo danh sach nay
-        if (!empty($appliedVouchers)) {
-            foreach ($appliedVouchers as $voucher) {
-                // Chap nhan ca dang string (chi ma) va dang array (co id_km, tien_giam)
-                if (is_string($voucher)) {
-                    $voucherRows[] = [
-                        'id_km'     => $voucher,
-                        'tien_giam' => 0.0,
-                    ];
-                } elseif (is_array($voucher) && !empty($voucher['id_km'])) {
-                    $voucherRows[] = [
-                        'id_km'     => $voucher['id_km'],
-                        'tien_giam' => isset($voucher['tien_giam'])
-                            ? (float) $voucher['tien_giam']
-                            : 0.0,
-                    ];
-                }
+        // Insert surcharge records into ChiTietPhuThu
+        foreach ($surcharges as $idPt) {
+            $phuThu = PhuThu::find($idPt);
+            $ghiChu = '';
+            
+            if ($idPt === 'PT003') {
+                $ghiChu = $validated['loai_don'] === 'month' 
+                    ? 'Gói tháng có buổi làm vào cuối tuần'
+                    : 'Làm việc vào cuối tuần (Thứ 7 hoặc Chủ nhật)';
+            } elseif ($idPt === 'PT001') {
+                $ghiChu = $validated['loai_don'] === 'month'
+                    ? 'Gói tháng làm việc ngoài giờ hành chính'
+                    : 'Làm việc ngoài giờ hành chính (trước 8h hoặc sau 17h)';
+            } elseif ($idPt === 'PT002') {
+                $ghiChu = 'Nhà có thú cưng';
             }
-        } elseif (!empty($singleVoucher)) {
-            // Truong hop chi co 1 ma (id_km) va khong co mang vouchers: luu duy nhat 1 dong, tien giam = tong giam
-            $discountTotal = max(0, $tongTien - $tongSauGiam);
-            $voucherRows[] = [
-                'id_km'     => $singleVoucher,
-                'tien_giam' => $discountTotal,
-            ];
+            
+            ChiTietPhuThu::create([
+                'ID_PT' => $idPt,
+                'ID_DD' => $idDon,
+                'Ghichu' => $ghiChu,
+            ]);
         }
 
+        // Luu chi tiet khuyen mai (ho tro 1 hoac nhieu voucher cho 1 don)
         foreach ($voucherRows as $row) {
             ChiTietKhuyenMai::create([
                 'ID_DD'    => $idDon,
@@ -902,7 +1066,7 @@ class BookingController extends Controller
                             ->get();
         // 2. Sửa created_at -> NgayTao
         $historyBookings = DonDat::where('ID_KH', $customer->ID_KH)
-                            ->whereIn('TrangThaiDon', ['done', 'cancelled', 'failed'])
+                            ->whereIn('TrangThaiDon', ['done', 'canceled', 'failed'])
                             ->orderBy('NgayTao', 'desc') // <--- VÀ CHỖ NÀY
                             ->get();
 
@@ -916,7 +1080,7 @@ class BookingController extends Controller
         }
 
         // Tìm đơn hàng theo ID (ID_DD)
-        $booking = DonDat::where('ID_DD', $id)->first();
+        $booking = DonDat::with(['dichVu', 'diaChi'])->where('ID_DD', $id)->first();
 
         // Kiểm tra bảo mật: Đơn này có phải của người đang đăng nhập không?
         $customer = Auth::user()->khachHang;
@@ -925,6 +1089,244 @@ class BookingController extends Controller
             return redirect()->route('bookings.history')->with('error', 'Không tìm thấy đơn hàng.');
         }
         
-        return view('account.detail', compact('booking'));
+        // Nếu là đơn gói tháng, lấy danh sách các buổi
+        $sessions = [];
+        if ($booking->LoaiDon === 'month') {
+            $sessions = \App\Models\LichBuoiThang::where('ID_DD', $id)
+                ->orderBy('NgayLam', 'asc')
+                ->get();
+        }
+        
+        return view('account.detail', compact('booking', 'sessions'));
+    }
+
+    /**
+     * Cancel a booking with refund logic
+     */
+    public function cancelBooking($id)
+    {
+        if (!Auth::check()) {
+            return redirect()->route('login');
+        }
+
+        $customer = Auth::user()->khachHang;
+        if (!$customer) {
+            return back()->with('error', 'Không tìm thấy thông tin khách hàng.');
+        }
+
+        $booking = DonDat::with(['dichVu', 'lichBuoiThang'])->where('ID_DD', $id)->first();
+
+        // Check ownership
+        if (!$booking || $booking->ID_KH !== $customer->ID_KH) {
+            return back()->with('error', 'Không tìm thấy đơn hàng.');
+        }
+
+        // Check if already cancelled or done
+        if (in_array($booking->TrangThaiDon, ['canceled', 'done'])) {
+            return back()->with('error', 'Không thể hủy đơn hàng này.');
+        }
+
+        // Check 12-hour rule
+        $startTime = null;
+        if ($booking->LoaiDon === 'hour') {
+            if ($booking->NgayLam && $booking->GioBatDau) {
+                $startTime = \Carbon\Carbon::parse($booking->NgayLam . ' ' . $booking->GioBatDau);
+            }
+        } else { // month
+            $startTime = $booking->NgayBatDauGoi ? \Carbon\Carbon::parse($booking->NgayBatDauGoi) : null;
+        }
+
+        if ($startTime && now()->diffInHours($startTime, false) < 12) {
+            return back()->with('error', 'Không thể hủy đơn trong vòng 12 giờ trước giờ bắt đầu.');
+        }
+
+        try {
+            DB::beginTransaction();
+
+
+            $refundAmount = 0;
+            $paymentMethod = null;
+
+            if ($booking->LoaiDon === 'hour') {
+                // Hourly booking: Check payment method
+                $payment = \App\Models\LichSuThanhToan::where('ID_DD', $booking->ID_DD)
+                    ->where('TrangThai', 'ThanhCong')
+                    ->first();
+
+                if ($payment) {
+                    $paymentMethod = $payment->PhuongThucThanhToan;
+                    
+                    // Only refund via VNPay if paid online
+                    if ($paymentMethod === 'VNPay' && $payment->MaGiaoDichVNPAY) {
+                        $refundResult = $this->callVnpayRefund($booking, $payment, $booking->TongTienSauGiam);
+                        
+                        if (!$refundResult['success']) {
+                            DB::rollBack();
+                            return back()->with('error', 'Không thể hoàn tiền qua VNPay: ' . $refundResult['message']);
+                        }
+                        
+                        $refundAmount = $booking->TongTienSauGiam;
+                    }
+                    // Cash payment - no refund needed
+                }
+
+
+            } else {
+                // Monthly booking: 80% of unfinished sessions
+                $totalSessions = $booking->lichBuoiThang->count();
+                $completedSessions = $booking->lichBuoiThang->where('TrangThaiBuoi', 'completed')->count();
+                $unfinishedSessions = $totalSessions - $completedSessions;
+
+                if ($totalSessions > 0) {
+                    $refundAmount = ($booking->TongTienSauGiam / $totalSessions) * $unfinishedSessions * 0.8;
+                    
+                    // Check payment method and refund via VNPay if applicable
+                    $payment = \App\Models\LichSuThanhToan::where('ID_DD', $booking->ID_DD)
+                        ->where('TrangThai', 'ThanhCong')
+                        ->first();
+
+                    if ($payment) {
+                        $paymentMethod = $payment->PhuongThucThanhToan;
+                        
+                        // Only refund via VNPay if paid online
+                        if ($paymentMethod === 'VNPay' && $payment->MaGiaoDichVNPAY && $refundAmount > 0) {
+                            $refundResult = $this->callVnpayRefund($booking, $payment, $refundAmount);
+                            
+                            if (!$refundResult['success']) {
+                                DB::rollBack();
+                                return back()->with('error', 'Không thể hoàn tiền qua VNPay: ' . $refundResult['message']);
+                            }
+                        }
+                    }
+                }
+            }
+
+
+            // Update booking status
+            $booking->TrangThaiDon = 'canceled';
+            $booking->save();
+
+            // Log refund transaction only if there's an actual refund
+            if ($refundAmount > 0) {
+                \App\Models\LichSuThanhToan::create([
+                    'ID_LSTT' => \App\Support\IdGenerator::next('LichSuThanhToan', 'ID_LSTT', 'LSTT_'),
+                    'PhuongThucThanhToan' => 'Refund',
+                    'TrangThai' => 'ThanhCong',
+                    'SoTienThanhToan' => $refundAmount,
+                    'ID_DD' => $booking->ID_DD,
+                ]);
+            }
+
+            DB::commit();
+
+            // Create appropriate success message
+            $message = 'Đã hủy đơn hàng thành công.';
+            if ($refundAmount > 0) {
+                $message .= ' Số tiền hoàn: ' . number_format($refundAmount) . ' đ';
+            } elseif ($paymentMethod === 'TienMat') {
+                $message .= ' (Đơn thanh toán bằng tiền mặt)';
+            }
+
+            return redirect()->route('bookings.history')->with('success', $message);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Booking cancellation failed', [
+                'booking_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+            return back()->with('error', 'Có lỗi xảy ra khi hủy đơn hàng. Vui lòng thử lại.');
+        }
+    }
+
+    /**
+     * Call VNPay refund API
+     */
+    private function callVnpayRefund($booking, $payment, $refundAmount = null)
+    {
+        $requestId = (string) \Str::uuid();
+        $createDate = now()->format('YmdHis');
+        
+        // Use provided refund amount or full booking amount
+        $actualRefundAmount = $refundAmount ?? $booking->TongTienSauGiam;
+        $amount = (int) round($actualRefundAmount * 100);
+        
+        // Log for debugging
+        \Log::info('VNPay Refund Request', [
+            'booking_id' => $booking->ID_DD,
+            'original_amount' => $booking->TongTienSauGiam,
+            'refund_amount' => $actualRefundAmount,
+            'vnp_amount' => $amount,
+            'payment_transaction_no' => $payment->MaGiaoDichVNPAY,
+        ]);
+        
+        // Validate refund amount
+        if ($amount <= 0) {
+            return [
+                'success' => false,
+                'message' => 'Số tiền hoàn phải lớn hơn 0',
+            ];
+        }
+        
+        if ($actualRefundAmount > $booking->TongTienSauGiam) {
+            return [
+                'success' => false,
+                'message' => 'Số tiền hoàn không được lớn hơn số tiền đã thanh toán',
+            ];
+        }
+
+
+        // Determine transaction type: 02 for full refund, 03 for partial refund
+        $transactionType = ($actualRefundAmount >= $booking->TongTienSauGiam) ? '02' : '03';
+
+        $payload = [
+            'vnp_RequestId' => $requestId,
+            'vnp_Version' => config('vnpay.version'),
+            'vnp_Command' => 'refund',
+            'vnp_TmnCode' => config('vnpay.tmn_code'),
+            'vnp_TransactionType' => $transactionType,
+            'vnp_TxnRef' => $booking->ID_DD,
+            'vnp_Amount' => $amount,
+            'vnp_TransactionNo' => $payment->MaGiaoDichVNPAY,
+            'vnp_TransactionDate' => $payment->ThoiGian ? \Carbon\Carbon::parse($payment->ThoiGian)->format('YmdHis') : $createDate,
+            'vnp_CreateBy' => Auth::user()->email ?? 'system',
+            'vnp_CreateDate' => $createDate,
+            'vnp_IpAddr' => request()->ip() ?? '127.0.0.1',
+            'vnp_OrderInfo' => 'Hoan tien don hang ' . $booking->ID_DD,
+        ];
+
+        $data = implode('|', [
+            $payload['vnp_RequestId'],
+            $payload['vnp_Version'],
+            $payload['vnp_Command'],
+            $payload['vnp_TmnCode'],
+            $payload['vnp_TransactionType'],
+            $payload['vnp_TxnRef'],
+            $payload['vnp_Amount'],
+            $payload['vnp_TransactionNo'],
+            $payload['vnp_TransactionDate'],
+            $payload['vnp_CreateBy'],
+            $payload['vnp_CreateDate'],
+            $payload['vnp_IpAddr'],
+            $payload['vnp_OrderInfo'],
+        ]);
+
+        $secretKey = config('vnpay.hash_secret');
+        $payload['vnp_SecureHash'] = hash_hmac('sha512', $data, $secretKey);
+
+        $response = \Http::withHeaders([
+            'Content-Type' => 'application/json',
+        ])->post(config('vnpay.refund_url'), $payload);
+
+        $body = $response->json();
+
+        if (($body['vnp_ResponseCode'] ?? null) === '00') {
+            return ['success' => true];
+        }
+
+        return [
+            'success' => false,
+            'message' => $body['vnp_Message'] ?? 'Lỗi không xác định',
+        ];
     }
 }
