@@ -89,6 +89,19 @@
                                         {{ number_format($booking->TongTienSauGiam) }} đ
                                     </p>
                                 </div>
+                                @if($booking->chiTietKhuyenMai && $booking->chiTietKhuyenMai->count())
+                                    <div class="mt-3">
+                                        <p class="info-label"><i class="bi bi-ticket-perforated me-1"></i>Khuyến mãi áp dụng</p>
+                                        <ul class="list-unstyled mb-0">
+                                            @foreach($booking->chiTietKhuyenMai as $ct)
+                                                <li class="d-flex justify-content-between align-items-center mb-1">
+                                                    <span>{{ $ct->khuyenMai->Ten_KM ?? $ct->ID_KM }}</span>
+                                                    <span class="text-success fw-semibold">-{{ number_format($ct->TienGiam) }} đ</span>
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                    </div>
+                                @endif
                             </div>
                         </div>
 

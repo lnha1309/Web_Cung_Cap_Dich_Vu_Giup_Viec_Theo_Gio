@@ -589,59 +589,7 @@
 @endpush
 
 <div class="container">
-  <aside>
-    <div class="top">
-      <div class="logo" id="logo-toggle" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-        <img src="{{ asset('assets/logo.png') }}" class="logo-full" alt="bTaskee Logo" />
-        <img src="{{ asset('assets/logo2.png') }}" class="logo-collapsed" alt="bTaskee Logo" />
-      </div>
-      <div class="close" id="close-btn">
-        <span class="material-icons-sharp"> close </span>
-      </div>
-    </div>
-
-    <div class="sidebar">
-      <a href="#" class="active">
-        <span class="material-icons-sharp"> dashboard </span>
-        <h3>Dashboard</h3>
-      </a>
-      <a href="#">
-        <span class="material-icons-sharp"> person_outline </span>
-        <h3>Customers</h3>
-      </a>
-      <a href="#">
-        <span class="material-icons-sharp"> receipt_long </span>
-        <h3>Orders</h3>
-      </a>
-      <a href="#">
-        <span class="material-icons-sharp"> insights </span>
-        <h3>Analytics</h3>
-      </a>
-      <a href="#">
-        <span class="material-icons-sharp"> inventory </span>
-        <h3>Products</h3>
-      </a>
-      <a href="#">
-        <span class="material-icons-sharp"> report_gmailerrorred </span>
-        <h3>Reports</h3>
-      </a>
-      <a href="#">
-        <span class="material-icons-sharp"> settings </span>
-        <h3>Settings</h3>
-      </a>
-      <a href="#">
-        <span class="material-icons-sharp"> add </span>
-        <h3>Add Product</h3>
-      </a>
-      <a href="{{ route('logout') }}" onclick="event.preventDefault(); document.getElementById('admin-logout-form').submit();">
-        <span class="material-icons-sharp"> logout </span>
-        <h3>Logout</h3>
-      </a>
-      <form id="admin-logout-form" action="{{ route('logout') }}" method="POST" style="display:none;">
-        @csrf
-      </form>
-    </div>
-  </aside>
+  @include('admin.partials.sidebar', ['active' => 'dashboard'])
 
   <main>
     <h1>Dashboard</h1>

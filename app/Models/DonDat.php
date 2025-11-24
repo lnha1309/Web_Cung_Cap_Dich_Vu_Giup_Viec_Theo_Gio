@@ -64,4 +64,12 @@ class DonDat extends Model
     {
         return $this->hasMany(LichBuoiThang::class, 'ID_DD', 'ID_DD');
     }
+
+    /**
+     * Relationship: danh sách khuyến mãi áp dụng
+     */
+    public function chiTietKhuyenMai()
+    {
+        return $this->hasMany(ChiTietKhuyenMai::class, 'ID_DD', 'ID_DD');
+    }
 }

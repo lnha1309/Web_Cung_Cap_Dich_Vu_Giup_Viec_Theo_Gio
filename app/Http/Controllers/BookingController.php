@@ -1080,7 +1080,7 @@ class BookingController extends Controller
         }
 
         // Tìm đơn hàng theo ID (ID_DD)
-        $booking = DonDat::with(['dichVu', 'diaChi'])->where('ID_DD', $id)->first();
+        $booking = DonDat::with(['dichVu', 'diaChi', 'chiTietKhuyenMai.khuyenMai'])->where('ID_DD', $id)->first();
 
         // Kiểm tra bảo mật: Đơn này có phải của người đang đăng nhập không?
         $customer = Auth::user()->khachHang;
