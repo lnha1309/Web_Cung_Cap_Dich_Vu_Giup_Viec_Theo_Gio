@@ -14,11 +14,15 @@ use App\Models\LichLamViec;
 use App\Models\LichSuThanhToan;
 use App\Models\LichTheoTuan;
 use App\Models\Quan;
+use App\Models\NhanVien;
+use App\Models\User;
 use App\Services\VNPayService;
 use App\Support\IdGenerator;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class BookingController extends Controller
 {
@@ -109,9 +113,25 @@ class BookingController extends Controller
             $customerQuan = $this->guessQuanFromAddress($diaChiText);
         }
 
+        // Filter out staff who have conflicting bookings
+        $availableStaffIds = [];
+        foreach ($lich as $item) {
+            $nv = $item->nhanVien;
+            if (!$nv) {
+                continue;
+            }
+
+            // Check if this staff has any conflicting bookings on the same day
+            $hasConflict = $this->hasTimeConflict($nv->ID_NV, $ngayLam, $gioBatDauSql, $gioKetThuc);
+            
+            if (!$hasConflict) {
+                $availableStaffIds[$nv->ID_NV] = $item;
+            }
+        }
+
         $results = [];
 
-        foreach ($lich as $item) {
+        foreach ($availableStaffIds as $nvId => $item) {
             $nv = $item->nhanVien;
             if (!$nv) {
                 continue;
@@ -454,7 +474,7 @@ class BookingController extends Controller
 
         $trangThaiDon = $selectedStaffId ? 'assigned' : 'finding_staff';
 
-        DonDat::create([
+        $booking = DonDat::create([
             'ID_DD'          => $idDon,
             'LoaiDon'        => $validated['loai_don'],
             'ID_DV'          => $validated['id_dv'],
@@ -474,6 +494,10 @@ class BookingController extends Controller
             'TongTienSauGiam'=> $tongSauGiam,
             'ID_NV'          => $validated['id_nv'],
         ]);
+
+        if ($booking->TrangThaiDon === 'assigned' && $booking->ID_NV) {
+            $this->notifyStaffAssigned($booking);
+        }
 
         if ($validated['loai_don'] === 'month') {
             foreach ($repeatDays as $day) {
@@ -625,6 +649,10 @@ class BookingController extends Controller
                     }
                     $order->save();
 
+                    if ($order->TrangThaiDon === 'assigned' && $order->ID_NV) {
+                        $this->notifyStaffAssigned($order);
+                    }
+
                     $payment = LichSuThanhToan::where('ID_DD', $order->ID_DD)
                         ->where('PhuongThucThanhToan', 'VNPay')
                         ->orderByDesc('ThoiGian')
@@ -648,6 +676,90 @@ class BookingController extends Controller
             'transactionNo' => $transactionNo,
             'responseCode'  => $responseCode,
         ]);
+    }
+
+    private function notifyStaffAssigned(DonDat $booking): void
+    {
+        try {
+            $nhanVien = NhanVien::where('ID_NV', $booking->ID_NV)->first();
+            if (!$nhanVien || !$nhanVien->ID_TK) {
+                return;
+            }
+
+            $user = User::where('id_tk', $nhanVien->ID_TK)->first();
+            if (!$user) {
+                return;
+            }
+
+            $service = DichVu::find($booking->ID_DV);
+            $title = 'Don moi duoc gan';
+            $body = 'Don ' . $booking->ID_DD . ' - Dich vu ' . ($service?->TenDV ?? '');
+            $this->sendOneSignalToUser($user, $title, $body, $booking);
+        } catch (\Exception $e) {
+            // Không làm gián đoạn flow đặt đơn nếu gửi thông báo lỗi
+        }
+    }
+
+    private function sendOneSignalToUser(User $user, string $title, string $body, DonDat $booking): void
+    {
+        $appId = config('services.onesignal.app_id');
+        $apiKey = config('services.onesignal.api_key');
+        if (!$appId || !$apiKey) {
+            return;
+        }
+
+        // Debug logging
+        Log::info('OneSignal Debug', [
+            'app_id' => $appId,
+            'api_key_length' => strlen($apiKey),
+            'api_key_prefix' => substr($apiKey, 0, 20) . '...',
+            'user_onesignal_player_id' => $user->onesignal_player_id,
+        ]);
+
+        $payload = [
+            'app_id' => $appId,
+            'include_external_user_ids' => [(string)$user->id],
+            'channel_for_external_user_ids' => 'push',
+            'include_player_ids' => array_filter([$user->onesignal_player_id]),
+            'headings' => ['en' => $title],
+            'contents' => ['en' => $body],
+            'data' => [
+                'booking_id' => $booking->ID_DD,
+                'type' => 'new_booking',
+            ],
+        ];
+
+        $response = Http::withHeaders([
+            'Authorization' => 'Key ' . $apiKey,
+            'Content-Type' => 'application/json',
+        ])->post('https://api.onesignal.com/notifications?c=push', $payload);
+
+        if ($response->failed()) {
+            Log::warning('OneSignal send failed (web booking)', [
+                'user_id' => $user->id,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+        }
+    }
+
+    /**
+     * Check if a staff member has any time conflicts with existing bookings
+     */
+    private function hasTimeConflict(string $staffId, string $date, string $startTime, string $endTime): bool
+    {
+        // Calculate end time based on start time and duration
+        // Check for bookings that overlap with the requested time range
+        return DonDat::where('ID_NV', $staffId)
+            ->where('NgayLam', $date)
+            ->whereNotIn('TrangThaiDon', ['canceled', 'rejected']) // Exclude canceled and rejected bookings
+            ->where(function ($query) use ($startTime, $endTime) {
+                // Check for time overlap using SQL time comparison
+                // Two time ranges overlap if: (StartA < EndB) AND (EndA > StartB)
+                $query->whereRaw('GioBatDau < ?', [$endTime])
+                      ->whereRaw('ADDTIME(GioBatDau, SEC_TO_TIME(ThoiLuongGio * 3600)) > ?', [$startTime]);
+            })
+            ->exists();
     }
 
     private function voucherUsedByCustomer(string $customerId, string $code): bool
