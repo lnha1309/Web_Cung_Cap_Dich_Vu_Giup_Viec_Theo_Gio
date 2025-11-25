@@ -26,24 +26,24 @@ class AdminController extends Controller
         $totalOrdersMonth = DonDat::whereMonth('NgayTao', Carbon::now()->month)->whereYear('NgayTao', Carbon::now()->year)->count();
 
         // Pending Orders
-        $pendingOrders = DonDat::whereIn('TrangThaiDon', ['finding_staff','wait_confirm'])->count();
+        $pendingOrders = DonDat::whereIn('TrangThaiDon', ['assigned'])->count();
 
         // In-progress Orders
-        $inProgressOrders = DonDat::where('TrangThaiDon','assigned')->count();
+        $inProgressOrders = DonDat::where('TrangThaiDon','confirmed')->count();
 
         $workingStaff = NhanVien::count(); 
 
         $revenueDay = DonDat::whereDate('NgayTao', Carbon::today())
-            ->whereIn('TrangThaiDon', ['done'])
+            ->whereIn('TrangThaiDon', ['completed'])
             ->sum('TongTienSauGiam');
             
         $revenueWeek = DonDat::whereBetween('NgayTao', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()])
-            ->whereIn('TrangThaiDon', ['done'])
+            ->whereIn('TrangThaiDon', ['completed'])
             ->sum('TongTienSauGiam');
 
         $revenueMonth = DonDat::whereMonth('NgayTao', Carbon::now()->month)
             ->whereYear('NgayTao', Carbon::now()->year)
-            ->whereIn('TrangThaiDon', ['done'])
+            ->whereIn('TrangThaiDon', ['completed'])
             ->sum('TongTienSauGiam');
 
 
