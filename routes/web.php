@@ -14,6 +14,10 @@ use App\Http\Controllers\AdminSurchargeController;
 use App\Http\Controllers\AdminPromotionController;
 
 Route::get('/', function () {
+    if (Auth::check() && Auth::user()->ID_LoaiTK === 'admin') {
+        return redirect()->route('admin.dashboard');
+    }
+
     $showNewCustomerVoucher = true;
 
     if (Auth::check() && Auth::user()->khachHang) {
