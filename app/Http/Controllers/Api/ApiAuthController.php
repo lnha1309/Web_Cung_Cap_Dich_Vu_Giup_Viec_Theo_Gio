@@ -4,10 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\TaiKhoan;
-use App\Models\User;
 use App\Models\KhachHang;
 use App\Models\NhanVien;
+use App\Models\LichLamViec;
 use App\Support\IdGenerator;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -73,24 +74,18 @@ class ApiAuthController extends Controller
             // Clear OTP from cache
             Cache::forget($cacheKey);
 
-            // Create User for authentication
-            $user = User::firstOrCreate(
-                ['id_tk' => $idTk],
-                [
-                    'name' => $khachHang->Ten_KH ?? $taiKhoan->TenDN,
-                    'email' => $khachHang->Email ?? null,
-                    'password' => null,
-                ]
-            );
+            $taiKhoan->name = $khachHang->Ten_KH ?? $taiKhoan->TenDN;
+            $taiKhoan->email = $khachHang->Email ?? null;
+            $taiKhoan->save();
 
-            $token = $user->createToken('mobile-app')->plainTextToken;
+            $token = $taiKhoan->createToken('mobile-app')->plainTextToken;
 
             return response()->json([
                 'success' => true,
                 'message' => 'Dang ky thanh cong.',
                 'data' => [
                     'user' => [
-                        'id' => $user->id,
+                        'id' => $taiKhoan->ID_TK,
                         'username' => $taiKhoan->TenDN,
                         'full_name' => $khachHang->Ten_KH,
                         'email' => $khachHang->Email,
@@ -173,20 +168,30 @@ class ApiAuthController extends Controller
             ], 401);
         }
 
-        $user = User::firstOrCreate(
-            ['id_tk' => $taiKhoan->ID_TK],
-            [
-                'name' => $taiKhoan->TenDN,
-                'password' => null,
-            ]
-        );
+        if (in_array($taiKhoan->TrangThaiTK, ['banned', 'locked'], true)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Tai khoan cua ban da bi khoa. Vui long lien he tong dai.',
+            ], 403);
+        }
 
-        $token = $user->createToken('mobile-app')->plainTextToken;
-        $khachHang = $user->khachHang;
+        // Lock if vi pham 2 tuan lien tiep khong dang ky lich (khong can cron)
+        if ($taiKhoan->ID_LoaiTK === 'staff' && $this->shouldLockForMissingSchedules($taiKhoan)) {
+            $taiKhoan->TrangThaiTK = 'locked';
+            $taiKhoan->save();
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Tai khoan cua ban da bi khoa do khong dang ky lich 2 tuan lien tiep. Vui long lien he tong dai.',
+            ], 403);
+        }
+
+        $token = $taiKhoan->createToken('mobile-app')->plainTextToken;
+        $khachHang = $taiKhoan->khachHang;
         $nhanVien = $taiKhoan->nhanVien;
 
         $userData = [
-            'id' => $user->id,
+            'id' => $taiKhoan->ID_TK,
             'username' => $taiKhoan->TenDN,
             'account_type' => $taiKhoan->ID_LoaiTK ?? null,
         ];
@@ -238,18 +243,71 @@ class ApiAuthController extends Controller
     }
 
     /**
+     * Change password for authenticated user
+     * POST /api/auth/change-password
+     */
+    public function changePassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'current_password' => ['required', 'string'],
+            'new_password' => ['required', 'string', 'min:6'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        /** @var \App\Models\TaiKhoan|null $taiKhoan */
+        $taiKhoan = $request->user();
+        if (!$taiKhoan) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Khong xac thuc duoc nguoi dung.',
+            ], 401);
+        }
+
+        $currentOk = false;
+        try {
+            $currentOk = Hash::check($request->current_password, $taiKhoan->MatKhau);
+        } catch (\RuntimeException $e) {
+            $currentOk = $request->current_password === $taiKhoan->MatKhau;
+        }
+
+        if (!$currentOk) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Mat khau hien tai khong dung.',
+            ], 400);
+        }
+
+        $taiKhoan->MatKhau = Hash::make($request->new_password);
+        $taiKhoan->save();
+
+        // (Optional) revoke all other tokens and keep current token alive
+        $request->user()->tokens()->where('id', '!=', $request->user()->currentAccessToken()->id)->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Doi mat khau thanh cong.',
+        ]);
+    }
+
+    /**
      * Get user profile
      * GET /api/auth/profile
      */
     public function profile(Request $request)
     {
-        $user = $request->user();
-        $khachHang = $user->khachHang;
-        $taiKhoan = $user->taiKhoan;
+        /** @var \App\Models\TaiKhoan|null $taiKhoan */
+        $taiKhoan = $request->user();
+        $khachHang = $taiKhoan?->khachHang;
         $nhanVien = $taiKhoan?->nhanVien;
 
         $userData = [
-            'id' => $user->id,
+            'id' => $taiKhoan->ID_TK ?? null,
             'username' => $taiKhoan->TenDN ?? '',
             'account_type' => $taiKhoan->ID_LoaiTK ?? null,
         ];
@@ -293,8 +351,8 @@ class ApiAuthController extends Controller
             'email' => ['nullable', 'email', 'max:255'],
         ];
 
-        $user = $request->user();
-        $taiKhoan = $user->taiKhoan;
+        /** @var \App\Models\TaiKhoan|null $taiKhoan */
+        $taiKhoan = $request->user();
 
         if ($taiKhoan && $taiKhoan->ID_LoaiTK === 'staff') {
             $rules = array_merge($rules, [
@@ -348,10 +406,10 @@ class ApiAuthController extends Controller
             $nhanVien->save();
 
             return response()->json([
-                'success' => true,
-                'message' => 'Cap nhat thong tin thanh cong.',
-                'data' => [
-                    'id' => $user->id,
+                    'success' => true,
+                    'message' => 'Cap nhat thong tin thanh cong.',
+                    'data' => [
+                    'id' => $taiKhoan->ID_TK,
                     'username' => $taiKhoan->TenDN ?? '',
                     'account_type' => $taiKhoan->ID_LoaiTK ?? null,
                     'full_name' => $nhanVien->Ten_NV ?? '',
@@ -372,7 +430,7 @@ class ApiAuthController extends Controller
                 ]
             ]);
         } else {
-            $khachHang = $user->khachHang;
+            $khachHang = $taiKhoan?->khachHang;
 
             if (!$khachHang) {
                 return response()->json([
@@ -395,8 +453,8 @@ class ApiAuthController extends Controller
                 'success' => true,
                 'message' => 'Cap nhat thong tin thanh cong.',
                 'data' => [
-                    'id' => $user->id,
-                    'username' => $user->taiKhoan->TenDN ?? '',
+                    'id' => $taiKhoan->ID_TK,
+                    'username' => $taiKhoan->TenDN ?? '',
                     'full_name' => $khachHang->Ten_KH,
                     'email' => $khachHang->Email,
                     'phone' => $khachHang->SDT,
@@ -572,5 +630,39 @@ class ApiAuthController extends Controller
             'success' => true,
             'message' => 'Da cap nhat push token.',
         ]);
+    }
+
+    private function shouldLockForMissingSchedules(TaiKhoan $taiKhoan): bool
+    {
+        $nhanVien = $taiKhoan->nhanVien;
+        if (!$nhanVien) {
+            return false;
+        }
+
+        $now = Carbon::now();
+        $currentWeekStart = $now->copy()->startOfWeek(Carbon::MONDAY);
+        $currentWeekEnd = $currentWeekStart->copy()->endOfWeek(Carbon::SUNDAY);
+        $cutoff = $currentWeekStart->copy()->addDays(3)->startOfDay(); // Thursday 00:00
+
+        if ($now->lt($cutoff)) {
+            return false;
+        }
+
+        $hasCurrent = $this->hasScheduleInRange($nhanVien->ID_NV, $currentWeekStart, $currentWeekEnd);
+        $previousWeekStart = $currentWeekStart->copy()->subWeek();
+        $previousWeekEnd = $previousWeekStart->copy()->endOfWeek(Carbon::SUNDAY);
+        $hasPrevious = $this->hasScheduleInRange($nhanVien->ID_NV, $previousWeekStart, $previousWeekEnd);
+
+        return !$hasCurrent && !$hasPrevious;
+    }
+
+    private function hasScheduleInRange(string $staffId, Carbon $start, Carbon $end): bool
+    {
+        return LichLamViec::where('ID_NV', $staffId)
+            ->whereBetween('NgayLam', [
+                $start->format('Y-m-d'),
+                $end->format('Y-m-d'),
+            ])
+            ->exists();
     }
 }

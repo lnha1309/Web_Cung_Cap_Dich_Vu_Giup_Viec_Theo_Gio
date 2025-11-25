@@ -45,6 +45,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Auth routes
     Route::prefix('auth')->group(function () {
         Route::post('/logout', [ApiAuthController::class, 'logout']);
+        Route::post('/change-password', [ApiAuthController::class, 'changePassword']);
         Route::get('/profile', [ApiAuthController::class, 'profile']);
         Route::put('/profile', [ApiAuthController::class, 'updateProfile']);
         Route::post('/push-token', [ApiAuthController::class, 'savePushToken']);
@@ -82,9 +83,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/schedules', [ApiStaffScheduleController::class, 'update']);
         Route::post('/schedules', [ApiStaffScheduleController::class, 'store']);
 
+        Route::get('/bookings/available', [ApiStaffBookingController::class, 'available']);
         Route::get('/bookings', [ApiStaffBookingController::class, 'index']);
         Route::get('/bookings/{id}', [ApiStaffBookingController::class, 'show']);
         Route::post('/bookings/{id}/confirm', [ApiStaffBookingController::class, 'confirm']);
         Route::post('/bookings/{id}/reject', [ApiStaffBookingController::class, 'reject']);
+        Route::post('/bookings/{id}/claim', [ApiStaffBookingController::class, 'claim']);
+        Route::post('/bookings/{id}/complete', [ApiStaffBookingController::class, 'complete']);
+        Route::get('/earnings', [ApiStaffBookingController::class, 'earnings']);
+        Route::get('/weekly-report', [ApiStaffBookingController::class, 'weeklyReport']);
     });
 });

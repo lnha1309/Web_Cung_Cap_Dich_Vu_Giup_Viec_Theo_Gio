@@ -143,7 +143,7 @@
                                                         <span class="badge bg-info"><i class="bi bi-clock-history"></i> Đã lên lịch</span>
                                                     @elseif($session->TrangThaiBuoi == 'completed')
                                                         <span class="badge bg-success"><i class="bi bi-check-circle"></i> Hoàn thành</span>
-                                                    @elseif($session->TrangThaiBuoi == 'canceled')
+                                                    @elseif($session->TrangThaiBuoi == 'cancelled')
                                                         <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Đã hủy</span>
                                                     @else
                                                         <span class="badge bg-secondary">{{ $session->TrangThaiBuoi }}</span>

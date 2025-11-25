@@ -22,7 +22,7 @@ return new class extends Migration
             $table->string('ID_Goi', 50)->nullable();
             $table->date('NgayBatDauGoi')->nullable();
             $table->date('NgayKetThucGoi')->nullable();
-            $table->enum('TrangThaiDon', ['unpaid', 'paid', 'finding_staff', 'wait_confirm', 'assigned', 'done', 'canceled'])->default('unpaid');
+            $table->enum('TrangThaiDon', ['unpaid', 'paid', 'finding_staff', 'wait_confirm', 'assigned', 'done', 'cancelled'])->default('unpaid');
             $table->decimal('TongTien', 12, 2)->nullable();
             $table->decimal('TongTienSauGiam', 12, 2)->nullable();
             $table->string('ID_NV', 50)->nullable();
@@ -59,4 +59,3 @@ return new class extends Migration
         Schema::dropIfExists('DonDat');
     }
 };
-

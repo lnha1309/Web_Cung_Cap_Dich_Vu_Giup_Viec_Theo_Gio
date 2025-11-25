@@ -5,10 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Support\Facades\Hash;
+use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Notifications\Notifiable;
 
 class TaiKhoan extends Authenticatable
 {
-    use HasFactory;
+    use HasApiTokens, HasFactory, Notifiable;
 
     protected $table = 'TaiKhoan';
     protected $primaryKey = 'ID_TK';
@@ -21,13 +23,19 @@ class TaiKhoan extends Authenticatable
         'MatKhau',
         'ID_LoaiTK',
         'TrangThaiTK',
+        'name',
+        'email',
+        'onesignal_player_id',
     ];
 
     protected $hidden = [
         'MatKhau',
+        'remember_token',
     ];
 
-    public $timestamps = false;
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+    ];
 
     public function setMatKhauAttribute(string $value): void
     {

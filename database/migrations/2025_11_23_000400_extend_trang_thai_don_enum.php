@@ -18,7 +18,7 @@ return new class extends Migration
                 'confirmed',
                 'rejected',
                 'done',
-                'canceled'
+                'cancelled'
             ) DEFAULT 'unpaid'
         ");
     }
@@ -34,7 +34,7 @@ return new class extends Migration
                 'wait_confirm',
                 'assigned',
                 'done',
-                'canceled'
+                'cancelled'
             ) DEFAULT 'unpaid'
         ");
     }

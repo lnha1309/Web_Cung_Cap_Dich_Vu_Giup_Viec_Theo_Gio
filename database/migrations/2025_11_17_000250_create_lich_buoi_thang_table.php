@@ -13,7 +13,7 @@ return new class extends Migration
             $table->string('ID_DD', 50);
             $table->date('NgayLam');
             $table->time('GioBatDau');
-            $table->enum('TrangThaiBuoi', ['scheduled', 'completed', 'canceled'])->default('scheduled');
+            $table->enum('TrangThaiBuoi', ['scheduled', 'completed', 'cancelled'])->default('scheduled');
             $table->string('ID_NV', 50)->nullable();
 
             $table->foreign('ID_DD')
@@ -31,4 +31,3 @@ return new class extends Migration
         Schema::dropIfExists('LichBuoiThang');
     }
 };
-
