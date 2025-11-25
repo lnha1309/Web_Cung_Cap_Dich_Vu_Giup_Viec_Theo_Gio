@@ -17,8 +17,7 @@ class ApiStaffScheduleController extends Controller
      */
     public function index(Request $request)
     {
-        $user = $request->user();
-        $taiKhoan = $user?->taiKhoan;
+        $taiKhoan = $request->user();
         $nhanVien = $taiKhoan?->nhanVien;
 
         if (!$taiKhoan || $taiKhoan->ID_LoaiTK !== 'staff' || !$nhanVien) {
@@ -74,8 +73,7 @@ class ApiStaffScheduleController extends Controller
      */
     public function update(Request $request)
     {
-        $user = $request->user();
-        $taiKhoan = $user?->taiKhoan;
+        $taiKhoan = $request->user();
         $nhanVien = $taiKhoan?->nhanVien;
 
         if (!$taiKhoan || $taiKhoan->ID_LoaiTK !== 'staff' || !$nhanVien) {
@@ -86,7 +84,7 @@ class ApiStaffScheduleController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'schedules' => ['required', 'array', 'min:1'],
+            'schedules' => ['required', 'array', 'min:4'],
             'schedules.*.date' => ['required', 'date'],
             'schedules.*.start_time' => ['required', 'date_format:H:i'],
             'schedules.*.end_time' => ['required', 'date_format:H:i'],
@@ -101,6 +99,13 @@ class ApiStaffScheduleController extends Controller
 
         $normalized = [];
         $dates = [];
+
+        if ($this->shouldBlockCurrentWeekRegistration($nhanVien->ID_NV, $request->input('schedules', []))) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Da qua han dang ky lich tuan nay. Vui long lien he tong dai.',
+            ], 422);
+        }
 
         foreach ($request->input('schedules', []) as $schedule) {
             $date = Carbon::parse($schedule['date']);
@@ -198,8 +203,7 @@ class ApiStaffScheduleController extends Controller
      */
     public function store(Request $request)
     {
-        $user = $request->user();
-        $taiKhoan = $user?->taiKhoan;
+        $taiKhoan = $request->user();
         $nhanVien = $taiKhoan?->nhanVien;
 
         if (!$taiKhoan || $taiKhoan->ID_LoaiTK !== 'staff' || !$nhanVien) {
@@ -210,7 +214,7 @@ class ApiStaffScheduleController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'schedules' => ['required', 'array', 'min:1'],
+            'schedules' => ['required', 'array', 'min:4'],
             'schedules.*.date' => ['required', 'date'],
             'schedules.*.start_time' => ['required', 'date_format:H:i'],
             'schedules.*.end_time' => ['required', 'date_format:H:i'],
@@ -233,6 +237,13 @@ class ApiStaffScheduleController extends Controller
 
         $normalized = [];
         $dates = [];
+
+        if ($this->shouldBlockCurrentWeekRegistration($nhanVien->ID_NV, $request->input('schedules', []))) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Da qua han dang ky lich tuan nay. Vui long lien he tong dai.',
+            ], 422);
+        }
 
         foreach ($input as $schedule) {
             $date = Carbon::parse($schedule['date']);
@@ -321,5 +332,41 @@ class ApiStaffScheduleController extends Controller
                 'schedules' => $results,
             ],
         ]);
+    }
+
+    /**
+     * Sau thu 5 neu tuan hien tai chua co lich thi chan khong cho dang ky tuan do.
+     */
+    private function shouldBlockCurrentWeekRegistration(string $staffId, array $requestedSchedules): bool
+    {
+        $now = Carbon::now();
+        $weekStart = $now->copy()->startOfWeek(Carbon::MONDAY);
+        $weekEnd = $weekStart->copy()->endOfWeek(Carbon::SUNDAY);
+        $cutoff = $weekStart->copy()->addDays(3)->startOfDay(); // Thursday 00:00
+
+        if ($now->lt($cutoff)) {
+            return false;
+        }
+
+        // Da co lich tuan nay thi khong chan
+        $hasCurrentWeekSchedule = LichLamViec::where('ID_NV', $staffId)
+            ->whereBetween('NgayLam', [$weekStart->format('Y-m-d'), $weekEnd->format('Y-m-d')])
+            ->exists();
+        if ($hasCurrentWeekSchedule) {
+            return false;
+        }
+
+        // Neu request co ngay nam trong tuan nay thi chan
+        foreach ($requestedSchedules as $item) {
+            if (!isset($item['date'])) {
+                continue;
+            }
+            $date = Carbon::parse($item['date']);
+            if ($date->between($weekStart, $weekEnd, true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -13,7 +13,7 @@ use App\Models\LichSuThanhToan;
 use App\Models\Quan;
 use App\Models\DanhGiaNhanVien;
 use App\Models\NhanVien;
-use App\Models\User;
+use App\Models\TaiKhoan;
 use App\Support\IdGenerator;
 use App\Services\SurchargeService;
 use Carbon\Carbon;
@@ -538,31 +538,31 @@ class ApiBookingController extends Controller
                 return;
             }
 
-            $user = User::where('id_tk', $nhanVien->ID_TK)->first();
-            if (!$user || !$user->onesignal_player_id) {
+            $account = TaiKhoan::where('ID_TK', $nhanVien->ID_TK)->first();
+            if (!$account || !$account->onesignal_player_id) {
                 return;
             }
 
             $service = DichVu::find($booking->ID_DV);
             $title = 'Đơn mới được gán';
             $body = 'Đơn ' . $booking->ID_DD . ' - Dịch vụ ' . ($service?->TenDV ?? '');
-            $this->sendOneSignalToUser($user, $title, $body);
+            $this->sendOneSignalToUser($account, $title, $body);
         } catch (\Exception $e) {
             // Ignore notification errors to avoid breaking main flow
         }
     }
 
-    private function sendOneSignalToUser(User $user, string $title, string $body): void
+    private function sendOneSignalToUser(TaiKhoan $account, string $title, string $body): void
     {
         $appId = config('services.onesignal.app_id');
         $apiKey = config('services.onesignal.api_key');
-        if (!$appId || !$apiKey || !$user->onesignal_player_id) {
+        if (!$appId || !$apiKey || !$account->onesignal_player_id) {
             return;
         }
 
         $payload = [
             'app_id' => $appId,
-            'include_player_ids' => [$user->onesignal_player_id],
+            'include_player_ids' => [$account->onesignal_player_id],
             'headings' => ['en' => $title],
             'contents' => ['en' => $body],
         ];

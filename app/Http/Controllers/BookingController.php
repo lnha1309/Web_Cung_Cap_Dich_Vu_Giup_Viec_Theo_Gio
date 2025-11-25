@@ -17,7 +17,7 @@ use App\Models\LichTheoTuan;
 use App\Models\PhuThu;
 use App\Models\Quan;
 use App\Models\NhanVien;
-use App\Models\User;
+use App\Models\TaiKhoan;
 use App\Services\VNPayService;
 use App\Services\SurchargeService;
 use App\Support\IdGenerator;
@@ -788,21 +788,21 @@ class BookingController extends Controller
                 return;
             }
 
-            $user = User::where('id_tk', $nhanVien->ID_TK)->first();
-            if (!$user) {
+            $account = TaiKhoan::where('ID_TK', $nhanVien->ID_TK)->first();
+            if (!$account) {
                 return;
             }
 
             $service = DichVu::find($booking->ID_DV);
             $title = 'Don moi duoc gan';
             $body = 'Don ' . $booking->ID_DD . ' - Dich vu ' . ($service?->TenDV ?? '');
-            $this->sendOneSignalToUser($user, $title, $body, $booking);
+            $this->sendOneSignalToUser($account, $title, $body, $booking);
         } catch (\Exception $e) {
             // Không làm gián đoạn flow đặt đơn nếu gửi thông báo lỗi
         }
     }
 
-    private function sendOneSignalToUser(User $user, string $title, string $body, DonDat $booking): void
+    private function sendOneSignalToUser(TaiKhoan $account, string $title, string $body, DonDat $booking): void
     {
         $appId = config('services.onesignal.app_id');
         $apiKey = config('services.onesignal.api_key');
@@ -815,14 +815,14 @@ class BookingController extends Controller
             'app_id' => $appId,
             'api_key_length' => strlen($apiKey),
             'api_key_prefix' => substr($apiKey, 0, 20) . '...',
-            'user_onesignal_player_id' => $user->onesignal_player_id,
+            'user_onesignal_player_id' => $account->onesignal_player_id,
         ]);
 
         $payload = [
             'app_id' => $appId,
-            'include_external_user_ids' => [(string)$user->id],
+            'include_external_user_ids' => [(string)$account->ID_TK],
             'channel_for_external_user_ids' => 'push',
-            'include_player_ids' => array_filter([$user->onesignal_player_id]),
+            'include_player_ids' => array_filter([$account->onesignal_player_id]),
             'headings' => ['en' => $title],
             'contents' => ['en' => $body],
             'data' => [
@@ -838,7 +838,7 @@ class BookingController extends Controller
 
         if ($response->failed()) {
             Log::warning('OneSignal send failed (web booking)', [
-                'user_id' => $user->id,
+                'user_id' => $account->ID_TK,
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
@@ -854,7 +854,7 @@ class BookingController extends Controller
         // Check for bookings that overlap with the requested time range
         return DonDat::where('ID_NV', $staffId)
             ->where('NgayLam', $date)
-            ->whereNotIn('TrangThaiDon', ['canceled', 'rejected']) // Exclude canceled and rejected bookings
+            ->whereNotIn('TrangThaiDon', ['cancelled', 'rejected']) // Exclude cancelled and rejected bookings
             ->where(function ($query) use ($startTime, $endTime) {
                 // Check for time overlap using SQL time comparison
                 // Two time ranges overlap if: (StartA < EndB) AND (EndA > StartB)
@@ -1004,7 +1004,7 @@ class BookingController extends Controller
                             ->get();
         // 2. Sửa created_at -> NgayTao
         $historyBookings = DonDat::where('ID_KH', $customer->ID_KH)
-                            ->whereIn('TrangThaiDon', ['done', 'canceled', 'failed'])
+                            ->whereIn('TrangThaiDon', ['done', 'cancelled', 'failed'])
                             ->orderBy('NgayTao', 'desc') // <--- VÀ CHỖ NÀY
                             ->get();
 
@@ -1060,7 +1060,7 @@ class BookingController extends Controller
         }
 
         // Check if already cancelled or done
-        if (in_array($booking->TrangThaiDon, ['canceled', 'done'])) {
+        if (in_array($booking->TrangThaiDon, ['cancelled', 'done'])) {
             return back()->with('error', 'Không thể hủy đơn hàng này.');
         }
 
@@ -1141,7 +1141,7 @@ class BookingController extends Controller
 
 
             // Update booking status
-            $booking->TrangThaiDon = 'canceled';
+            $booking->TrangThaiDon = 'cancelled';
             $booking->save();
 
             // Log refund transaction only if there's an actual refund
