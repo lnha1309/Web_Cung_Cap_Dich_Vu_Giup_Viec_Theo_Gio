@@ -8,6 +8,10 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminServiceController;
+use App\Http\Controllers\AdminPackageController;
+use App\Http\Controllers\AdminSurchargeController;
+use App\Http\Controllers\AdminPromotionController;
 
 Route::get('/', function () {
     $showNewCustomerVoucher = true;
@@ -90,11 +94,18 @@ Route::middleware('auth')->group(function () {
     Route::get('/booking/surcharges', [BookingController::class, 'getSurcharges'])->name('booking.surcharges');
     Route::post('/booking/confirm', [BookingController::class, 'confirm'])->name('booking.confirm');
 
-    Route::get('/admin/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
-    
-Route::get('/my-bookings', [BookingController::class, 'history'])->name('bookings.history');
-Route::get('/my-bookings/{id}', [BookingController::class, 'detail'])->name('bookings.detail');
-Route::post('/my-bookings/{id}/cancel', [BookingController::class, 'cancelBooking'])->name('bookings.cancel');
+    Route::prefix('admin')->name('admin.')->group(function () {
+        Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
+        Route::resource('services', AdminServiceController::class)->except(['create', 'edit', 'show']);
+        Route::resource('packages', AdminPackageController::class)->except(['create', 'edit', 'show']);
+        Route::resource('surcharges', AdminSurchargeController::class)->except(['create', 'edit', 'show']);
+        Route::resource('promotions', AdminPromotionController::class)->except(['create', 'edit', 'show']);
+        Route::patch('promotions/{promotion}/toggle', [AdminPromotionController::class, 'toggle'])->name('promotions.toggle');
+    });
+
+    Route::get('/my-bookings', [BookingController::class, 'history'])->name('bookings.history');
+    Route::get('/my-bookings/{id}', [BookingController::class, 'detail'])->name('bookings.detail');
+    Route::post('/my-bookings/{id}/cancel', [BookingController::class, 'cancelBooking'])->name('bookings.cancel');
 
 
 });
@@ -117,4 +128,3 @@ Route::get('/giupviectheothang', function () {
 if (file_exists(__DIR__ . '/web_test_debug.php')) {
     require __DIR__ . '/web_test_debug.php';
 }
-

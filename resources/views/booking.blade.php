@@ -784,6 +784,28 @@
             margin-bottom: 16px;
         }
 
+        .surcharge-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+            font-size: 13px;
+            color: #444;
+        }
+
+        .surcharge-row .s-label {
+            flex: 1;
+            padding-right: 12px;
+        }
+
+        .surcharge-row .s-value {
+            white-space: nowrap;
+            font-weight: 600;
+            color: #333;
+            text-align: right;
+        }
+
         .other-costs-section {
             margin-bottom: 16px;
         }
@@ -885,8 +907,9 @@
         /* Total due with voucher states */
         .total-due .value {
             display: flex;
-            gap: 8px;
-            align-items: baseline;
+            flex-direction: column;
+            gap: 6px;
+            align-items: flex-end;
         }
 
         .total-due .original-amount {
@@ -897,6 +920,16 @@
         }
 
         .total-due.has-discount .original-amount {
+            display: inline;
+        }
+
+        .total-due .final-label {
+            color: #555;
+            font-size: 13px;
+            display: none;
+        }
+
+        .total-due.has-discount .final-label {
             display: inline;
         }
 
@@ -1781,7 +1814,17 @@
 
         .no-staff-actions {
             margin-top: 12px;
-            text-align: center;
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .no-staff-actions .btn {
+            min-width: 120px;
+            padding: 10px 16px;
+            font-weight: 600;
+            margin: 0; /* tránh cộng dồn khoảng cách với gap */
         }
 
         .progress-bar {
@@ -1812,7 +1855,7 @@
         }
 
         .worker-selection-header {
-            text-align: center;
+            align-items: center;
             margin-bottom: 40px;
         }
 
@@ -1820,7 +1863,8 @@
             font-size: 32px;
             font-weight: 600;
             color: #333;
-            margin-bottom: 8px;
+            margin: 0;
+            text-align: center;
         }
 
         .worker-list {
@@ -2470,17 +2514,17 @@
                                 <div class="duration-options">
                                     <div class="duration-option" data-hours="2">
                                         <div class="hours">2 giờ</div>
-                                        <div class="price">192.000 VND</div>
+                                        <div class="price">192.000 VNĐ</div>
                                         <div class="description">Diện tích tối đa 55m² <br>hoặc 2 phòng</div>
                                     </div>
                                     <div class="duration-option" data-hours="3">
                                         <div class="hours">3 giờ</div>
-                                        <div class="price">240.000 VND</div>
+                                        <div class="price">240.000 VNĐ</div>
                                         <div class="description">Diện tích tối đa 85m² <br>hoặc 3 phòng</div>
                                     </div>
                                     <div class="duration-option" data-hours="4">
                                         <div class="hours">4 giờ</div>
-                                        <div class="price">320.000 VND</div>
+                                        <div class="price">320.000 VNĐ</div>
                                         <div class="description">Diện tích tối đa 105m² <br>hoặc 4 phòng</div>
                                     </div>
                                 </div>
@@ -2508,7 +2552,7 @@
                                     <div class="help-icon">
                                         ?
                                         <div class="tooltip">
-                                            <p>Để vệ sinh khu vực nuôi thú cưng hiệu quả, nhân viên cần được trang bị dụng cụ và hóa chất đặc biệt. Do đó, khi chọn tùy chọn này, sẽ áp dụng thêm <strong>phí 30.000 ₫</strong>.</p>
+                                            <p>Để vệ sinh khu vực nuôi thú cưng hiệu quả, nhân viên cần được trang bị dụng cụ và hóa chất đặc biệt. Do đó, khi chọn tùy chọn này, sẽ áp dụng thêm <strong>phí 30.000 VNĐ</strong>.</p>
                                             <p>Một số lưu ý cho bạn:</p>
                                             <ul>
                                                 <li>Một số nhân viên bị dị ứng với lông thú cưng và không thể thực hiện công việc. Vui lòng <strong>chỉ rõ loại thú cưng</strong> để được hỗ trợ tốt nhất.</li>
@@ -2578,6 +2622,7 @@
 <div class="worker-selection-screen" id="workerSelectionScreen">
     <div class="worker-selection-header">
         <h1>Chon nhan vien cua ban</h1>
+        <div style="width: 120px;"></div>
     </div>
 
     <div class="worker-list">
@@ -2630,13 +2675,17 @@
     <div id="noStaffMessage" class="no-staff-banner" style="display: none;">
         Hiện chưa có nhân viên phù hợp trong khung giờ này. Bạn vẫn có thể tiếp tục đặt dịch vụ, hệ thống sẽ phân công nhân viên sau.
     </div>
+    <div class="no-staff-actions">
+        <button class="btn btn-primary" id="continueWithoutStaffBtn" onclick="window.bookingState.isNoStaffContinue = true; showPaymentScreen()" style="min-width: 120px; display: none;">Tiếp tục</button>
+        <button class="btn btn-secondary" id="workerBackBtn" style="min-width: 120px;">Quay lại</button>
+    </div>
 </div>
 
 <!-- Modal ho so nhan vien -->
 <div class="modal-overlay" id="profileModal" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="profileModalTitle">
         <div class="modal-header">
-            <h3 id="profileModalTitle">Ho so nhan vien</h3>
+            <h3 id="profileModalTitle">Hồ sơ nhân viên</h3>
             <button class="modal-close" id="closeProfileModal" aria-label="Dong">&times;</button>
         </div>
         <div class="modal-body">
@@ -2678,19 +2727,13 @@
                         </div>
                         {{-- Ẩn chi tiết giờ cố định ở payment screen --}}
 
-                        <div class="other-costs-section">
-                            <div class="price-row" style="margin-bottom: 8px;">
-                                <div class="label">Phí khác</div>
-                                <div class="value" id="otherCostsTotal">30.000 VND</div>
-                            </div>
+                        <div class="price-row">
+                            <div class="label">Tổng phụ thu</div>
+                            <div class="value" id="otherCostsTotal">0VNĐ</div>
+                        </div>
+                        <div id="surchargeDetails" style="font-size: 13px; color: #444; line-height: 1.5; margin-top: 4px;"></div>
 
-                            <!-- Phụ thu - NEW -->
-                            <div class="cost-item" id="surchargeRow" style="display: none;">
-                                <div class="label">Phụ thu (Nhà có thú cưng)</div>
-                                <div class="value">30.000 VND</div>
-                            </div>
-
-                            <!-- Voucher Discount Row -->
+                        <!-- Voucher Discount Row -->
                             <div class="cost-item voucher-discount-row" id="voucherDiscountRow">
                                 <div class="label">Voucher</div>
                                 <div class="value" style="color: #4caf50;" id="voucherDiscountAmount">-R0</div>
@@ -2705,7 +2748,8 @@
                             </div>
                             <div class="value total-due-value">
                                 <span class="original-amount" id="originalTotalAmount"></span>
-                                <span class="final-amount" id="totalDueAmount">316.000 VND</span>
+                                <span class="final-label" id="finalAmountLabel"></span>
+                                <span class="final-amount" id="totalDueAmount">316.000VNĐ</span>
                             </div>
                         </div>
                     </div>
@@ -2779,12 +2823,95 @@
             return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
         }
 
+        // Helper to format discount percent text like "(-32%)"
+        function formatDiscountPercent(discountAmount, originalAmount) {
+            const discount = Number(discountAmount);
+            const original = Number(originalAmount);
+            if (!original || isNaN(discount) || discount <= 0) {
+                return '';
+            }
+            const percent = Math.round((discount / original) * 100);
+            return percent > 0 ? `(-${percent}%)` : '';
+        }
+
         // Helper function to check if a date is weekend
         function isWeekend(dateString) {
             if (!dateString) return false;
             const date = new Date(dateString);
             const day = date.getDay();
             return day === 0 || day === 6; // Sunday or Saturday
+        }
+
+        function countSessionsInRange(weekdays, startDateIso, endDateIso) {
+            if (!startDateIso || !endDateIso || !Array.isArray(weekdays) || weekdays.length === 0) {
+                return 0;
+            }
+            const start = new Date(startDateIso);
+            const end = new Date(endDateIso);
+            let count = 0;
+            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                if (weekdays.includes(d.getDay())) {
+                    count++;
+                }
+            }
+            return count;
+        }
+
+        function getSessionCountsFromState() {
+            const state = window.bookingState || {};
+            const isMonth = (state.type === 'month') || (typeof selectedOption !== 'undefined' && selectedOption === 'repeat');
+
+            if (!isMonth) {
+                return {
+                    totalSessions: 1,
+                    weekendSessions: appliedSurcharges.PT003 ? 1 : 0,
+                };
+            }
+
+            const repeatDays = Array.isArray(state.repeatDays) ? state.repeatDays.map(Number) : [];
+            const weekendDays = repeatDays.filter(d => d === 0 || d === 6);
+            const start = state.repeatStartDate || null;
+            const end = state.repeatEndDate || null;
+
+            let total = Math.max(1, Number(state.totalSessions) || 0);
+            let weekend = Math.max(0, Number(state.weekendSessions) || 0);
+
+            if (repeatDays.length && start && end) {
+                // Recompute to stay accurate with date range
+                total = countSessionsInRange(repeatDays, start, end) || total || 1;
+                weekend = weekendDays.length ? countSessionsInRange(weekendDays, start, end) : 0;
+            } else if (repeatDays.length) {
+                // Estimate using ratio of weekend days per cycle
+                const ratio = weekendDays.length / repeatDays.length;
+                if (total === 0) {
+                    total = repeatDays.length; // minimal fallback
+                }
+                weekend = Math.round(total * ratio);
+            }
+
+            // Clamp weekend to total
+            weekend = Math.min(weekend, total);
+
+            return {
+                totalSessions: Math.max(1, total),
+                weekendSessions: Math.max(0, weekend),
+            };
+        }
+
+        function renderSurchargeDetails(items) {
+            const container = document.getElementById('surchargeDetails');
+            if (!container) return;
+            if (!items || items.length === 0) {
+                container.textContent = '';
+                return;
+            }
+            const html = items.map(item => {
+                const unit = formatVND(item.unit);
+                const total = formatVND(item.total);
+                const left = `${item.label}: ${unit} x ${item.qty}`;
+                return `<div class="surcharge-row"><span class="s-label">${left}</span><span class="s-value">${total} VNĐ</span></div>`;
+            }).join('');
+            container.innerHTML = html;
         }
 
         // Helper function to check if time is peak hours
@@ -2796,10 +2923,27 @@
 
         // Function to calculate total surcharge
         function calculateSurchargeTotal() {
-            let total = 0;
-            if (appliedSurcharges.PT003) total += Number(surchargeAmounts.PT003) || 0;
-            if (appliedSurcharges.PT001) total += Number(surchargeAmounts.PT001) || 0;
-            if (appliedSurcharges.PT002) total += Number(surchargeAmounts.PT002) || 0;
+            const { totalSessions, weekendSessions } = getSessionCountsFromState();
+
+            const items = [];
+            if (appliedSurcharges.PT003) {
+                const qty = Math.max(weekendSessions || 0, 1);
+                const unit = Number(surchargeAmounts.PT003) || 0;
+                items.push({ label: 'Phụ thu cuối tuần', qty, unit, total: unit * qty });
+            }
+            if (appliedSurcharges.PT001) {
+                const qty = totalSessions;
+                const unit = Number(surchargeAmounts.PT001) || 0;
+                items.push({ label: 'Phụ thu ngoài giờ', qty, unit, total: unit * qty });
+            }
+            if (appliedSurcharges.PT002) {
+                const qty = totalSessions;
+                const unit = Number(surchargeAmounts.PT002) || 0;
+                items.push({ label: 'Phụ thu thú cưng', qty, unit, total: unit * qty });
+            }
+
+            const total = items.reduce((sum, i) => sum + (Number(i.total) || 0), 0);
+            renderSurchargeDetails(items);
             return total;
         }
 
@@ -2893,10 +3037,28 @@
                 }
             }
 
+            function goBackFromWorkerSelection() {
+                const workerSelectionScreen = document.getElementById('workerSelectionScreen');
+                const bookingForm = document.getElementById('bookingFormContainer');
+                const loadingScreen = document.getElementById('loadingScreen');
+                const step3 = document.getElementById('step3');
+                const step2 = document.getElementById('step2');
+                if (workerSelectionScreen) workerSelectionScreen.classList.remove('active');
+                if (bookingForm) bookingForm.classList.add('active');
+                if (loadingScreen) loadingScreen.classList.remove('active');
+                if (step3) step3.classList.remove('active');
+                if (step2) step2.classList.add('active');
+            }
+
             // Update button text
             const findWorkerBtn = document.getElementById('findWorkerBtn');
             if (findWorkerBtn) {
                 findWorkerBtn.textContent = isMonth ? 'Tiếp theo' : 'Tìm nhân viên';
+            }
+
+            const workerBackBtn = document.getElementById('workerBackBtn');
+            if (workerBackBtn) {
+                workerBackBtn.addEventListener('click', goBackFromWorkerSelection);
             }
             
             // Update service name display
@@ -3541,6 +3703,17 @@
                 window.bookingState.totalAfterDiscount = total;
                 window.bookingState.id_dv = idDv;
                 window.bookingState.packageDiscountPercent = discountPercent;
+                // Store session counts for surcharge display
+                const repeatDays = Array.isArray(window.bookingState.repeatDays) ? window.bookingState.repeatDays.map(Number) : [];
+                const start = window.bookingState.repeatStartDate || null;
+                const end = window.bookingState.repeatEndDate || null;
+                const weekendDays = repeatDays.filter(d => d === 0 || d === 6);
+                const weekendSessions = (repeatDays.length && start && end)
+                    ? countSessionsInRange(weekendDays, start, end)
+                    : (weekendDays.length ? sessions : 0);
+                window.bookingState.totalSessions = sessions;
+                window.bookingState.weekendSessions = weekendSessions;
+
                 updateBookingCardTime();
                 return;
             }
@@ -3668,8 +3841,6 @@ function animateLoadingScreenFallback() {
         // ==================== PAYMENT SCREEN ====================
         function showPaymentScreen() {
             document.getElementById('workerSelectionScreen').classList.remove('active');
-            
-
             document.getElementById('paymentScreen').classList.add('active');
             document.getElementById('step3').classList.add('active');
 
@@ -3684,34 +3855,20 @@ function animateLoadingScreenFallback() {
                 if (totalDueBlock) totalDueBlock.classList.remove('has-discount');
                 const originalTotalEl = document.getElementById('originalTotalAmount');
                 if (originalTotalEl) originalTotalEl.textContent = '';
+                const finalAmountLabelEl = document.getElementById('finalAmountLabel');
+                if (finalAmountLabelEl) finalAmountLabelEl.textContent = '';
             })();
 
-            // ẨN REPEAT NOTE
             const repeatNote = document.getElementById('repeatNote');
             if (repeatNote) {
                 repeatNote.style.display = 'none';
             }
 
             const totalHours = selectedDuration + selectedExtraTasks.length;
-            const time = document.getElementById('startTime').value;
             document.getElementById('workloadValue').textContent = `${totalHours} giờ `;
-
-            if (selectedOptions.includes('pets')) {
-                document.getElementById('surchargeRow').style.display = 'flex';
-                document.getElementById('otherCostsTotal').textContent = '30.000 VNĐ';
-
-                const baseTotal = 316000;
-                const surcharge = 30000;
-                const newTotal = baseTotal + surcharge;
-                document.getElementById('totalDueAmount').textContent = `${newTotal.toLocaleString('vi-VN')} VNĐ`;
-            } else {
-                document.getElementById('surchargeRow').style.display = 'none';
-                document.getElementById('otherCostsTotal').textContent = '0 VNĐ';
-                document.getElementById('totalDueAmount').textContent = '316.000 VNĐ';
-            }
         }
 
-        function goBackToWorkerSelection() {
+function goBackToWorkerSelection() {
             document.getElementById('paymentScreen').classList.remove('active');
             document.getElementById('step3').classList.remove('active');
 
@@ -3831,7 +3988,7 @@ window.applyVoucher = async function () {
 
         if (discountRow && discountAmountEl) {
             discountRow.classList.add('show');
-            discountAmountEl.textContent = `-${totalDiscount.toLocaleString('vi-VN')} VND`;
+            discountAmountEl.textContent = `-${totalDiscount.toLocaleString('vi-VN')} VNĐ`;
         }
 
         if (voucherListEl) {
@@ -3842,7 +3999,7 @@ window.applyVoucher = async function () {
                 
                 const codeSpan = document.createElement('span');
                 codeSpan.className = 'voucher-code';
-                codeSpan.textContent = `${v.code}: -${v.tien_giam.toLocaleString('vi-VN')} VND`;
+                codeSpan.textContent = `${v.code}: -${v.tien_giam.toLocaleString('vi-VN')} VNĐ`;
                 
                 const removeBtn = document.createElement('button');
                 removeBtn.className = 'btn-remove-voucher';
@@ -3860,6 +4017,7 @@ window.applyVoucher = async function () {
         const totalDueBlock = document.querySelector('.total-due');
         const originalTotalEl = document.getElementById('originalTotalAmount');
         const totalDueEl = document.getElementById('totalDueAmount');
+        const finalAmountLabelEl = document.getElementById('finalAmountLabel');
 
         // Calculate ALL surcharges (pets + weekend + peak hours)
         const totalSurcharge = calculateSurchargeTotal();
@@ -3867,6 +4025,7 @@ window.applyVoucher = async function () {
         const originalTotal = baseAmount + totalSurcharge;
         const finalBeforeSurcharge = Math.max(0, baseAmount - totalDiscount);
         const finalTotal = finalBeforeSurcharge + totalSurcharge;
+        const discountPercentText = formatDiscountPercent(totalDiscount, originalTotal);
 
         window.bookingState.totalAfterDiscount = finalBeforeSurcharge;
         window.bookingState.voucherApplied = true;  // Set flag to prevent updateTotalPrice() from overriding
@@ -3875,15 +4034,20 @@ window.applyVoucher = async function () {
             totalDueBlock.classList.add('has-discount');
         }
         if (originalTotalEl) {
-            originalTotalEl.textContent = `${originalTotal.toLocaleString('vi-VN')} VND`;
+            originalTotalEl.textContent = discountPercentText
+                ? `${formatVND(originalTotal)}VNĐ ${discountPercentText}`
+                : `${formatVND(originalTotal)}VNĐ`;
         }
         if (totalDueEl) {
-            totalDueEl.textContent = `${finalTotal.toLocaleString('vi-VN')} VND`;
+            totalDueEl.textContent = `${formatVND(finalTotal)}VNĐ`;
+        }
+        if (finalAmountLabelEl) {
+            finalAmountLabelEl.textContent = '';
         }
 
         const otherCostsTotalEl = document.getElementById('otherCostsTotal');
         if (otherCostsTotalEl) {
-            otherCostsTotalEl.textContent = `${totalSurcharge.toLocaleString('vi-VN')} VND`;
+            otherCostsTotalEl.textContent = `${formatVND(totalSurcharge)}VNĐ`;
         }
 
 
@@ -3926,6 +4090,7 @@ window.removeVoucher = function(index) {
     const totalDueBlock = document.querySelector('.total-due');
     const originalTotalEl = document.getElementById('originalTotalAmount');
     const totalDueEl = document.getElementById('totalDueAmount');
+    const finalAmountLabelEl = document.getElementById('finalAmountLabel');
     
     const baseAmount = window.bookingState.totalPrice || 0;
     // Calculate ALL surcharges (pets + weekend + peak hours)
@@ -3934,7 +4099,7 @@ window.removeVoucher = function(index) {
     // Update discount display
     if (window.bookingState.vouchers.length > 0) {
         if (discountAmountEl) {
-            discountAmountEl.textContent = `-${totalDiscount.toLocaleString('vi-VN')} VND`;
+            discountAmountEl.textContent = `-${totalDiscount.toLocaleString('vi-VN')} VNĐ`;
         }
         
         // Update voucher list
@@ -3946,7 +4111,7 @@ window.removeVoucher = function(index) {
                 
                 const codeSpan = document.createElement('span');
                 codeSpan.className = 'voucher-code';
-                codeSpan.textContent = `${v.code}: -${v.tien_giam.toLocaleString('vi-VN')} VND`;
+                codeSpan.textContent = `${v.code}: -${v.tien_giam.toLocaleString('vi-VN')} VNĐ`;
                 
                 const removeBtn = document.createElement('button');
                 removeBtn.className = 'btn-remove-voucher';
@@ -3963,12 +4128,18 @@ window.removeVoucher = function(index) {
         const originalTotal = baseAmount + totalSurcharge;
         const finalBeforeSurcharge = Math.max(0, baseAmount - totalDiscount);
         const finalTotal = finalBeforeSurcharge + totalSurcharge;
+        const discountPercentText = formatDiscountPercent(totalDiscount, originalTotal);
         
         window.bookingState.totalAfterDiscount = finalBeforeSurcharge;
         
         if (totalDueBlock) totalDueBlock.classList.add('has-discount');
-        if (originalTotalEl) originalTotalEl.textContent = `${originalTotal.toLocaleString('vi-VN')} VND`;
-        if (totalDueEl) totalDueEl.textContent = `${finalTotal.toLocaleString('vi-VN')} VND`;
+        if (finalAmountLabelEl) finalAmountLabelEl.textContent = '';
+        if (originalTotalEl) {
+            originalTotalEl.textContent = discountPercentText
+                ? `${formatVND(originalTotal)}VNĐ ${discountPercentText}`
+                : `${formatVND(originalTotal)}VNĐ`;
+        }
+        if (totalDueEl) totalDueEl.textContent = `${formatVND(finalTotal)}VNĐ`;
     } else {
         // No vouchers left - reset to original price
         if (discountRow) discountRow.classList.remove('show');
@@ -3977,8 +4148,9 @@ window.removeVoucher = function(index) {
             voucherListEl.style.display = 'none';
         }
         if (totalDueBlock) totalDueBlock.classList.remove('has-discount');
+        if (finalAmountLabelEl) finalAmountLabelEl.textContent = '';
         if (originalTotalEl) originalTotalEl.textContent = '';
-        if (totalDueEl) totalDueEl.textContent = `${(baseAmount + totalSurcharge).toLocaleString('vi-VN')} VND`;
+        if (totalDueEl) totalDueEl.textContent = `${formatVND(baseAmount + totalSurcharge)}VNĐ`;
         
         window.bookingState.totalAfterDiscount = null;
         window.bookingState.voucherId = null;
@@ -4008,14 +4180,12 @@ window.removeVoucher = function(index) {
                 if (totalDueBlock) totalDueBlock.classList.remove('has-discount');
                 const originalTotalEl = document.getElementById('originalTotalAmount');
                 if (originalTotalEl) originalTotalEl.textContent = '';
+                const finalAmountLabelEl = document.getElementById('finalAmountLabel');
+                if (finalAmountLabelEl) finalAmountLabelEl.textContent = '';
             })();
 
-            if (selectedOptions.includes('pets')) {
-                document.getElementById('totalDueAmount').textContent = '346.000 VNĐ';
-                document.getElementById('otherCostsTotal').textContent = '30.000 VNĐ';
-            } else {
-                document.getElementById('totalDueAmount').textContent = '316.000 VNĐ';
-                document.getElementById('otherCostsTotal').textContent = '0 VNĐ';
+            if (typeof updateTotalPrice === 'function') {
+                updateTotalPrice();
             }
         }
 
@@ -4286,7 +4456,7 @@ function animateLoadingScreen() {
                 if (noStaffMessage) {
                     noStaffMessage.style.display = 'block';
                 } else {
-                    alert('Hien chua co nhan vien phu hop trong khung gio nay, vui long chon thoi gian khac.');
+                    alert('Hiện chưa có nhân viên nào chưa phù hợp.');
                 }
                 return;
             }
@@ -4317,7 +4487,7 @@ function animateLoadingScreen() {
     // Nếu có điểm phù hợp thì hiển thị
     const statEls = card.querySelectorAll('.worker-stats .stat-item');
     if (statEls.length > 0 && typeof nv.score !== 'undefined') {
-        statEls[0].textContent = 'Do phu hop ' + Math.round(nv.score) + '%';
+        statEls[0].textContent = 'Độ phù hợp ' + Math.round(nv.score) + '%';
     }
 });
 
@@ -4329,8 +4499,8 @@ function animateLoadingScreen() {
             }
         })
         .catch(e => {
-            console.error('Loi tim nhan vien', e);
-            alert('Co loi khi tim nhan vien. Vui long thu lai sau.');
+            console.error('Lỗi tìm nhân viên', e);
+            alert('Có lỗi khi tìm nhân viên. Vui lòng thử lại sau.');
         });
 
     // animation loading
@@ -4470,8 +4640,28 @@ if (!chosen && staffList.length > 0) {
 
                 const total = window.bookingState.totalAfterDiscount || window.bookingState.totalPrice || 0;
                 const totalDueEl = document.getElementById('totalDueAmount');
+                const totalDueBlock = document.querySelector('.total-due');
+                const originalTotalEl = document.getElementById('originalTotalAmount');
+                const finalAmountLabelEl = document.getElementById('finalAmountLabel');
+                const baseTotal = window.bookingState.totalPrice || total;
+                const vouchers = Array.isArray(window.bookingState.vouchers) ? window.bookingState.vouchers : [];
+                const discountTotal = vouchers.reduce((sum, v) => sum + (Number(v.tien_giam) || 0), 0);
+                const hasDiscount = discountTotal > 0;
+                const discountPercentText = formatDiscountPercent(discountTotal, baseTotal);
+
+                if (totalDueBlock) totalDueBlock.classList.toggle('has-discount', hasDiscount);
+                if (originalTotalEl) {
+                    originalTotalEl.textContent = hasDiscount
+                        ? `${formatVND(baseTotal)}VNĐ ${discountPercentText}`
+                        : '';
+                }
                 if (totalDueEl) {
-                    totalDueEl.textContent = `${total.toLocaleString('vi-VN')} VND`;
+                    totalDueEl.textContent = hasDiscount
+                        ? `${formatVND(total)}VNĐ`
+                        : `${formatVND(total)}VNĐ`;
+                }
+                if (finalAmountLabelEl) {
+                    finalAmountLabelEl.textContent = '';
                 }
             };
 
@@ -4679,14 +4869,14 @@ cards.forEach((card, idx) => {
                     : (imgEl ? imgEl.src : '');
                 const ten = nv && (nv.ten_nv || nv.Ten_NV)
                     ? (nv.ten_nv || nv.Ten_NV)
-                    : (nameEl ? nameEl.textContent : 'Nhan vien');
+                    : (nameEl ? nameEl.textContent : 'Nhân viên');
                 const scoreRaw = nv && (nv.score != null ? nv.score : (nv.Score != null ? nv.Score : null));
                 const score = scoreRaw != null ? Math.round(scoreRaw) : null;
                 const jobs = nv && nv.jobs_completed != null ? nv.jobs_completed : null;
 
                 const phone = nv
-                    ? (nv.sdt || nv.SDT || nv.so_dien_thoai || nv.phone || nv.dien_thoai || 'SDT dang cap nhat')
-                    : 'SDT dang cap nhat';
+                    ? (nv.sdt || nv.SDT || nv.so_dien_thoai || nv.phone || nv.dien_thoai || 'Số điện thoại đang cập nhật')
+                    : 'Số điện thoại đang cập nhật';
 
                 const area = nv
                     ? (nv.khu_vuc || nv.khuvuc || nv.khu_vuc_lam_viec || '')
@@ -4698,14 +4888,14 @@ cards.forEach((card, idx) => {
 
                 let recommendText = '';
                 if (score !== null) {
-                    recommendText = 'Do phu hop ' + score + '%';
+                    recommendText = 'Độ phù hợp ' + score + '%';
                 } else if (statsEls.length > 0) {
                     recommendText = statsEls[0].textContent;
                 }
 
                 let jobsText = '';
                 if (jobs !== null) {
-                    jobsText = jobs + ' cong viec da hoan thanh';
+                    jobsText = jobs + ' công việc đã hoàn thành';
                 } else if (statsEls.length > 1) {
                     jobsText = statsEls[1].textContent;
                 }
@@ -4718,10 +4908,10 @@ cards.forEach((card, idx) => {
                         <div class="worker-details">
                             <h4>${ten}</h4>
                             <p><strong>SDT:</strong> ${phone}</p>
-                            ${area ? `<p><strong>Khu vuc lam viec:</strong> ${area}</p>` : ''}
-                            ${experience ? `<p><strong>Kinh nghiem:</strong> ${experience}</p>` : ''}
-                            ${recommendText ? `<p><strong>Danh gia:</strong> ${recommendText}</p>` : ''}
-                            ${jobsText ? `<p><strong>So cong viec:</strong> ${jobsText}</p>` : ''}
+                            ${area ? `<p><strong>Khu vực làm việc:</strong> ${area}</p>` : ''}
+                            ${experience ? `<p><strong>Kinh nghiệm:</strong> ${experience}</p>` : ''}
+                            ${recommendText ? `<p><strong>Đánh giá:</strong> ${recommendText}</p>` : ''}
+                            ${jobsText ? `<p><strong>Số công việc:</strong> ${jobsText}</p>` : ''}
                         </div>
                     </div>
                     ${description ? `<p style="margin-top:16px; font-size:14px; color:#555;">${description}</p>` : ''}
@@ -4998,32 +5188,10 @@ window.showPaymentScreen = function () {
     // Reset discount UI
     const totalDueBlock = document.querySelector('.total-due');
     const originalTotalEl = document.getElementById('originalTotalAmount');
+    const finalAmountLabelEl = document.getElementById('finalAmountLabel');
     if (totalDueBlock) totalDueBlock.classList.remove('has-discount');
     if (originalTotalEl) originalTotalEl.textContent = '';
-
-    // Xử lý phí thú cưng
-    const selectedOptions = window.selectedOptions || [];
-    if (selectedOptions.includes('pets')) {
-        const surchargeRow = document.getElementById('surchargeRow');
-        const otherCostsTotal = document.getElementById('otherCostsTotal');
-        const totalDueAmount = document.getElementById('totalDueAmount');
-        
-        if (surchargeRow) surchargeRow.style.display = 'flex';
-        if (otherCostsTotal) otherCostsTotal.textContent = '30.000 VNĐ';
-        
-        const baseTotal = 316000;
-        const surcharge = 30000;
-        const newTotal = baseTotal + surcharge;
-        if (totalDueAmount) totalDueAmount.textContent = `${newTotal.toLocaleString('vi-VN')} VNĐ`;
-    } else {
-        const surchargeRow = document.getElementById('surchargeRow');
-        const otherCostsTotal = document.getElementById('otherCostsTotal');
-        const totalDueAmount = document.getElementById('totalDueAmount');
-        
-        if (surchargeRow) surchargeRow.style.display = 'none';
-        if (otherCostsTotal) otherCostsTotal.textContent = '0 VNĐ';
-        if (totalDueAmount) totalDueAmount.textContent = '316.000 VNĐ';
-    }
+    if (finalAmountLabelEl) finalAmountLabelEl.textContent = '';
 
     // CẬP NHẬT THÔNG TIN NHÂN VIÊN
     const profile = document.querySelector('.worker-profile-section');
@@ -5076,32 +5244,6 @@ window.showPaymentScreen = function () {
 
 // ========== 5. XỬ LÝ KHÔNG CÓ NHÂN VIÊN ==========
 (function() {
-    function ensureNoStaffActions() {
-        let actions = document.getElementById('noStaffActions');
-        if (actions) return actions;
-        
-        const container = document.getElementById('workerSelectionScreen');
-        if (!container) return null;
-        
-        actions = document.createElement('div');
-        actions.id = 'noStaffActions';
-        actions.className = 'no-staff-actions';
-        
-        const btn = document.createElement('button');
-        btn.id = 'continueWithoutStaffBtn';
-        btn.className = 'btn btn-primary';
-        btn.textContent = 'Tiếp tục';
-        btn.addEventListener('click', () => {
-            // Đánh dấu là đang tiếp tục mà không có nhân viên
-            window.bookingState.isNoStaffContinue = true;
-            window.showPaymentScreen();
-        });
-        
-        actions.appendChild(btn);
-        container.appendChild(actions);
-        return actions;
-    }
-
     function applyNoStaffUI() {
         const state = window.bookingState || {};
         const hasStaffList = Object.prototype.hasOwnProperty.call(state, 'staffList');
@@ -5113,23 +5255,23 @@ window.showPaymentScreen = function () {
 
         const noStaffMessage = document.getElementById('noStaffMessage');
         const cards = document.querySelectorAll('.worker-card');
+        const continueBtn = document.getElementById('continueWithoutStaffBtn');
 
         if (!list.length) {
             if (noStaffMessage) noStaffMessage.style.display = 'block';
-            const actions = ensureNoStaffActions();
-            if (actions) actions.style.display = 'block';
+            if (continueBtn) continueBtn.style.display = 'block';
             cards.forEach(card => card.style.display = 'none');
             window.bookingState.noStaff = true;
         } else {
             if (noStaffMessage) noStaffMessage.style.display = 'none';
-            const actions = document.getElementById('noStaffActions');
-            if (actions) actions.style.display = 'none';
+            if (continueBtn) continueBtn.style.display = 'none';
             window.bookingState.noStaff = false;
         }
     }
 
     setInterval(applyNoStaffUI, 500);
 })();
+
 </script>
 
 <!-- Modal chon phuong thuc thanh toan -->
@@ -5207,26 +5349,41 @@ window.showPaymentScreen = function () {
 
             const serviceFeeAmountEl = document.getElementById('serviceFeeAmount');
             if (serviceFeeAmountEl && baseTotal) {
-                serviceFeeAmountEl.textContent = `${formatVND(baseTotal)} VND`;
+                serviceFeeAmountEl.textContent = `${formatVND(baseTotal)}VNĐ`;
             }
 
             const otherCostsTotalEl = document.getElementById('otherCostsTotal');
             if (otherCostsTotalEl) {
-                otherCostsTotalEl.textContent = `${formatVND(surchargeTotal)} VND`;
+                otherCostsTotalEl.textContent = `${formatVND(surchargeTotal)}VNĐ`;
             }
 
             const totalDueAmountEl = document.getElementById('totalDueAmount');
             const originalTotalEl = document.getElementById('originalTotalAmount');
+            const totalDueBlock = document.querySelector('.total-due');
+            const finalAmountLabelEl = document.getElementById('finalAmountLabel');
 
             const originalTotal = baseTotal + surchargeTotal;
             const finalTotal = Math.max(0, baseTotal - discountTotal) + surchargeTotal;
+            const hasDiscount = discountTotal > 0;
+            const discountPercentText = formatDiscountPercent(discountTotal, originalTotal);
+
+            if (totalDueBlock) {
+                totalDueBlock.classList.toggle('has-discount', hasDiscount);
+            }
 
             if (originalTotalEl) {
                 // Chi hien original khi co giam gia
-                originalTotalEl.textContent = discountTotal > 0 ? `${formatVND(originalTotal)} VND` : '';
+                originalTotalEl.textContent = hasDiscount
+                    ? `${formatVND(originalTotal)}VNĐ ${discountPercentText}`
+                    : '';
             }
             if (totalDueAmountEl && baseTotal) {
-                totalDueAmountEl.textContent = `${formatVND(finalTotal)} VND`;
+                totalDueAmountEl.textContent = hasDiscount
+                    ? `${formatVND(finalTotal)}VNĐ `
+                    : `${formatVND(finalTotal)}VNĐ`;
+            }
+            if (finalAmountLabelEl) {
+                finalAmountLabelEl.textContent = '';
             }
         };
     })();
@@ -5504,7 +5661,7 @@ window.showPaymentScreen = function () {
 
                 const data = await res.json();
                 if (!data.success) {
-                    alert(data.error || 'CA3 l��-i khi t���o �`��n.');
+                    alert(data.error || 'Có lỗi khi tạo đơn.');
                     return;
                 }
 
@@ -5512,8 +5669,8 @@ window.showPaymentScreen = function () {
                     window.showCashSuccessModal(data.id_dd);
                 }
             } catch (e) {
-                console.error('L��-i khi t���o �`��n thanh toA�n ti��?n m���t', e);
-                alert('CA3 l��-i k���t n��`i khi t���o �`��n.');
+                console.error('Lỗi khi tạo đơn thanh toán tiền mặt', e);
+                alert('Có lỗi kết nối khi tạo đơn');
             }
         }
     })();
@@ -5558,7 +5715,7 @@ window.showPaymentScreen = function () {
         const originalAlert = window.alert;
         window.alert = function (message) {
             try {
-                if (typeof message === 'string' && message.indexOf('MA� �`��n:') !== -1) {
+                if (typeof message === 'string' && message.indexOf('Mã đơn:') !== -1) {
                     showCashSuccessModal();
                     return;
                 }
@@ -5623,7 +5780,7 @@ window.showPaymentScreen = function () {
         const originalAlert = window.alert;
         window.alert = function (message) {
             try {
-                if (typeof message === 'string' && message.indexOf('MA� �`��n:') !== -1 && typeof window.showCashSuccessModal === 'function') {
+                if (typeof message === 'string' && message.indexOf('Mã đơn:') !== -1 && typeof window.showCashSuccessModal === 'function') {
                     window.showCashSuccessModal();
                     return;
                 }
@@ -5649,7 +5806,14 @@ window.showPaymentScreen = function () {
             appliedSurcharges.PT003 = false;
             
             // Check for weekend (PT003)
-            if (dateInput && dateInput.value) {
+            const isMonth = (window.bookingState && window.bookingState.type === 'month') || (typeof selectedOption !== 'undefined' && selectedOption === 'repeat');
+            if (isMonth) {
+                const repeatDays = Array.isArray(window.bookingState?.repeatDays) ? window.bookingState.repeatDays.map(Number) : [];
+                if (repeatDays.some(d => d === 0 || d === 6)) {
+                    appliedSurcharges.PT003 = true;
+                    console.log('Weekend detected via repeatDays, applying PT003');
+                }
+            } else if (dateInput && dateInput.value) {
                 if (isWeekend(dateInput.value)) {
                     appliedSurcharges.PT003 = true;
                     console.log('Weekend detected, applying PT003');
@@ -5700,6 +5864,15 @@ window.showPaymentScreen = function () {
                     console.log('✓ Time from selected slot - text:', timeText, ', attr:', timeAttr, ', using:', selectedTime);
                 }
             }
+
+            // Method 3: fallback to hidden input #startTime
+            if (!selectedTime) {
+                const startTimeInput = document.getElementById('startTime');
+                if (startTimeInput && startTimeInput.value) {
+                    selectedTime = startTimeInput.value;
+                    console.log('✓ Time from hidden #startTime input:', selectedTime);
+                }
+            }
             
             console.log('Final selectedTime:', selectedTime);
             
@@ -5744,65 +5917,23 @@ window.showPaymentScreen = function () {
             
             if (!surchargeContainer) return;
             
-            let surchargeTotal = calculateSurchargeTotal();
+            const surchargeTotal = calculateSurchargeTotal();
             
-            // Update or create surcharge display elements
-            const existingPT001 = document.getElementById('surcharge-PT001');
-            const existingPT003 = document.getElementById('surcharge-PT003');
-            
-            // Remove old surcharge displays
-            if (existingPT001) existingPT001.remove();
-            if (existingPT003) existingPT003.remove();
-            
-            // Find the voucher row to insert before it
-            const voucherRow = document.getElementById('voucherDiscountRow');
-            const parentSection = voucherRow ? voucherRow.parentElement : null;
-            
-            if (parentSection) {
-                // Add PT003 (Weekend) if applicable
-                if (appliedSurcharges.PT003) {
-                    const pt003Row = document.createElement('div');
-                    pt003Row.className = 'cost-item';
-                    pt003Row.id = 'surcharge-PT003';
-                    const pt003Amount = surchargeAmounts.PT003 || 30000;
-                    console.log('PT003 weekend surcharge amount:', pt003Amount, 'from surchargeAmounts:', surchargeAmounts.PT003);
-                    pt003Row.innerHTML = `
-                        <div class="label">Phụ thu cuối tuần</div>
-                        <div class="value">${formatVND(pt003Amount)} VND</div>
-                    `;
-                    parentSection.insertBefore(pt003Row, voucherRow);
-                }
-                
-                // Add PT001 (Peak Hours) if applicable
-                if (appliedSurcharges.PT001) {
-                    const pt001Row = document.createElement('div');
-                    pt001Row.className = 'cost-item';
-                    pt001Row.id = 'surcharge-PT001';
-                    const pt001Amount = surchargeAmounts.PT001 || 30000;
-                    console.log('PT001 peak hour surcharge amount:', pt001Amount, 'from surchargeAmounts:', surchargeAmounts.PT001);
-                    pt001Row.innerHTML = `
-                        <div class="label">Phụ thu giờ cao điểm</div>
-                        <div class="value">${formatVND(pt001Amount)} VND</div>
-                    `;
-                    parentSection.insertBefore(pt001Row, voucherRow);
-                }
-            }
-            
-            // Update "Phí khác" total to show sum of all surcharges
+            // Update total to show sum of all surcharges
             const otherCostsTotalEl = document.getElementById('otherCostsTotal');
             if (otherCostsTotalEl) {
-                // Display total of ALL surcharges (already includes PT001, PT002, PT003)
-                otherCostsTotalEl.textContent = formatVND(surchargeTotal) + ' VND';
-                console.log('Updated Phí khác:', surchargeTotal, '(all surcharges combined)');
+                otherCostsTotalEl.textContent = formatVND(surchargeTotal) + 'VNĐ';
+                console.log('Updated Ph? kh?c:', surchargeTotal, '(all surcharges combined)');
             }
             
             console.log('Surcharge display updated. Total:', surchargeTotal);
         }
-        
         // Function to update total price with surcharges
         function updateTotalPrice() {
             // Find total due element
             const totalDueElement = document.querySelector('.total-due .final-amount, .total-due .value, #finalTotalAmount, #totalDueAmount');
+            const totalDueAmountEl = document.getElementById('totalDueAmount');
+            const finalAmountLabelEl = document.getElementById('finalAmountLabel');
             
             if (!totalDueElement) {
                 console.log('Total due element not found');
@@ -5837,6 +5968,10 @@ window.showPaymentScreen = function () {
             // Add surcharges (ensure numeric addition)
             const surchargeTotal = Number(calculateSurchargeTotal());
             const finalTotal = Math.max(0, baseTotal - discountTotal) + surchargeTotal;
+            const totalDueBlock = document.querySelector('.total-due');
+            const hasDiscount = discountTotal > 0;
+            const originalTotal = baseTotal + surchargeTotal;
+            const discountPercentText = formatDiscountPercent(discountTotal, originalTotal);
             
             // Validate final total before updating
             if (isNaN(finalTotal)) {
@@ -5845,15 +5980,26 @@ window.showPaymentScreen = function () {
             }
             
             // Update display with Vietnamese format
-            totalDueElement.textContent = formatVND(finalTotal) + ' VND';
+            const finalText = hasDiscount
+                ? `${formatVND(finalTotal)}VNĐ`
+                : `${formatVND(finalTotal)}VNĐ`;
+            if (totalDueAmountEl) {
+                totalDueAmountEl.textContent = finalText;
+            } else {
+                totalDueElement.textContent = finalText;
+            }
 
             const originalTotalEl = document.getElementById('originalTotalAmount');
+            if (totalDueBlock) {
+                totalDueBlock.classList.toggle('has-discount', hasDiscount);
+            }
             if (originalTotalEl) {
-                if (discountTotal > 0) {
-                    originalTotalEl.textContent = formatVND(baseTotal + surchargeTotal) + ' VND';
-                } else {
-                    originalTotalEl.textContent = '';
-                }
+                originalTotalEl.textContent = hasDiscount
+                    ? `${formatVND(originalTotal)}VNĐ ${discountPercentText}`
+                    : '';
+            }
+            if (finalAmountLabelEl) {
+                finalAmountLabelEl.textContent = '';
             }
             
             console.log('Total price updated:', {
