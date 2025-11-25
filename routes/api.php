@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\ApiBookingController;
 use App\Http\Controllers\Api\ApiVoucherController;
 use App\Http\Controllers\Api\ApiStaffScheduleController;
 use App\Http\Controllers\Api\ApiStaffBookingController;
+use App\Http\Controllers\Api\ApiNotificationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -49,6 +50,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/profile', [ApiAuthController::class, 'profile']);
         Route::put('/profile', [ApiAuthController::class, 'updateProfile']);
         Route::post('/push-token', [ApiAuthController::class, 'savePushToken']);
+        Route::post('/profile/avatar', [ApiAuthController::class, 'uploadAvatar']);
     });
 
     // Address routes
@@ -75,6 +77,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [ApiVoucherController::class, 'index']);
         Route::post('/apply', [ApiVoucherController::class, 'apply']);
         Route::get('/history', [ApiVoucherController::class, 'history']);
+    });
+
+    // Notification routes
+    Route::prefix('notifications')->group(function () {
+        Route::get('/', [ApiNotificationController::class, 'index']);
+        Route::get('/unread-count', [ApiNotificationController::class, 'unreadCount']);
+        Route::post('/{id}/mark-read', [ApiNotificationController::class, 'markAsRead']);
+        Route::post('/mark-all-read', [ApiNotificationController::class, 'markAllAsRead']);
     });
 
     // Staff schedules

@@ -15,6 +15,8 @@
     .price-tag { font-size: 1.5rem; color: #dc3545; font-weight: bold; }
     .btn-back { background: rgba(255, 255, 255, 0.2); color: white; border: none; transition: 0.3s; }
     .btn-back:hover { background: rgba(255, 255, 255, 0.4); color: white; }
+    .rating-stars .star-btn { text-decoration: none; color: inherit; }
+    .rating-stars .star-btn i { transition: color 0.2s; }
 </style>
 
 <div class="container py-5" style="background-color: #f4f6f9; min-height: 100vh;">
@@ -42,9 +44,21 @@
                             <div class="alert alert-primary d-inline-block px-4 py-2 rounded-pill border-0 shadow-sm">
                                 <i class="bi bi-person-check me-2"></i>Trạng thái: <strong>Đã có nhân viên nhận</strong>
                             </div>
+                        @elseif($booking->TrangThaiDon == 'confirmed')
+                            <div class="alert alert-success d-inline-block px-4 py-2 rounded-pill border-0 shadow-sm">
+                                <i class="bi bi-check2-circle me-2"></i>Trạng thái: <strong>Đơn đã được xác nhận bởi nhân viên</strong>
+                            </div>
+                        @elseif($booking->TrangThaiDon == 'rejected')
+                            <div class="alert alert-danger d-inline-block px-4 py-2 rounded-pill border-0 shadow-sm">
+                                <i class="bi bi-exclamation-octagon me-2"></i>Trạng thái: <strong>Đơn bị từ chối - Đang tìm nhân viên khác</strong>
+                            </div>
                         @elseif($booking->TrangThaiDon == 'done')
                             <div class="alert alert-success d-inline-block px-4 py-2 rounded-pill border-0 shadow-sm">
-                                <i class="bi bi-check-circle-fill me-2"></i>Trạng thái: <strong>Hoàn thành</strong>
+                                <i class="bi bi-check-circle-fill me-2"></i>Tr?ng th?i: <strong>Ho?n th?nh</strong>
+                            </div>
+                        @elseif($booking->TrangThaiDon == 'completed')
+                            <div class="alert alert-success d-inline-block px-4 py-2 rounded-pill border-0 shadow-sm">
+                                <i class="bi bi-clipboard-check me-2"></i>Tr?ng th?i: <strong>?? ho?n th?nh - ch? ??nh gi?</strong>
                             </div>
                         @elseif($booking->TrangThaiDon == 'cancelled')
                             <div class="alert alert-danger d-inline-block px-4 py-2 rounded-pill border-0 shadow-sm">
@@ -88,6 +102,18 @@
                                     <p class="price-tag mb-0">
                                         {{ number_format($booking->TongTienSauGiam) }} đ
                                     </p>
+                                    @php
+                                        $payment = $booking->lichSuThanhToan->first();
+                                        $method = $payment?->PhuongThucThanhToan;
+                                        $methodLabel = match($method) {
+                                            'VNPay' => 'VNPay',
+                                            'TienMat' => 'Tiền mặt',
+                                            default => 'Chưa thanh toán',
+                                        };
+                                    @endphp
+                                    <p class="text-muted mb-0 mt-1" style="font-size: 0.9rem;">
+                                        <i class="bi bi-credit-card me-1"></i>Phương thức: {{ $methodLabel }}
+                                    </p>
                                 </div>
                                 @if($booking->chiTietKhuyenMai && $booking->chiTietKhuyenMai->count())
                                     <div class="mt-3">
@@ -104,6 +130,37 @@
                                 @endif
                             </div>
                         </div>
+
+                        @if($booking->nhanVien)
+                        @php
+                            $staff = $booking->nhanVien;
+                            $avatarRaw = $staff?->HinhAnh;
+                            if ($avatarRaw && \Illuminate\Support\Str::startsWith($avatarRaw, ['http://', 'https://', '//'])) {
+                                $avatar = $avatarRaw;
+                                $host = parse_url($avatarRaw, PHP_URL_HOST);
+                                $path = parse_url($avatarRaw, PHP_URL_PATH);
+                                if ($host && in_array($host, ['10.0.2.2', 'localhost', '127.0.0.1'], true) && $path) {
+                                    $avatar = request()->getSchemeAndHttpHost() . $path;
+                                }
+                            } elseif ($avatarRaw) {
+                                $storageUrl = \Illuminate\Support\Facades\Storage::url($avatarRaw);
+                                $avatar = url($storageUrl);
+                            } else {
+                                $avatar = null;
+                            }
+                            $avatar = $avatar ?: 'https://ui-avatars.com/api/?name=' . urlencode($staff->Ten_NV ?? 'NV');
+                        @endphp
+                        <div class="col-12">
+                            <div class="p-3 bg-white border rounded-3 shadow-sm d-flex align-items-center gap-3">
+                                <img src="{{ $avatar }}" alt="Nhân viên" class="rounded-circle" style="width: 60px; height: 60px; object-fit: cover;">
+                                <div>
+                                    <p class="info-label mb-1"><i class="bi bi-person-badge me-1"></i>Nhân viên phụ trách</p>
+                                    <p class="info-value mb-0">{{ $staff->Ten_NV }}</p>
+                                    <small class="text-muted">SĐT: {{ $staff->SDT }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        @endif
 
                         @if($booking->GhiChu)
                         <div class="col-12">
@@ -187,6 +244,55 @@
                             </div>
                         @endif
 
+                        
+                        @if(in_array($booking->TrangThaiDon, ['completed','done']) && !$existingRating)
+                            <hr class="my-4 text-muted opacity-25">
+                            <div class="card border-0 shadow-sm text-start">
+                                <div class="card-body">
+                                    <h5 class="fw-bold mb-3"><i class="bi bi-stars text-warning me-2"></i>Danh gia don hang</h5>
+                                    <p class="text-muted small mb-3">Vui long danh gia chat luong dich vu (1-5 sao) va de lai nhan xet neu co.</p>
+                                    <form action="{{ route('bookings.rating', $booking->ID_DD) }}" method="POST" class="text-start" id="ratingForm">
+                                        @csrf
+                                        <div class="mb-3 d-flex gap-2 align-items-center rating-stars">
+                                            @for($i = 1; $i <= 5; $i++)
+                                                <button type="button" class="btn btn-link p-0 star-btn" data-value="{{ $i }}">
+                                                    <i class="bi bi-star-fill fs-4 text-secondary"></i>
+                                                </button>
+                                            @endfor
+                                            <input type="hidden" name="rating" id="ratingValue" value="5">
+                                            <span class="ms-2 text-muted small" id="ratingLabel">Rat hai long (5/5)</span>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="ratingComment" class="form-label small text-muted">Nhan xet (tuy chon)</label>
+                                            <textarea name="comment" id="ratingComment" rows="3" class="form-control" placeholder="Chia se trai nghiem cua ban..."></textarea>
+                                        </div>
+                                        <button type="submit" class="btn btn-success px-4 rounded-pill">
+                                            Gui danh gia
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        @elseif($existingRating)
+                            <hr class="my-4 text-muted opacity-25">
+                            <div class="card border-0 shadow-sm text-start">
+                                <div class="card-body">
+                                    <h5 class="fw-bold mb-3"><i class="bi bi-chat-heart text-success me-2"></i>Danh gia cua ban</h5>
+                                    <div class="mb-2">
+                                        @for($i = 1; $i <= 5; $i++)
+                                            <i class="bi {{ $i <= (int)$existingRating->Diem ? 'bi-star-fill text-warning' : 'bi-star text-muted' }}"></i>
+                                        @endfor
+                                        <span class="ms-2 fw-semibold">{{ number_format($existingRating->Diem, 1) }}/5</span>
+                                    </div>
+                                    @if($existingRating->NhanXet)
+                                        <p class="mb-0 text-muted fst-italic">"{{ $existingRating->NhanXet }}"</p>
+                                    @else
+                                        <p class="mb-0 text-muted">Ban chua de lai nhan xet.</p>
+                                    @endif
+                                </div>
+                            </div>
+                        @endif
+
+
                         @if(in_array($booking->TrangThaiDon, ['finding_staff', 'assigned', 'confirmed']))
                             <hr class="my-4 text-muted opacity-25">
                             <p class="text-muted small mb-3">Nếu bạn muốn thay đổi ý định, bạn có thể hủy đơn hàng này.</p>
@@ -237,4 +343,47 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const starButtons = document.querySelectorAll('.star-btn');
+        const ratingValue = document.getElementById('ratingValue');
+        const ratingLabel = document.getElementById('ratingLabel');
+
+        if (!starButtons.length || !ratingValue || !ratingLabel) return;
+
+        const labels = {
+            1: 'Rất tệ (1/5)',
+            2: 'Chưa hài lòng (2/5)',
+            3: 'Bình thường (3/5)',
+            4: 'Hài lòng (4/5)',
+            5: 'Rất hài lòng (5/5)',
+        };
+
+        function setRating(value) {
+            ratingValue.value = value;
+            ratingLabel.textContent = labels[value] || `${value}/5`;
+            starButtons.forEach(btn => {
+                const v = parseInt(btn.dataset.value, 10);
+                const icon = btn.querySelector('i');
+                if (v <= value) {
+                    icon.classList.remove('text-secondary');
+                    icon.classList.add('text-warning');
+                } else {
+                    icon.classList.remove('text-warning');
+                    icon.classList.add('text-secondary');
+                }
+            });
+        }
+
+        starButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const value = parseInt(btn.dataset.value, 10);
+                setRating(value);
+            });
+        });
+
+        setRating(parseInt(ratingValue.value || '5', 10));
+    });
+</script>
 @endsection

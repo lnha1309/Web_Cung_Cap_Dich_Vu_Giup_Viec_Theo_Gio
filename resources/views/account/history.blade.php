@@ -43,6 +43,8 @@
                                     <th class="ps-4">Mã đơn</th>
                                     <th>Thời gian</th>
                                     <th>Trạng thái</th>
+                                    <th>Thanh toán</th>
+                                    <th>Nhân viên</th>
                                     <th>Tổng tiền</th>
                                     <th class="text-end pe-4">Thao tác</th>
                                 </tr>
@@ -68,12 +70,68 @@
                                             <span class="badge bg-primary bg-opacity-10 text-primary border border-primary status-badge">
                                                 <i class="bi bi-person-check me-1"></i>Đã có NV
                                             </span>
+                                        @elseif($item->TrangThaiDon == 'confirmed')
+                                            <span class="badge bg-success bg-opacity-10 text-success border border-success status-badge">
+                                                <i class="bi bi-check2-circle me-1"></i>Đơn đã được xác nhận bởi nhân viên
+                                            </span>
+                                        @elseif($item->TrangThaiDon == 'completed')
+                                            <span class="badge bg-success bg-opacity-10 text-success border border-success status-badge">
+                                                <i class="bi bi-clipboard-check me-1"></i>Đã hoàn thành - chờ đánh giá
+                                            </span>
+                                        @elseif($item->TrangThaiDon == 'rejected')
+                                            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger status-badge">
+                                                <i class="bi bi-exclamation-octagon me-1"></i>Đơn bị từ chối - Đang tìm nhân viên khác
+                                            </span>
                                         @elseif($item->TrangThaiDon == 'working')
                                             <span class="badge bg-warning bg-opacity-10 text-warning border border-warning status-badge">
                                                 <i class="bi bi-play-circle me-1"></i>Đang làm việc
                                             </span>
                                         @else
                                             <span class="badge bg-secondary status-badge">{{ $item->TrangThaiDon }}</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @php
+                                            $payment = $item->lichSuThanhToan->first();
+                                            $method = $payment?->PhuongThucThanhToan;
+                                            $methodLabel = match($method) {
+                                                'VNPay' => 'VNPay',
+                                                'TienMat' => 'Tiền mặt',
+                                                default => 'Chưa thanh toán',
+                                            };
+                                        @endphp
+                                        <span class="text-muted">{{ $methodLabel }}</span>
+                                    </td>
+                                    <td>
+                                        @php
+                                            $staff = $item->nhanVien;
+                                            $avatarRaw = $staff?->HinhAnh;
+                                            if ($avatarRaw && \Illuminate\Support\Str::startsWith($avatarRaw, ['http://', 'https://', '//'])) {
+                                                $avatar = $avatarRaw;
+                                                $host = parse_url($avatarRaw, PHP_URL_HOST);
+                                                $path = parse_url($avatarRaw, PHP_URL_PATH);
+                                                if ($host && in_array($host, ['10.0.2.2', 'localhost', '127.0.0.1'], true) && $path) {
+                                                    $avatar = request()->getSchemeAndHttpHost() . $path;
+                                                }
+                                            } elseif ($avatarRaw) {
+                                                $storageUrl = \Illuminate\Support\Facades\Storage::url($avatarRaw);
+                                                $avatar = url($storageUrl);
+                                            } else {
+                                                $avatar = null;
+                                            }
+                                            $avatar = $avatar ?: 'https://ui-avatars.com/api/?name=' . urlencode($staff->Ten_NV ?? 'NV');
+                                        @endphp
+
+                                        @if($staff)
+                                            <div class="d-flex align-items-center gap-2">
+                                                <img src="{{ $avatar }}" alt="Nhân viên" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;">
+                                                <div class="d-flex flex-column">
+                                                    <span class="fw-semibold text-dark">{{ $staff->Ten_NV }}</span>
+                                                    <small class="text-muted">{{ $staff->SDT }}</small>
+                                                </div>
+                                            </div>
+                                        @else
+                                            <span class="text-muted small">Đang tìm nhân viên</span>
                                         @endif
                                     </td>
                                     <td class="fw-bold text-success">
@@ -114,6 +172,8 @@
                                     <th class="ps-4">Mã đơn</th>
                                     <th>Ngày làm</th>
                                     <th>Trạng thái</th>
+                                    <th>Thanh toán</th>
+                                    <th>Nhân viên</th>
                                     <th>Tổng tiền</th>
                                     <th class="text-end pe-4">Thao tác</th>
                                 </tr>
@@ -134,6 +194,50 @@
                                             </span>
                                         @else
                                             <span class="badge bg-secondary status-badge">Kết thúc</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @php
+                                            $payment = $item->lichSuThanhToan->first();
+                                            $method = $payment?->PhuongThucThanhToan;
+                                            $methodLabel = match($method) {
+                                                'VNPay' => 'VNPay',
+                                                'TienMat' => 'Tiền mặt',
+                                                default => 'Chưa thanh toán',
+                                            };
+                                        @endphp
+                                        <span class="text-muted">{{ $methodLabel }}</span>
+                                    </td>
+                                    <td>
+                                        @php
+                                            $staff = $item->nhanVien;
+                                            $avatarRaw = $staff?->HinhAnh;
+                                            if ($avatarRaw && \Illuminate\Support\Str::startsWith($avatarRaw, ['http://', 'https://', '//'])) {
+                                                $avatar = $avatarRaw;
+                                                $host = parse_url($avatarRaw, PHP_URL_HOST);
+                                                $path = parse_url($avatarRaw, PHP_URL_PATH);
+                                                if ($host && in_array($host, ['10.0.2.2', 'localhost', '127.0.0.1'], true) && $path) {
+                                                    $avatar = request()->getSchemeAndHttpHost() . $path;
+                                                }
+                                            } elseif ($avatarRaw) {
+                                                $storageUrl = \Illuminate\Support\Facades\Storage::url($avatarRaw);
+                                                $avatar = url($storageUrl);
+                                            } else {
+                                                $avatar = null;
+                                            }
+                                            $avatar = $avatar ?: 'https://ui-avatars.com/api/?name=' . urlencode($staff->Ten_NV ?? 'NV');
+                                        @endphp
+
+                                        @if($staff)
+                                            <div class="d-flex align-items-center gap-2">
+                                                <img src="{{ $avatar }}" alt="Nhân viên" class="rounded-circle" style="width: 36px; height: 36px; object-fit: cover;">
+                                                <div class="d-flex flex-column">
+                                                    <span class="fw-semibold text-dark">{{ $staff->Ten_NV }}</span>
+                                                    <small class="text-muted">{{ $staff->SDT }}</small>
+                                                </div>
+                                            </div>
+                                        @else
+                                            <span class="text-muted small">Không có</span>
                                         @endif
                                     </td>
                                     <td class="text-muted">{{ number_format($item->TongTienSauGiam) }} đ</td>

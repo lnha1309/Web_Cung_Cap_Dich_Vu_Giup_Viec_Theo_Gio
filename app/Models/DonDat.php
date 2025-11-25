@@ -72,4 +72,14 @@ class DonDat extends Model
     {
         return $this->hasMany(ChiTietKhuyenMai::class, 'ID_DD', 'ID_DD');
     }
+
+    public function lichSuThanhToan()
+    {
+        return $this->hasMany(LichSuThanhToan::class, 'ID_DD', 'ID_DD')->orderByDesc('ThoiGian');
+    }
+
+    public function nhanVien()
+    {
+        return $this->belongsTo(NhanVien::class, 'ID_NV', 'ID_NV');
+    }
 }

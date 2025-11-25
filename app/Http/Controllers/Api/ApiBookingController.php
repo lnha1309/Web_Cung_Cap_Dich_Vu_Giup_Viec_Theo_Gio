@@ -19,6 +19,7 @@ use App\Services\SurchargeService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 
 class ApiBookingController extends Controller
 {
@@ -102,6 +103,7 @@ class ApiBookingController extends Controller
 
         $service = DichVu::find($booking->ID_DV);
         $address = DiaChi::find($booking->ID_DC);
+        $staff = $booking->ID_NV ? NhanVien::find($booking->ID_NV) : null;
         
         // Get applied vouchers
         $vouchers = ChiTietKhuyenMai::where('ID_DD', $id)->get();
@@ -129,6 +131,13 @@ class ApiBookingController extends Controller
                 'total_amount' => (float) $booking->TongTien,
                 'discounted_amount' => (float) $booking->TongTienSauGiam,
                 'staff_id' => $booking->ID_NV,
+                'staff' => $staff ? [
+                    'id' => $staff->ID_NV,
+                    'name' => $staff->Ten_NV,
+                    'phone' => $staff->SDT,
+                    'avatar' => $this->normalizeImageUrl($staff->HinhAnh),
+                ] : null,
+                'payment_method' => $this->latestPaymentMethod($booking->ID_DD),
                 'created_at' => $booking->NgayTao,
                 'vouchers' => $vouchers->map(function ($v) {
                     return [
@@ -586,6 +595,41 @@ class ApiBookingController extends Controller
             ->exists();
     }
 
+    /**
+     * Normalize storage/localhost image URLs for staff avatar
+     */
+    private function normalizeImageUrl(?string $url): ?string
+    {
+        if (!$url || $url === '') {
+            return null;
+        }
+
+        try {
+            if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
+                $parsed = parse_url($url);
+                if (!$parsed || !isset($parsed['host'])) {
+                    return $url;
+                }
+                // Replace emulator/localhost with current host
+                if (in_array($parsed['host'], ['10.0.2.2', '127.0.0.1', 'localhost'], true)) {
+                    $current = request()->getSchemeAndHttpHost();
+                    $path = $parsed['path'] ?? '';
+                    return rtrim($current, '/') . $path;
+                }
+                return $url;
+            }
+
+            // Storage path
+            if (str_starts_with($url, '/')) {
+                return url($url);
+            }
+
+            return url(Storage::url($url));
+        } catch (\Throwable $e) {
+            return $url;
+        }
+    }
+
     private function distanceKm(float $lat1, float $lon1, float $lat2, float $lon2): float
     {
         $R = 6371;
@@ -657,5 +701,17 @@ class ApiBookingController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Get latest payment method for booking (from history)
+     */
+    private function latestPaymentMethod(string $bookingId): ?string
+    {
+        $record = LichSuThanhToan::where('ID_DD', $bookingId)
+            ->orderByDesc('ThoiGian')
+            ->first();
+
+        return $record?->PhuongThucThanhToan;
     }
 }

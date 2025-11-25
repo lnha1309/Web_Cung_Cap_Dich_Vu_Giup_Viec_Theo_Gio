@@ -4,6 +4,7 @@ namespace App\Console;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+use App\Jobs\AutoCancelOrdersJob;
 
 class Kernel extends ConsoleKernel
 {
@@ -12,7 +13,14 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // No scheduled commands
+        // Trong giai đoạn dev: cho chạy mỗi phút cho dễ test
+        $schedule->call(function () {
+            // Chạy job ngay lập tức, không đưa vào queue
+            AutoCancelOrdersJob::dispatchSync();
+        })->everyMinute();
+
+        // Sau khi ổn rồi có thể đổi lại:
+        // })->everyFiveMinutes();
     }
 
     /**

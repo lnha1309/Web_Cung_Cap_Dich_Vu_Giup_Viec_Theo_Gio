@@ -12,6 +12,8 @@ use App\Http\Controllers\AdminServiceController;
 use App\Http\Controllers\AdminPackageController;
 use App\Http\Controllers\AdminSurchargeController;
 use App\Http\Controllers\AdminPromotionController;
+use App\Http\Controllers\Api\ApiNotificationController;
+use App\Http\Controllers\ContactController;
 
 Route::get('/', function () {
     if (Auth::check() && Auth::user()->ID_LoaiTK === 'admin') {
@@ -66,7 +68,8 @@ Route::get('/post-detail-3', function () {
 
 Route::get('/contact', function () {
     return view('contact');
-});
+})->name('contact.show');
+Route::post('/contact', [ContactController::class, 'send'])->name('contact.send');
 
 Route::get('/workerintroduction', function () {
     return view('workerintroduction');
@@ -110,7 +113,18 @@ Route::middleware('auth')->group(function () {
     Route::get('/my-bookings', [BookingController::class, 'history'])->name('bookings.history');
     Route::get('/my-bookings/{id}', [BookingController::class, 'detail'])->name('bookings.detail');
     Route::post('/my-bookings/{id}/cancel', [BookingController::class, 'cancelBooking'])->name('bookings.cancel');
+    Route::post('/my-bookings/{id}/rating', [BookingController::class, 'submitRating'])->name('bookings.rating');
 
+    // Notification routes
+    Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
+
+    // Notification API for web session (avoid Sanctum token requirement)
+    Route::prefix('web-api/notifications')->group(function () {
+        Route::get('/', [ApiNotificationController::class, 'index']);
+        Route::get('/unread-count', [ApiNotificationController::class, 'unreadCount']);
+        Route::post('/{id}/mark-read', [ApiNotificationController::class, 'markAsRead']);
+        Route::post('/mark-all-read', [ApiNotificationController::class, 'markAllAsRead']);
+    });
 
 });
 
@@ -132,3 +146,35 @@ Route::get('/giupviectheothang', function () {
 if (file_exists(__DIR__ . '/web_test_debug.php')) {
     require __DIR__ . '/web_test_debug.php';
 }
+
+// Temporary debug route for notifications
+Route::get('/debug-notifications', function () {
+    if (!Auth::check()) {
+        return 'Please login first';
+    }
+    
+    $customer = Auth::user()->khachHang;
+    if (!$customer) {
+        return 'No customer found';
+    }
+    
+    $notifications = \App\Models\ThongBao::where('ID_KH', $customer->ID_KH)
+        ->orderBy('ThoiGian', 'desc')
+        ->get();
+    
+    return [
+        'customer_id' => $customer->ID_KH,
+        'customer_name' => $customer->Ten_KH,
+        'total_notifications' => $notifications->count(),
+        'notifications' => $notifications->map(function($n) {
+            return [
+                'id' => $n->ID_TB,
+                'title' => $n->TieuDe,
+                'content' => $n->NoiDung,
+                'type' => $n->LoaiThongBao,
+                'read' => $n->DaDoc,
+                'time' => $n->ThoiGian,
+            ];
+        })
+    ];
+})->middleware('auth');

@@ -223,6 +223,10 @@
         let geocoder;
         let autocomplete;
         let isOutsideServiceArea = false;
+        const urlParams = new URLSearchParams(window.location.search);
+        const durationParam = urlParams.get('duration');
+        const allowedDurations = ['2', '3', '4'];
+        const selectedDuration = allowedDurations.includes(durationParam) ? durationParam : null;
 
         function removeVietnameseAccents(value) {
             if (!value) return '';
@@ -416,6 +420,9 @@
             url.searchParams.set('street', street);
             if (unit) {
                 url.searchParams.set('unit', unit);
+            }
+            if (selectedDuration) {
+                url.searchParams.set('duration', selectedDuration);
             }
 
             window.location.href = url.toString();

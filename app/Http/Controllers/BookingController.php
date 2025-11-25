@@ -20,6 +20,8 @@ use App\Models\NhanVien;
 use App\Models\TaiKhoan;
 use App\Services\VNPayService;
 use App\Services\SurchargeService;
+use App\Services\RefundService;
+use App\Services\NotificationService;
 use App\Support\IdGenerator;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -696,6 +698,21 @@ class BookingController extends Controller
             ]);
         }
 
+        // Send notification to customer about order creation
+        try {
+            $notificationService = app(NotificationService::class);
+            // Reload booking with relationships for notification
+            $bookingForNotification = DonDat::with('dichVu')->find($idDon);
+            if ($bookingForNotification) {
+                $notificationService->notifyOrderCreated($bookingForNotification);
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to send order creation notification', [
+                'booking_id' => $idDon,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         $response = [
             'success' => true,
             'id_dd'   => $idDon,
@@ -744,15 +761,34 @@ class BookingController extends Controller
             if ($txnRef) {
                 $order = DonDat::find($txnRef);
                 if ($order) {
+                    // Save old status for notification
+                    $oldStatus = $order->TrangThaiDon;
+                    
                     if ($order->ID_NV) {
                         $order->TrangThaiDon = 'assigned';
                     } else {
                         $order->TrangThaiDon = 'finding_staff';
                     }
+                    $newStatus = $order->TrangThaiDon;
                     $order->save();
 
                     if ($order->TrangThaiDon === 'assigned' && $order->ID_NV) {
                         $this->notifyStaffAssigned($order);
+                    }
+
+                    // Send status change notification to customer
+                    if ($oldStatus !== $newStatus) {
+                        try {
+                            $notificationService = app(NotificationService::class);
+                            $notificationService->notifyOrderStatusChanged($order, $oldStatus, $newStatus);
+                        } catch (\Exception $e) {
+                            Log::error('Failed to send status change notification', [
+                                'booking_id' => $order->ID_DD,
+                                'old_status' => $oldStatus,
+                                'new_status' => $newStatus,
+                                'error' => $e->getMessage(),
+                            ]);
+                        }
                     }
 
                     $payment = LichSuThanhToan::where('ID_DD', $order->ID_DD)
@@ -998,12 +1034,12 @@ class BookingController extends Controller
         }
 
         // 1. Sửa created_at -> NgayTao
-        $currentBookings = DonDat::where('ID_KH', $customer->ID_KH)
-                            ->whereIn('TrangThaiDon', ['finding_staff', 'assigned', 'working']) 
+        $currentBookings = DonDat::with(['nhanVien', 'lichSuThanhToan'])->where('ID_KH', $customer->ID_KH)
+                            ->whereIn('TrangThaiDon', ['finding_staff', 'assigned', 'confirmed', 'rejected', 'completed', 'working']) 
                             ->orderBy('NgayTao', 'desc') // <--- CHỖ NÀY
                             ->get();
         // 2. Sửa created_at -> NgayTao
-        $historyBookings = DonDat::where('ID_KH', $customer->ID_KH)
+        $historyBookings = DonDat::with(['nhanVien', 'lichSuThanhToan'])->where('ID_KH', $customer->ID_KH)
                             ->whereIn('TrangThaiDon', ['done', 'cancelled', 'failed'])
                             ->orderBy('NgayTao', 'desc') // <--- VÀ CHỖ NÀY
                             ->get();
@@ -1018,7 +1054,7 @@ class BookingController extends Controller
         }
 
         // Tìm đơn hàng theo ID (ID_DD)
-        $booking = DonDat::with(['dichVu', 'diaChi', 'chiTietKhuyenMai.khuyenMai'])->where('ID_DD', $id)->first();
+        $booking = DonDat::with(['dichVu', 'diaChi', 'chiTietKhuyenMai.khuyenMai', 'nhanVien', 'lichSuThanhToan'])->where('ID_DD', $id)->first();
 
         // Kiểm tra bảo mật: Đơn này có phải của người đang đăng nhập không?
         $customer = Auth::user()->khachHang;
@@ -1035,7 +1071,73 @@ class BookingController extends Controller
                 ->get();
         }
         
-        return view('account.detail', compact('booking', 'sessions'));
+        $existingRating = \App\Models\DanhGiaNhanVien::where('ID_DD', $id)->first();
+        
+        return view('account.detail', compact('booking', 'sessions', 'existingRating'));
+    }
+
+    /**
+     * Customer submits rating for a completed booking
+     */
+    public function submitRating(Request $request, string $id)
+    {
+        if (!Auth::check()) {
+            return redirect()->route('login');
+        }
+
+        $customer = Auth::user()->khachHang;
+        if (!$customer) {
+            return back()->with('error', 'Không tìm thấy thông tin khách hàng.');
+        }
+
+        $booking = DonDat::where('ID_DD', $id)->first();
+        if (!$booking || $booking->ID_KH !== $customer->ID_KH) {
+            return redirect()->route('bookings.history')->with('error', 'Không tìm thấy đơn hàng.');
+        }
+
+        if (!in_array($booking->TrangThaiDon, ['completed', 'done'], true)) {
+            return back()->with('error', 'Bạn chỉ có thể đánh giá khi đơn đã hoàn thành.');
+        }
+
+        $alreadyRated = DanhGiaNhanVien::where('ID_DD', $booking->ID_DD)->exists();
+        if ($alreadyRated) {
+            return back()->with('error', 'Bạn đã đánh giá đơn này rồi.');
+        }
+
+        $validated = $request->validate([
+            'rating' => ['required', 'integer', 'min:1', 'max:5'],
+            'comment' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        DanhGiaNhanVien::create([
+            'ID_DG' => IdGenerator::next('DanhGiaNhanVien', 'ID_DG', 'DG_'),
+            'ID_DD' => $booking->ID_DD,
+            'ID_NV' => $booking->ID_NV,
+            'ID_KH' => $customer->ID_KH,
+            'Diem' => $validated['rating'],
+            'NhanXet' => $validated['comment'] ?? null,
+            'ThoiGian' => now(),
+        ]);
+
+        // Move booking to done so nó nằm trong lịch sử
+        if ($booking->TrangThaiDon === 'completed') {
+            $oldStatus = $booking->TrangThaiDon;
+            $booking->TrangThaiDon = 'done';
+            $booking->save();
+
+            try {
+                $notificationService = app(\App\Services\NotificationService::class);
+                $notificationService->notifyOrderStatusChanged($booking, $oldStatus, 'done');
+            } catch (\Exception $e) {
+                Log::error('Failed to send status change notification after rating', [
+                    'booking_id' => $booking->ID_DD,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return redirect()->route('bookings.detail', $booking->ID_DD)
+            ->with('success', 'Cảm ơn bạn đã đánh giá. Đánh giá của bạn đã được lưu.');
     }
 
     /**
@@ -1060,7 +1162,7 @@ class BookingController extends Controller
         }
 
         // Check if already cancelled or done
-        if (in_array($booking->TrangThaiDon, ['cancelled', 'done'])) {
+        if (in_array($booking->TrangThaiDon, ['cancelled', 'done', 'completed'])) {
             return back()->with('error', 'Không thể hủy đơn hàng này.');
         }
 
@@ -1081,87 +1183,31 @@ class BookingController extends Controller
         try {
             DB::beginTransaction();
 
+            // Use RefundService to handle refund logic
+            $refundService = app(RefundService::class);
+            $notificationService = app(NotificationService::class);
+            
+            $refundResult = $refundService->refundOrder($booking, 'user_cancel');
 
-            $refundAmount = 0;
-            $paymentMethod = null;
-
-            if ($booking->LoaiDon === 'hour') {
-                // Hourly booking: Check payment method
-                $payment = \App\Models\LichSuThanhToan::where('ID_DD', $booking->ID_DD)
-                    ->where('TrangThai', 'ThanhCong')
-                    ->first();
-
-                if ($payment) {
-                    $paymentMethod = $payment->PhuongThucThanhToan;
-                    
-                    // Only refund via VNPay if paid online
-                    if ($paymentMethod === 'VNPay' && $payment->MaGiaoDichVNPAY) {
-                        $refundResult = $this->callVnpayRefund($booking, $payment, $booking->TongTienSauGiam);
-                        
-                        if (!$refundResult['success']) {
-                            DB::rollBack();
-                            return back()->with('error', 'Không thể hoàn tiền qua VNPay: ' . $refundResult['message']);
-                        }
-                        
-                        $refundAmount = $booking->TongTienSauGiam;
-                    }
-                    // Cash payment - no refund needed
-                }
-
-
-            } else {
-                // Monthly booking: 80% of unfinished sessions
-                $totalSessions = $booking->lichBuoiThang->count();
-                $completedSessions = $booking->lichBuoiThang->where('TrangThaiBuoi', 'completed')->count();
-                $unfinishedSessions = $totalSessions - $completedSessions;
-
-                if ($totalSessions > 0) {
-                    $refundAmount = ($booking->TongTienSauGiam / $totalSessions) * $unfinishedSessions * 0.8;
-                    
-                    // Check payment method and refund via VNPay if applicable
-                    $payment = \App\Models\LichSuThanhToan::where('ID_DD', $booking->ID_DD)
-                        ->where('TrangThai', 'ThanhCong')
-                        ->first();
-
-                    if ($payment) {
-                        $paymentMethod = $payment->PhuongThucThanhToan;
-                        
-                        // Only refund via VNPay if paid online
-                        if ($paymentMethod === 'VNPay' && $payment->MaGiaoDichVNPAY && $refundAmount > 0) {
-                            $refundResult = $this->callVnpayRefund($booking, $payment, $refundAmount);
-                            
-                            if (!$refundResult['success']) {
-                                DB::rollBack();
-                                return back()->with('error', 'Không thể hoàn tiền qua VNPay: ' . $refundResult['message']);
-                            }
-                        }
-                    }
-                }
+            if (!$refundResult['success']) {
+                DB::rollBack();
+                return back()->with('error', $refundResult['message']);
             }
-
 
             // Update booking status
             $booking->TrangThaiDon = 'cancelled';
             $booking->save();
 
-            // Log refund transaction only if there's an actual refund
-            if ($refundAmount > 0) {
-                \App\Models\LichSuThanhToan::create([
-                    'ID_LSTT' => \App\Support\IdGenerator::next('LichSuThanhToan', 'ID_LSTT', 'LSTT_'),
-                    'PhuongThucThanhToan' => 'Refund',
-                    'TrangThai' => 'ThanhCong',
-                    'SoTienThanhToan' => $refundAmount,
-                    'ID_DD' => $booking->ID_DD,
-                ]);
-            }
+            // Send notification to customer
+            $notificationService->notifyOrderCancelled($booking, 'user_cancel', $refundResult);
 
             DB::commit();
 
             // Create appropriate success message
             $message = 'Đã hủy đơn hàng thành công.';
-            if ($refundAmount > 0) {
-                $message .= ' Số tiền hoàn: ' . number_format($refundAmount) . ' đ';
-            } elseif ($paymentMethod === 'TienMat') {
+            if ($refundResult['amount'] > 0) {
+                $message .= ' Số tiền hoàn: ' . number_format($refundResult['amount']) . ' đ';
+            } elseif ($refundResult['payment_method'] === 'TienMat') {
                 $message .= ' (Đơn thanh toán bằng tiền mặt)';
             }
 
@@ -1268,3 +1314,6 @@ class BookingController extends Controller
         ];
     }
 }
+
+
+

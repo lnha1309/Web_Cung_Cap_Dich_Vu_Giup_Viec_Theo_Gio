@@ -24,6 +24,12 @@
             accountToggle.addEventListener('click', (event) => {
                 event.stopPropagation();
                 accountDropdown.classList.toggle('open');
+                
+                // Close notification dropdown if open
+                const notificationDropdown = document.getElementById('notificationDropdown');
+                if (notificationDropdown) {
+                    notificationDropdown.classList.remove('show');
+                }
             });
 
             document.addEventListener('click', () => {
@@ -49,3 +55,5 @@
         }
     });
 </script>
+
+<script src="{{ asset('js/notifications.js') }}"></script>

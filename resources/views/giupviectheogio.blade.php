@@ -443,9 +443,10 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const pricingCards = document.querySelectorAll('.hourly-pricing-card');
-    
+    const selectAddressUrl = "{{ route('booking.selectAddress') }}";
     pricingCards.forEach(card => {
         const button = card.querySelector('.hourly-btn');
+        if (!button) return;
         
         button.addEventListener('click', function(e) {
             e.preventDefault();
@@ -456,12 +457,13 @@ document.addEventListener('DOMContentLoaded', function() {
             // Thêm class 'selected' vào card được click
             card.classList.add('selected');
             
-            // Có thể thêm logic chuyển trang hoặc lưu lựa chọn ở đây
-            const packageName = card.querySelector('h3').textContent;
-            console.log('Đã chọn:', packageName);
-            
-            // Nếu muốn chuyển trang đặt lịch:
-            // window.location.href = "{{ url('select-address') }}?package=" + encodeURIComponent(packageName);
+            const hours = parseInt(card.getAttribute('data-duration') || this.getAttribute('data-duration') || '', 10);
+            const target = new URL(selectAddressUrl, window.location.origin);
+            if (hours) {
+                target.searchParams.set('duration', hours);
+            }
+
+            window.location.href = target.toString();
         });
     });
 });
@@ -582,7 +584,7 @@ document.addEventListener('DOMContentLoaded', function() {
     <h2>Bảng giá dịch vụ</h2>
     <p class="hourly-pricing-intro">Chúng tôi cam kết một mức giá minh bạch, không phát sinh phụ phí. Bạn chỉ trả tiền cho thời gian bạn sử dụng.</p>
     <div class="hourly-pricing-grid">
-        <div class="hourly-pricing-card">
+        <div class="hourly-pricing-card" data-duration="2">
             <h3>Gói 2 giờ</h3>
             <div class="hourly-price">192.000đ</div>
             <p>Lý tưởng cho căn hộ studio hoặc 1 phòng ngủ.</p>
@@ -590,10 +592,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 <li>Dọn dẹp cơ bản</li>
                 <li>Tập trung 1-2 khu vực</li>
             </ul>
-            <a href="#" class="hourly-btn hourly-btn-secondary">Chọn gói này</a>
+            <a href="{{ route('booking.selectAddress', ['duration' => 2]) }}" class="hourly-btn hourly-btn-secondary" data-duration="2">Chọn gói này</a>
         </div>
 
-        <div class="hourly-pricing-card">
+        <div class="hourly-pricing-card" data-duration="3">
             <h3>Gói 3 giờ</h3>
             <div class="hourly-price">240.000đ</div>
             <p>Phổ biến nhất! Phù hợp cho nhà 2 phòng ngủ.</p>
@@ -601,18 +603,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 <li>Dọn dẹp toàn diện</li>
                 <li>Đủ thời gian cho các khu vực</li>
             </ul>
-            <a href="#" class="hourly-btn hourly-btn-secondary">Chọn gói này</a>
+            <a href="{{ route('booking.selectAddress', ['duration' => 3]) }}" class="hourly-btn hourly-btn-secondary" data-duration="3">Chọn gói này</a>
         </div>
 
-        <div class="hourly-pricing-card">
+        <div class="hourly-pricing-card" data-duration="4">
             <h3>Gói 4 giờ</h3>
             <div class="hourly-price">320.000đ</div>
             <p>Dành cho nhà lớn, hoặc cần dọn dẹp kỹ.</p>
             <ul>
+                <br>
                 <li>Dọn dẹp sâu, chi tiết</li>
                 <li>Bao quát toàn bộ nhà</li>
             </ul>
-            <a href="#" class="hourly-btn hourly-btn-secondary">Chọn gói này</a>
+            <a href="{{ route('booking.selectAddress', ['duration' => 4]) }}" class="hourly-btn hourly-btn-secondary" data-duration="4">Chọn gói này</a>
         </div>
     </div>
 </section>
