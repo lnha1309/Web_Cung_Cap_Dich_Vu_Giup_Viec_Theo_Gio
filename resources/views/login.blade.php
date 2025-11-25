@@ -248,36 +248,36 @@
             </div>
                         <div class="forgot-password">
                 <div id="failedHint" class="forgot-hint" style="display: {{ !empty($suggestReset) ? 'block' : 'none' }};">
-                    <span>Ban da nhap sai mat khau 3 lan cho tai khoan <strong>{{ $suggestReset }}</strong>.</span>
-                    <button type="button" class="link-button" id="openForgotFromHint">Lay lai mat khau</button>
+                    <span>Bạn đã nhập sai mật khẩu 3 lần <strong>{{ $suggestReset }}</strong>.</span>
+                    <button type="button" class="link-button" id="openForgotFromHint">Lấy lại mật khẩu</button>
                 </div>
-                <button type="button" class="link-button" id="toggleForgot">Quen mat khau?</button>
+                <button type="button" class="link-button" id="toggleForgot">Quên mật khẩu?</button>
                 <div id="forgotPanel" class="forgot-panel">
                     <div class="form-group" style="margin-bottom: 12px;">
-                        <label for="forgotUsername">Ten tai khoan</label>
-                        <input type="text" id="forgotUsername" placeholder="Nhap ten tai khoan">
+                        <label for="forgotUsername">Tên tài khoản</label>
+                        <input type="text" id="forgotUsername" placeholder="Nhập tên tài khoản">
                     </div>
                     <div class="form-group" style="margin-bottom: 12px;">
                         <label for="forgotEmail">Email</label>
                         <div class="inline-actions">
-                            <input type="email" id="forgotEmail" placeholder="Nhap email da dang ky">
-                            <button type="button" class="otp-button" id="sendOtpBtn">Gui OTP</button>
+                            <input type="email" id="forgotEmail" placeholder="Nhập email đã đăng ký">
+                            <button type="button" class="otp-button" id="sendOtpBtn">Gửi OTP</button>
                         </div>
-                        <div class="small-note">Ma OTP se duoc gui toi email cua ban.</div>
+                        <div class="small-note">Mã OTP đã gửi cho bạn.</div>
                     </div>
 
                     <div class="form-group" style="margin-bottom: 12px;">
-                        <label for="otpCode">Ma OTP</label>
-                        <input type="text" id="otpCode" placeholder="Nhap ma OTP" maxlength="6">
+                        <label for="otpCode">Mã OTP</label>
+                        <input type="text" id="otpCode" placeholder="Nhập mã OTP" maxlength="6">
                     </div>
 
                     <div class="form-group" style="margin-bottom: 12px;">
-                        <label for="newPassword">Mat khau moi</label>
-                        <input type="password" id="newPassword" placeholder="Nhap mat khau moi" minlength="6">
+                        <label for="newPassword">Mật khẩu mới</label>
+                        <input type="password" id="newPassword" placeholder="Nhập mật khẩu mới" minlength="6">
                     </div>
 
                     <div>
-                        <button type="button" class="reset-button" id="resetPwdBtn">Doi mat khau</button>
+                        <button type="button" class="reset-button" id="resetPwdBtn">Đổi mật khẩu</button>
                         <div id="forgotStatus" class="status-text"></div>
                     </div>
                 </div>
@@ -359,7 +359,7 @@
 
                     setForgotStatus('');
                     if (!username || !email) {
-                        setForgotStatus('Vui long nhap ten dang nhap va email.');
+                        setForgotStatus('Vui lòng nhập tên đăng nhập mật khẩu.');
                         return;
                     }
 
@@ -380,16 +380,16 @@
                         })
                         .then(function(result) {
                             if (result.ok) {
-                                setForgotStatus(result.data.message || 'Da gui ma OTP.', 'success');
+                                setForgotStatus(result.data.message || 'Đã gửi mã OTP.', 'success');
                                 if (otpInput) {
                                     otpInput.focus();
                                 }
                             } else {
-                                setForgotStatus(result.data.message || 'Khong gui duoc OTP, vui long thu lai.');
+                                setForgotStatus(result.data.message || 'Không gửi được mã, vui lòng thử lại sau.');
                             }
                         })
                         .catch(function() {
-                            setForgotStatus('Khong gui duoc OTP, vui long thu lai.');
+                            setForgotStatus('Không gửi được mã, vui lòng thử lại sau.');
                         })
                         .finally(function() {
                             sendOtpBtn.disabled = false;
@@ -410,7 +410,7 @@
                     setForgotStatus('');
 
                     if (!username || !email || !otp || !newPassword) {
-                        setForgotStatus('Vui long nhap day du ten dang nhap, email, OTP va mat khau moi.');
+                        setForgotStatus('Vui lòng đăng nhập bằng tài khoản mật khẩu mới.');
                         return;
                     }
 
@@ -436,16 +436,16 @@
                         })
                         .then(function(result) {
                             if (result.ok) {
-                                setForgotStatus(result.data.message || 'Doi mat khau thanh cong.', 'success');
+                                setForgotStatus(result.data.message || 'Đổi mật khẩu thành công.', 'success');
                                 if (loginPasswordInput) {
                                     loginPasswordInput.value = newPassword;
                                 }
                             } else {
-                                setForgotStatus(result.data.message || 'Khong the doi mat khau, vui long thu lai.');
+                                setForgotStatus(result.data.message || 'Không thể đổi mật khẩu, vui lòng thử lại sau.');
                             }
                         })
                         .catch(function() {
-                            setForgotStatus('Khong the doi mat khau, vui long thu lai.');
+                            setForgotStatus('Không thể đổi mật khẩu, vui lòng thử lại sau.');
                         })
                         .finally(function() {
                             resetPwdBtn.disabled = false;

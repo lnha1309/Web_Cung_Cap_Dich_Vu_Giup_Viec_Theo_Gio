@@ -19,6 +19,7 @@ use App\Models\Quan;
 use App\Models\NhanVien;
 use App\Models\User;
 use App\Services\VNPayService;
+use App\Services\SurchargeService;
 use App\Support\IdGenerator;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -212,44 +213,15 @@ class BookingController extends Controller
      */
     public function getSurcharges()
     {
-        $surcharges = PhuThu::whereIn('ID_PT', ['PT001', 'PT003'])
+        $surcharges = PhuThu::whereIn('ID_PT', ['PT001', 'PT002', 'PT003'])
             ->get()
             ->keyBy('ID_PT');
 
         return response()->json([
             'PT001' => $surcharges->get('PT001')?->GiaCuoc ?? 30000,
+            'PT002' => $surcharges->get('PT002')?->GiaCuoc ?? 30000,
             'PT003' => $surcharges->get('PT003')?->GiaCuoc ?? 30000,
         ]);
-    }
-
-    /**
-     * Check if a given date is a weekend (Saturday or Sunday)
-     *
-     * @param string $date Date in Y-m-d format
-     * @return bool
-     */
-    private function isWeekendBooking(string $date): bool
-    {
-        $carbon = Carbon::parse($date);
-        $dayOfWeek = $carbon->dayOfWeek;
-        
-        // Carbon: 0 = Sunday, 6 = Saturday
-        return $dayOfWeek === 0 || $dayOfWeek === 6;
-    }
-
-    /**
-     * Check if a given time is early (before 8 AM) or late (after 5 PM)
-     *
-     * @param string $time Time in H:i:s format
-     * @return bool
-     */
-    private function isEarlyOrLateTime(string $time): bool
-    {
-        $timeCarbon = Carbon::createFromFormat('H:i:s', $time);
-        $hour = $timeCarbon->hour;
-        
-        // Before 8 AM or after 17 (5 PM)
-        return $hour < 8 || $hour >= 17;
     }
 
     public function applyVoucher(Request $request)
@@ -304,7 +276,7 @@ class BookingController extends Controller
         ]);
     }
 
-    public function confirm(Request $request, VNPayService $vnPay)
+    public function confirm(Request $request, VNPayService $vnPay, SurchargeService $surchargeService)
     {
         $validated = $request->validate([
             'payment_method' => ['nullable', 'in:cash,vnpay'],
@@ -408,6 +380,9 @@ class BookingController extends Controller
         $endDateExclusive = null;
         $idGoi = null;
 
+        $sessionCount = 1;
+        $weekendSessionCount = 0;
+
         if ($validated['loai_don'] === 'month') {
             $packageMonths = (int) ($validated['package_months'] ?? 0);
             $repeatDays = array_values(array_unique(array_map('intval', $validated['repeat_days'] ?? [])));
@@ -457,6 +432,11 @@ class BookingController extends Controller
                 : 0.0;
 
             $sessionCount = $this->countSessionsInRange($repeatDays, $startDate, $endDateExclusive);
+            $weekendDays = array_intersect($repeatDays, [0, 6]);
+            $weekendSessionCount = empty($weekendDays)
+                ? 0
+                : $this->countSessionsInRange($weekendDays, $startDate, $endDateExclusive);
+
             $gross = $basePrice * $sessionCount;
             $packageDiscount = $gross * $packagePercent / 100;
             $tongTien = max(0, $gross - $packageDiscount);
@@ -539,6 +519,9 @@ class BookingController extends Controller
         $gioBatDauRaw = $validated['gio_bat_dau'] ?? null;
         $gioBatDau = $gioBatDauRaw ? $gioBatDauRaw . ':00' : null;
         $selectedStaffId = $validated['id_nv'] ?? null;
+        $hasPets = array_key_exists('has_pets', $validated)
+            ? (bool) $validated['has_pets']
+            : false;
 
         // Xy ly dia chi: tim ID_DC phu hop hoac tao moi (dia chi don le, khong bat buoc la dia chi da luu)
         $idDc = $validated['id_dc'] ?? null;
@@ -589,57 +572,27 @@ class BookingController extends Controller
             }
         }
 
-        // Automatically apply surcharges based on booking date and time
-        $surcharges = [];
-        $hasPets = array_key_exists('has_pets', $validated)
-            ? (bool) $validated['has_pets']
-            : false;
+        $ngayLam = $validated['loai_don'] === 'hour'
+            ? ($validated['ngay_lam'] ?? null)
+            : null;
+        $repeatDaysForSurcharge = $validated['loai_don'] === 'month' ? $repeatDays : [];
+        if ($validated['loai_don'] === 'hour' && $ngayLam && $this->countSessionsInRange([0, 6], $ngayLam, Carbon::parse($ngayLam)->copy()->addDay())) {
+            $weekendSessionCount = 1;
+        }
 
-        if ($validated['loai_don'] === 'hour') {
-            // For one-time bookings, check the specific date and time
-            $ngayLam = $validated['ngay_lam'];
-            
-            // Check for weekend surcharge (PT003)
-            if ($ngayLam && $this->isWeekendBooking($ngayLam)) {
-                $surcharges[] = 'PT003';
-            }
-            
-            // Check for early/late time surcharge (PT001)
-            if ($gioBatDau && $this->isEarlyOrLateTime($gioBatDau)) {
-                $surcharges[] = 'PT001';
-            }
-        } elseif ($validated['loai_don'] === 'month') {
-            // For monthly bookings
-            
-            // Check if any repeat day is a weekend (0 = Sunday, 6 = Saturday)
-            $hasWeekend = !empty(array_intersect($repeatDays, [0, 6]));
-            if ($hasWeekend) {
-                $surcharges[] = 'PT003';
-            }
-            
-            // Check for early/late time surcharge (PT001)
-            if ($gioBatDau && $this->isEarlyOrLateTime($gioBatDau)) {
-                $surcharges[] = 'PT001';
-            }
-        }
-        
-        // Check for pet surcharge (PT002) - applies to both hour and month bookings
-        if ($hasPets) {
-            $surcharges[] = 'PT002';
-        }
-        
-        // Calculate total surcharge amount
-        $totalSurchargeAmount = 0;
-        foreach ($surcharges as $idPt) {
-            $phuThu = PhuThu::find($idPt);
-            if ($phuThu) {
-                $totalSurchargeAmount += (float) $phuThu->GiaCuoc;
-            }
-        }
-        
+        $surchargeResult = $surchargeService->calculate(
+            $validated['loai_don'],
+            $ngayLam,
+            $gioBatDau,
+            $repeatDaysForSurcharge,
+            $hasPets,
+            $sessionCount,
+            $weekendSessionCount
+        );
+
         // Add surcharges to total
-        $tongTien += $totalSurchargeAmount;
-        $tongSauGiam += $totalSurchargeAmount;
+        $tongTien += $surchargeResult['total'];
+        $tongSauGiam += $surchargeResult['total'];
 
         $trangThaiDon = $selectedStaffId ? 'assigned' : 'finding_staff';
 
@@ -698,26 +651,11 @@ class BookingController extends Controller
         }
 
         // Insert surcharge records into ChiTietPhuThu
-        foreach ($surcharges as $idPt) {
-            $phuThu = PhuThu::find($idPt);
-            $ghiChu = '';
-            
-            if ($idPt === 'PT003') {
-                $ghiChu = $validated['loai_don'] === 'month' 
-                    ? 'Gói tháng có buổi làm vào cuối tuần'
-                    : 'Làm việc vào cuối tuần (Thứ 7 hoặc Chủ nhật)';
-            } elseif ($idPt === 'PT001') {
-                $ghiChu = $validated['loai_don'] === 'month'
-                    ? 'Gói tháng làm việc ngoài giờ hành chính'
-                    : 'Làm việc ngoài giờ hành chính (trước 8h hoặc sau 17h)';
-            } elseif ($idPt === 'PT002') {
-                $ghiChu = 'Nhà có thú cưng';
-            }
-            
+        foreach ($surchargeResult['items'] as $item) {
             ChiTietPhuThu::create([
-                'ID_PT' => $idPt,
-                'ID_DD' => $idDon,
-                'Ghichu' => $ghiChu,
+                'ID_PT'  => $item['id'],
+                'ID_DD'  => $idDon,
+                'Ghichu' => $item['note'] . ' - ' . number_format($item['unit_amount']) . ' x ' . $item['quantity'],
             ]);
         }
 

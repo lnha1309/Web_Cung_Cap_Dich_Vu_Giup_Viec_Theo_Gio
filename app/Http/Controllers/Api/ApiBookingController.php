@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\DonDat;
 use App\Models\ChiTietKhuyenMai;
+use App\Models\ChiTietPhuThu;
 use App\Models\DiaChi;
 use App\Models\DichVu;
 use App\Models\LichLamViec;
@@ -14,6 +15,7 @@ use App\Models\DanhGiaNhanVien;
 use App\Models\NhanVien;
 use App\Models\User;
 use App\Support\IdGenerator;
+use App\Services\SurchargeService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -142,7 +144,7 @@ class ApiBookingController extends Controller
      * Create new booking
      * POST /api/bookings
      */
-    public function store(Request $request)
+    public function store(Request $request, SurchargeService $surchargeService)
     {
         $validator = \Validator::make($request->all(), [
             'order_type' => ['required', 'in:hour,month'],
@@ -159,6 +161,9 @@ class ApiBookingController extends Controller
             'vouchers' => ['nullable', 'array'],
             'vouchers.*.code' => ['required', 'string'],
             'vouchers.*.discount_amount' => ['nullable', 'numeric'],
+            'has_pets' => ['nullable', 'boolean'],
+            'repeat_days' => ['nullable', 'array'],
+            'repeat_days.*' => ['integer', 'between:0,6'],
             'note' => ['nullable', 'string'],
             'payment_method' => ['nullable', 'in:cash,vnpay'],
         ]);
@@ -238,6 +243,24 @@ class ApiBookingController extends Controller
         $tongSauGiam = $request->has('discounted_amount') && $request->discounted_amount !== null
             ? (float) $request->discounted_amount
             : $tongTien;
+        $gioBatDau = $request->start_time ? $request->start_time . ':00' : null;
+
+        $hasPets = $request->has('has_pets') ? (bool) $request->has_pets : false;
+        $repeatDays = is_array($request->repeat_days)
+            ? array_map('intval', $request->repeat_days)
+            : [];
+        $ngayLam = $request->order_type === 'hour' ? $request->work_date : null;
+
+        $surchargeResult = $surchargeService->calculate(
+            $request->order_type,
+            $ngayLam,
+            $gioBatDau,
+            $request->order_type === 'month' ? $repeatDays : [],
+            $hasPets
+        );
+
+        $tongTien += $surchargeResult['total'];
+        $tongSauGiam += $surchargeResult['total'];
 
         $trangThaiDon = $request->staff_id ? 'assigned' : 'finding_staff';
 
@@ -249,7 +272,7 @@ class ApiBookingController extends Controller
             'ID_DC' => $idDc,
             'GhiChu' => $request->note,
             'NgayLam' => $request->work_date,
-            'GioBatDau' => $request->start_time ? $request->start_time . ':00' : null,
+            'GioBatDau' => $gioBatDau,
             'ThoiLuongGio' => $request->duration_hours,
             'ID_Goi' => null,
             'NgayBatDauGoi' => null,
@@ -262,6 +285,15 @@ class ApiBookingController extends Controller
 
         if ($booking->TrangThaiDon === 'assigned' && $booking->ID_NV) {
             $this->notifyStaffAssigned($booking);
+        }
+
+        // Save surcharges
+        foreach ($surchargeResult['items'] as $item) {
+            ChiTietPhuThu::create([
+                'ID_PT'  => $item['id'],
+                'ID_DD'  => $idDon,
+                'Ghichu' => $item['note'] . ' - ' . number_format($item['unit_amount']) . ' x ' . $item['quantity'],
+            ]);
         }
 
         // Save vouchers
