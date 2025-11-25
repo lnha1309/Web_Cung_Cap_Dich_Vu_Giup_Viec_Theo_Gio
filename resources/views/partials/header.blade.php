@@ -31,6 +31,32 @@
                 $accountName = $currentUser->display_name ?? $currentUser->TenDN ?? 'My Account';
                 $accountInitial = mb_strtoupper(mb_substr($accountName, 0, 1, 'UTF-8'), 'UTF-8');
             @endphp
+            
+            {{-- Notification Bell --}}
+            <div class="notification-menu">
+                <button type="button" class="notification-button" id="notificationBellToggle">
+                    <i class="fa-solid fa-bell"></i>
+                    <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+                </button>
+                <div class="notification-dropdown" id="notificationDropdown">
+                    <div class="notification-header">
+                        <h4>Thông báo</h4>
+                        <button type="button" class="mark-all-read" id="markAllReadBtn">
+                            Đánh dấu tất cả đã đọc
+                        </button>
+                    </div>
+                    <div class="notification-list" id="notificationList">
+                        <div class="notification-loading">
+                            <i class="fa-solid fa-spinner fa-spin"></i> Đang tải...
+                        </div>
+                    </div>
+                    <div class="notification-footer">
+                        <a href="{{ route('notifications.index') }}">Xem tất cả</a>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Account Menu --}}
             <div class="account-menu">
                 <button type="button" class="account-button" id="accountMenuToggle">
                     <span class="account-name">{{ $accountName }}</span>

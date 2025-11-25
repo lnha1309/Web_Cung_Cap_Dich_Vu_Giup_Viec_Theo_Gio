@@ -111,6 +111,31 @@
         transform: translateY(0);
     }
 
+    .contact-feedback {
+        margin: 10px 0 20px;
+        padding: 12px 14px;
+        border-radius: 10px;
+        font-size: 14px;
+    }
+
+    .contact-feedback.success {
+        background: #e6f4ea;
+        border: 1px solid #b3dfc6;
+        color: #0b6b32;
+    }
+
+    .contact-feedback.error {
+        background: #fff0f0;
+        border: 1px solid #f3c0c0;
+        color: #b42318;
+    }
+
+    .input-error {
+        color: #b42318;
+        font-size: 12px;
+        margin-top: 6px;
+    }
+
     .contact-info-section {
         padding: 50px 40px;
         background: white;
@@ -364,32 +389,59 @@
     <div class="contact-content">
         <div class="form-section">
             <h1>Gửi phản hồi</h1>
-            <form id="contactForm">
+
+            @if (session('status'))
+                <div class="contact-feedback success">
+                    {{ session('status') }}
+                </div>
+            @endif
+
+            @if ($errors->any())
+                <div class="contact-feedback error">
+                    {{ $errors->first() }}
+                </div>
+            @endif
+
+            <div id="contactFeedback" class="contact-feedback" style="display: none;"></div>
+
+            <form id="contactForm" action="{{ route('contact.send') }}" method="POST">
+                @csrf
                 <div class="form-group">
-                    <label for="name">Họ, tên</label>
-                    <input type="text" id="name" name="name" required>
+                    <label for="name">Họ và tên</label>
+                    <input type="text" id="name" name="name" value="{{ old('name') }}" required>
+                    @error('name')
+                        <div class="input-error">{{ $message }}</div>
+                    @enderror
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
                         <label for="phone">Số điện thoại</label>
-                        <input type="tel" id="phone" name="phone" required>
+                        <input type="tel" id="phone" name="phone" value="{{ old('phone') }}" required>
+                        @error('phone')
+                            <div class="input-error">{{ $message }}</div>
+                        @enderror
                     </div>
                     <div class="form-group">
                         <label for="email">Email</label>
-                        <input type="email" id="email" name="email" required>
+                        <input type="email" id="email" name="email" value="{{ old('email') }}" required>
+                        @error('email')
+                            <div class="input-error">{{ $message }}</div>
+                        @enderror
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label for="message">Thông tin góp ý</label>
-                    <textarea id="message" name="message" required></textarea>
+                    <label for="message">Thông tin cần hỗ trợ</label>
+                    <textarea id="message" name="message" required>{{ old('message') }}</textarea>
+                    @error('message')
+                        <div class="input-error">{{ $message }}</div>
+                    @enderror
                 </div>
 
                 <button type="submit" class="submit-btn">Gửi</button>
             </form>
         </div>
-
         <div class="contact-info-section">
             <h2>Liên hệ</h2>
 
@@ -470,28 +522,62 @@
 </div>
 
 <script>
-    document.getElementById('contactForm').addEventListener('submit', function(e) {
-        e.preventDefault();
+    const contactForm = document.getElementById('contactForm');
+    const feedbackEl = document.getElementById('contactFeedback');
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
-        const formData = {
-            name: document.getElementById('name').value,
-            phone: document.getElementById('phone').value,
-            email: document.getElementById('email').value,
-            message: document.getElementById('message').value
-        };
+    const showFeedback = (message, type) => {
+        if (!feedbackEl) {
+            return;
+        }
 
-        console.log('Form submitted:', formData);
-        alert('Cảm ơn bạn đã gửi phản hồi!');
-        this.reset();
-    });
+        feedbackEl.style.display = message ? 'block' : 'none';
+        feedbackEl.textContent = message || '';
+        feedbackEl.classList.remove('success', 'error');
 
-    // Optional: Add map link functionality
-    document.querySelectorAll('.map-icon').forEach((icon, index) => {
-        icon.addEventListener('click', function() {
-            console.log('Opening map for location:', index + 1);
-            // You can add actual Google Maps link here
-            alert('Chức năng xem bản đồ sẽ được thêm vào sau!');
+        if (type) {
+            feedbackEl.classList.add(type);
+        }
+    };
+
+    if (contactForm && window.fetch && csrfToken) {
+        contactForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            showFeedback('', '');
+
+            const payload = {
+                name: contactForm.name.value,
+                phone: contactForm.phone.value,
+                email: contactForm.email.value,
+                message: contactForm.message.value,
+            };
+
+            try {
+                const response = await fetch(contactForm.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                    body: JSON.stringify(payload),
+                });
+
+                const data = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    const firstError = data.errors ? Object.values(data.errors)[0][0] : null;
+                    throw new Error(firstError || data.message || 'Có lỗi xảy ra, vui lòng thử lại.');
+                }
+
+                showFeedback(data.message || 'Đã gửi liên hệ thành công.', 'success');
+                contactForm.reset();
+            } catch (error) {
+                showFeedback(error.message, 'error');
+            }
         });
-    });
+    }
 </script>
+
+
 @endsection

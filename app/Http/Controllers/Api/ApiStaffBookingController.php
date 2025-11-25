@@ -11,8 +11,10 @@ use App\Models\LichLamViec;
 use App\Models\KhachHang;
 use App\Models\NhanVien;
 use App\Models\DanhGiaNhanVien;
+use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class ApiStaffBookingController extends Controller
 {
@@ -225,11 +227,20 @@ class ApiStaffBookingController extends Controller
             ], 403);
         }
 
-        $startParam = $request->query('start');
-        $endParam = $request->query('end');
+        // Cho phep nhan ca start/end hoac from/to, mac dinh la tuan hien tai (Thu 2 - Chu nhat)
+        $startParam = $request->query('start') ?? $request->query('from');
+        $endParam = $request->query('end') ?? $request->query('to');
 
-        $startDate = $startParam ? Carbon::parse($startParam) : Carbon::now()->startOfWeek(Carbon::MONDAY);
-        $endDate = $endParam ? Carbon::parse($endParam) : $startDate->copy()->endOfWeek(Carbon::SUNDAY);
+        $startDate = $startParam
+            ? Carbon::parse($startParam)->startOfDay()
+            : Carbon::now()->startOfWeek(Carbon::MONDAY);
+        $endDate = $endParam
+            ? Carbon::parse($endParam)->endOfDay()
+            : $startDate->copy()->endOfWeek(Carbon::SUNDAY);
+
+        // Loc theo hinh thuc thanh toan neu duoc truyen tu UI (cash / wallet)
+        $methodFilter = $request->query('method');
+        $methodFilter = in_array($methodFilter, ['cash', 'wallet'], true) ? $methodFilter : null;
 
         // Cong viec hoan thanh
         $bookings = DonDat::where('ID_NV', $nhanVien->ID_NV)
@@ -244,25 +255,35 @@ class ApiStaffBookingController extends Controller
 
         foreach ($bookings as $booking) {
             $amount = (float) ($booking->TongTienSauGiam ?? $booking->TongTien ?? 0);
-            $incomeTotal += $amount;
 
             $payment = LichSuThanhToan::where('ID_DD', $booking->ID_DD)
                 ->where('TrangThai', 'ThanhCong')
                 ->orderByDesc('ThoiGian')
                 ->first();
 
+            $normalizedMethod = null;
             if ($payment) {
                 $method = $payment->PhuongThucThanhToan;
                 if ($method === 'TienMat') {
+                    $normalizedMethod = 'cash';
                     $incomeCash += $amount;
                 } else {
                     // VNPay / Momo / others
+                    $normalizedMethod = 'wallet';
                     $incomeOnline += $amount;
                 }
             } else {
                 // Khong co lich su thanh toan -> coi nhu tien mat
+                $normalizedMethod = 'cash';
                 $incomeCash += $amount;
             }
+
+            // Neu UI yeu cau loc theo hinh thuc thanh toan thi bo qua cac don khong khop
+            if ($methodFilter !== null && $normalizedMethod !== $methodFilter) {
+                continue;
+            }
+
+            $incomeTotal += $amount;
         }
 
         // Danh gia trong tuan
@@ -305,7 +326,7 @@ class ApiStaffBookingController extends Controller
     }
 
     /**
-     * List bookings assigned to the staff (default: assigned + confirmed)
+     * List bookings assigned to the staff (default: assigned + completed)
      * GET /api/staff/bookings
      */
     public function index(Request $request)
@@ -321,11 +342,11 @@ class ApiStaffBookingController extends Controller
         $statusFilter = $request->query('status');
         $statuses = match ($statusFilter) {
             'rejected' => ['rejected'],
-            'completed', 'done' => ['done'],
+            'completed', 'done' => ['completed', 'done'],
             'cancelled' => ['cancelled'],
-            'history' => ['done', 'rejected', 'cancelled'],
-            'all' => ['assigned', 'confirmed', 'rejected', 'done', 'cancelled', 'finding_staff'],
-            default => ['assigned', 'confirmed'],
+            'history' => ['completed', 'done', 'rejected', 'cancelled'],
+            'all' => ['assigned', 'confirmed', 'completed', 'rejected', 'done', 'cancelled', 'finding_staff'],
+            default => ['assigned', 'confirmed', 'completed'],
         };
 
         $bookings = DonDat::where('ID_NV', $nhanVien->ID_NV)
@@ -334,7 +355,7 @@ class ApiStaffBookingController extends Controller
             ->get()
             ->map(function (DonDat $booking) {
                 $status = $booking->TrangThaiDon;
-                if ($status === 'done') {
+                if (in_array($status, ['done', 'completed'], true)) {
                     $status = 'completed';
                 } elseif ($status === 'cancelled') {
                     $status = 'cancelled';
@@ -464,8 +485,21 @@ class ApiStaffBookingController extends Controller
             ], 422);
         }
 
-        $booking->TrangThaiDon = 'confirmed';
+        $oldStatus = $booking->TrangThaiDon;
+        // Treat staff confirmation as job completion for customer feedback
+        $booking->TrangThaiDon = 'completed';
         $booking->save();
+
+        // Send notification to customer
+        try {
+            $notificationService = app(NotificationService::class);
+            $notificationService->notifyOrderStatusChanged($booking, $oldStatus, 'completed');
+        } catch (\Exception $e) {
+            Log::error('Failed to send status change notification', [
+                'booking_id' => $booking->ID_DD,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         // Mark the matching schedule as assigned so it is counted
         $this->touchScheduleStatus($nhanVien->ID_NV, $booking, 'assigned');
@@ -555,9 +589,21 @@ class ApiStaffBookingController extends Controller
             }
         }
 
+        $oldStatus = $booking->TrangThaiDon;
         $booking->ID_NV = $nhanVien->ID_NV;
-        $booking->TrangThaiDon = 'confirmed'; // nhan va xac nhan ngay
+        $booking->TrangThaiDon = 'completed'; // nhan va xac nhan hoan thanh ngay
         $booking->save();
+
+        // Send notification to customer
+        try {
+            $notificationService = app(NotificationService::class);
+            $notificationService->notifyOrderStatusChanged($booking, $oldStatus, 'completed');
+        } catch (\Exception $e) {
+            Log::error('Failed to send status change notification', [
+                'booking_id' => $booking->ID_DD,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         // Mark matching schedule as assigned if exists
         $this->touchScheduleStatus($nhanVien->ID_NV, $booking, 'assigned');
@@ -600,8 +646,20 @@ class ApiStaffBookingController extends Controller
             ], 422);
         }
 
+        $oldStatus = $booking->TrangThaiDon;
         $booking->TrangThaiDon = 'rejected';
         $booking->save();
+
+        // Send notification to customer
+        try {
+            $notificationService = app(NotificationService::class);
+            $notificationService->notifyOrderStatusChanged($booking, $oldStatus, 'rejected');
+        } catch (\Exception $e) {
+            Log::error('Failed to send status change notification', [
+                'booking_id' => $booking->ID_DD,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         // Ensure schedule stays ready (not counted as assigned)
         $this->touchScheduleStatus($nhanVien->ID_NV, $booking, 'ready');
@@ -637,7 +695,7 @@ class ApiStaffBookingController extends Controller
             ], 404);
         }
 
-        if (!in_array($booking->TrangThaiDon, ['assigned', 'confirmed'], true)) {
+        if (!in_array($booking->TrangThaiDon, ['assigned', 'confirmed', 'completed'], true)) {
             return response()->json([
                 'success' => false,
                 'error' => 'Chi hoan thanh don dang lam.',
@@ -663,8 +721,20 @@ class ApiStaffBookingController extends Controller
             ], 422);
         }
 
+        $oldStatus = $booking->TrangThaiDon;
         $booking->TrangThaiDon = 'done';
         $booking->save();
+
+        // Send notification to customer
+        try {
+            $notificationService = app(NotificationService::class);
+            $notificationService->notifyOrderStatusChanged($booking, $oldStatus, 'done');
+        } catch (\Exception $e) {
+            Log::error('Failed to send status change notification', [
+                'booking_id' => $booking->ID_DD,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         // Cong so du neu thanh toan online (VNPay) thanh cong
         $payment = LichSuThanhToan::where('ID_DD', $booking->ID_DD)

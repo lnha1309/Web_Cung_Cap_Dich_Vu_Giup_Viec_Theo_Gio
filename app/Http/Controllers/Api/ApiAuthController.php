@@ -7,6 +7,7 @@ use App\Models\TaiKhoan;
 use App\Models\KhachHang;
 use App\Models\NhanVien;
 use App\Models\LichLamViec;
+use App\Models\DanhGiaNhanVien;
 use App\Support\IdGenerator;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use App\Mail\OtpMail;
 
 class ApiAuthController extends Controller
@@ -200,6 +203,9 @@ class ApiAuthController extends Controller
             $userData['full_name'] = $nhanVien->Ten_NV ?? '';
             $userData['email'] = $nhanVien->Email ?? '';
             $userData['phone'] = $nhanVien->SDT ?? '';
+            $ratingStats = $this->staffRatingStats($nhanVien);
+            $userData['avg_rating'] = $ratingStats['avg_rating'];
+            $userData['rating_count'] = $ratingStats['rating_count'];
             $userData['staff'] = [
                 'ID_NV' => $nhanVien->ID_NV,
                 'Ten_NV' => $nhanVien->Ten_NV,
@@ -208,7 +214,7 @@ class ApiAuthController extends Controller
                 'GioiTinh' => $nhanVien->GioiTinh,
                 'NgaySinh' => $nhanVien->NgaySinh,
                 'KhuVucLamViec' => $nhanVien->KhuVucLamViec,
-                'HinhAnh' => $nhanVien->HinhAnh,
+                'HinhAnh' => $this->avatarUrl($nhanVien->HinhAnh),
                 'SoDu' => $nhanVien->SoDu,
                 'ID_Quan' => $nhanVien->ID_Quan,
             ];
@@ -316,6 +322,9 @@ class ApiAuthController extends Controller
             $userData['full_name'] = $nhanVien->Ten_NV ?? '';
             $userData['email'] = $nhanVien->Email ?? '';
             $userData['phone'] = $nhanVien->SDT ?? '';
+            $ratingStats = $this->staffRatingStats($nhanVien);
+            $userData['avg_rating'] = $ratingStats['avg_rating'];
+            $userData['rating_count'] = $ratingStats['rating_count'];
             $userData['staff'] = [
                 'ID_NV' => $nhanVien->ID_NV,
                 'Ten_NV' => $nhanVien->Ten_NV,
@@ -324,7 +333,7 @@ class ApiAuthController extends Controller
                 'GioiTinh' => $nhanVien->GioiTinh,
                 'NgaySinh' => $nhanVien->NgaySinh,
                 'KhuVucLamViec' => $nhanVien->KhuVucLamViec,
-                'HinhAnh' => $nhanVien->HinhAnh,
+                'HinhAnh' => $this->avatarUrl($nhanVien->HinhAnh),
                 'SoDu' => $nhanVien->SoDu,
                 'ID_Quan' => $nhanVien->ID_Quan,
             ];
@@ -404,6 +413,7 @@ class ApiAuthController extends Controller
                 $nhanVien->ID_Quan = $request->id_quan;
             }
             $nhanVien->save();
+            $ratingStats = $this->staffRatingStats($nhanVien);
 
             return response()->json([
                     'success' => true,
@@ -415,6 +425,8 @@ class ApiAuthController extends Controller
                     'full_name' => $nhanVien->Ten_NV ?? '',
                     'email' => $nhanVien->Email ?? '',
                     'phone' => $nhanVien->SDT ?? '',
+                    'avg_rating' => $ratingStats['avg_rating'],
+                    'rating_count' => $ratingStats['rating_count'],
                     'staff' => [
                         'ID_NV' => $nhanVien->ID_NV,
                         'Ten_NV' => $nhanVien->Ten_NV,
@@ -423,7 +435,7 @@ class ApiAuthController extends Controller
                         'GioiTinh' => $nhanVien->GioiTinh,
                         'NgaySinh' => $nhanVien->NgaySinh,
                         'KhuVucLamViec' => $nhanVien->KhuVucLamViec,
-                        'HinhAnh' => $nhanVien->HinhAnh,
+                        'HinhAnh' => $this->avatarUrl($nhanVien->HinhAnh),
                         'SoDu' => $nhanVien->SoDu,
                         'ID_Quan' => $nhanVien->ID_Quan,
                     ],
@@ -630,6 +642,116 @@ class ApiAuthController extends Controller
             'success' => true,
             'message' => 'Da cap nhat push token.',
         ]);
+    }
+
+    /**
+     * Upload avatar for staff
+     * POST /api/auth/profile/avatar
+     */
+    public function uploadAvatar(Request $request)
+    {
+        $user = $request->user();
+        $nhanVien = $user?->nhanVien;
+
+        if (!$user || $user->ID_LoaiTK !== 'staff' || !$nhanVien) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Chi nhan vien moi duoc cap nhat anh dai dien.',
+            ], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'avatar' => ['required', 'image', 'max:2048'], // 2MB
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $file = $request->file('avatar');
+        if (!$file) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Tep khong hop le.',
+            ], 422);
+        }
+
+        $path = $file->store('avatars', 'public'); // returns relative path inside disk
+        $nhanVien->HinhAnh = $path; // store relative, easier to change domain later
+        $nhanVien->save();
+
+        $ratingStats = $this->staffRatingStats($nhanVien);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Da cap nhat anh dai dien.',
+            'data' => [
+                'avatar_url' => $this->avatarUrl($path),
+                'id' => $user->ID_TK,
+                'username' => $user->TenDN,
+                'account_type' => $user->ID_LoaiTK,
+                'full_name' => $nhanVien->Ten_NV ?? '',
+                'email' => $nhanVien->Email ?? '',
+                'phone' => $nhanVien->SDT ?? '',
+                'avg_rating' => $ratingStats['avg_rating'],
+                'rating_count' => $ratingStats['rating_count'],
+                'staff' => [
+                    'ID_NV' => $nhanVien->ID_NV,
+                    'Ten_NV' => $nhanVien->Ten_NV,
+                    'SDT' => $nhanVien->SDT,
+                    'Email' => $nhanVien->Email,
+                    'GioiTinh' => $nhanVien->GioiTinh,
+                    'NgaySinh' => $nhanVien->NgaySinh,
+                    'KhuVucLamViec' => $nhanVien->KhuVucLamViec,
+                    'HinhAnh' => $this->avatarUrl($nhanVien->HinhAnh),
+                    'SoDu' => $nhanVien->SoDu,
+                    'ID_Quan' => $nhanVien->ID_Quan,
+                ],
+            ],
+        ]);
+    }
+
+    private function staffRatingStats(?NhanVien $nhanVien): array
+    {
+        if (!$nhanVien) {
+            return [
+                'avg_rating' => 0.0,
+                'rating_count' => 0,
+            ];
+        }
+
+        $ratingsQuery = DanhGiaNhanVien::where('ID_NV', $nhanVien->ID_NV);
+        $avg = (float) $ratingsQuery->avg('Diem');
+        $count = (int) $ratingsQuery->count();
+
+        return [
+            'avg_rating' => $count > 0 ? round($avg, 2) : 0.0,
+            'rating_count' => $count,
+        ];
+    }
+
+    private function avatarUrl(?string $stored): ?string
+    {
+        if (!$stored || trim($stored) === '') {
+            return null;
+        }
+
+        if (Str::startsWith($stored, ['http://', 'https://'])) {
+            return $stored;
+        }
+
+        $relative = Storage::url($stored); // usually /storage/...
+
+        // Ưu tiên host theo request hiện tại (phù hợp khi app dùng 10.0.2.2)
+        $host = request()->getSchemeAndHttpHost();
+        if (!$host || $host === 'http://localhost') {
+          $host = config('app.url') ?: url('/');
+        }
+        $host = rtrim($host, '/');
+        return $host . $relative;
     }
 
     private function shouldLockForMissingSchedules(TaiKhoan $taiKhoan): bool

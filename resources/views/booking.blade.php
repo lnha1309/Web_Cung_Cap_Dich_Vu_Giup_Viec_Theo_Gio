@@ -6059,9 +6059,69 @@ window.showPaymentScreen = function () {
     })();
 </script>
 
+<script>
+    (function () {
+        const params = new URLSearchParams(window.location.search);
+        const durationParam = parseInt(params.get('duration'), 10);
+        const allowedDurations = [2, 3, 4];
+        if (!allowedDurations.includes(durationParam)) {
+            return;
+        }
+
+        if (typeof selectServiceOption === 'function') {
+            selectServiceOption('hour');
+        }
+
+        const serviceSelection = document.getElementById('serviceSelection');
+        const bookingForm = document.getElementById('bookingFormContainer');
+        if (serviceSelection && bookingForm && !bookingForm.classList.contains('active')) {
+            serviceSelection.style.display = 'none';
+            bookingForm.classList.add('active');
+
+            const infoCard = document.getElementById('infoCard');
+            const priceCard = document.getElementById('priceCard');
+            const buttonGroup = document.getElementById('buttonGroup');
+            if (infoCard) infoCard.style.display = 'none';
+            if (priceCard) priceCard.style.display = 'flex';
+            if (buttonGroup) buttonGroup.classList.add('show');
+        }
+
+        const options = document.querySelectorAll('.duration-option');
+        let targetOption = null;
+        options.forEach(opt => {
+            if (opt.getAttribute('data-hours') === String(durationParam)) {
+                targetOption = opt;
+            }
+            opt.classList.remove('selected');
+        });
+        if (targetOption) {
+            targetOption.classList.add('selected');
+        }
+
+        window.selectedDuration = durationParam;
+        if (typeof selectedDuration !== 'undefined') {
+            selectedDuration = durationParam;
+        }
+        window.bookingState = window.bookingState || {};
+        window.bookingState.duration = durationParam;
+
+        if (typeof updateExtraTasks === 'function') {
+            updateExtraTasks();
+        }
+        if (typeof updatePrice === 'function') {
+            updatePrice();
+        }
+        if (typeof updateBookingCardTime === 'function') {
+            updateBookingCardTime();
+        }
+        if (typeof window.detectAndApplySurcharges === 'function') {
+            window.detectAndApplySurcharges();
+        }
+    })();
+</script>
+
 </body>
 
 </html>
-
 
 
