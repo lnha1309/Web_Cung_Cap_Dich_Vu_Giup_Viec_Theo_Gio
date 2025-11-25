@@ -16,6 +16,10 @@ use App\Http\Controllers\Api\ApiNotificationController;
 use App\Http\Controllers\ContactController;
 
 Route::get('/', function () {
+    if (Auth::check() && Auth::user()->ID_LoaiTK === 'admin') {
+        return redirect()->route('admin.dashboard');
+    }
+
     $showNewCustomerVoucher = true;
 
     if (Auth::check() && Auth::user()->khachHang) {

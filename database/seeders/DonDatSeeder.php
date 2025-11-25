@@ -23,7 +23,7 @@ class DonDatSeeder extends Seeder
                 'ID_Goi' => null,
                 'NgayBatDauGoi' => null,
                 'NgayKetThucGoi' => null,
-                'TrangThaiDon' => 'paid',
+                'TrangThaiDon' => 'assigned',
                 'TongTien' => 192000,
                 'TongTienSauGiam' => 153600,
                 'ID_NV' => 'NV001',
