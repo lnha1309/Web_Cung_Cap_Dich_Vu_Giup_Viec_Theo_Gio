@@ -677,44 +677,74 @@
     }
 }
 
-@media (max-width: 768px) {
-    .faq-container {
-        padding: 40px 20px;
-    }
+    @media (max-width: 768px) {
+        .faq-container {
+            padding: 40px 20px;
+        }
 
-    .faq-title {
-        font-size: 32px;
-        margin-bottom: 40px;
-    }
+        .faq-title {
+            font-size: 32px;
+            margin-bottom: 40px;
+        }
 
-    .faq-cards {
-        grid-template-columns: 1fr;
-        gap: 20px;
-    }
+        .faq-cards {
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
 
-    .faq-card {
-        padding: 25px 20px;  /* Điều chỉnh cho mobile */
-        min-height: auto;
-    }
+        .faq-card {
+            padding: 25px 20px;  /* Điều chỉnh cho mobile */
+            min-height: auto;
+        }
 
-    .faq-card-title {
-        font-size: 18px;
-        margin-bottom: 15px;
-    }
+        .faq-card-title {
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
 
-    .faq-card-text {
-        font-size: 15px;
-    }
+        .faq-card-text {
+            font-size: 15px;
+        }
 
-    .faq-footer {
-        font-size: 15px;
-    }
+        .faq-footer {
+            font-size: 15px;
+        }
 
-    .faq-button {
-        padding: 14px 32px;
-        font-size: 16px;
+        .faq-button {
+            padding: 14px 32px;
+            font-size: 16px;
+        }
+
+        /* App Intro Section Responsive */
+        .app-intro-section {
+            grid-template-columns: 1fr;
+            text-align: center;
+            gap: 40px;
+        }
+
+        .app-left-side, .app-right-side {
+            flex-direction: row;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .app-center-content {
+            order: -1; /* Show text first */
+        }
+        
+        .app-title {
+            font-size: 32px;
+        }
+        
+        .app-description {
+            font-size: 16px;
+        }
+        
+        .features-section {
+            grid-template-columns: 1fr;
+            gap: 40px;
+        }
     }
-}
 </style>
 @endpush
 @section('content')

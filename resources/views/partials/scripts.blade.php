@@ -33,6 +33,19 @@
             accountDropdown.addEventListener('click', (event) => {
                 event.stopPropagation();
             });
+            accountDropdown.addEventListener('click', (event) => {
+                event.stopPropagation();
+            });
+        }
+
+        // Mobile Menu Toggle
+        const mobileToggle = document.getElementById('mobileMenuToggle');
+        const navMenu = document.querySelector('.nav-menu');
+
+        if (mobileToggle && navMenu) {
+            mobileToggle.addEventListener('click', () => {
+                navMenu.classList.toggle('active');
+            });
         }
     });
 </script>

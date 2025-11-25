@@ -282,6 +282,47 @@
         input.type = "password";
     }
 }
+    
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+      
+      .step {
+        padding: 20px;
+      }
+      
+      h1 {
+        font-size: 24px;
+      }
+      
+      .verification-group {
+        flex-direction: column;
+      }
+      
+      .verification-group button {
+        width: 100%;
+        margin-top: 10px;
+      }
+      
+      .captcha-container {
+        padding: 15px;
+      }
+      
+      #captchaCanvas {
+        max-width: 100%;
+        height: auto;
+      }
+      
+      .captcha-input {
+        width: 100%;
+      }
+      
+      button {
+        width: 100%;
+        margin-right: 0;
+      }
+    }
   </style>
 </head>
 <body>

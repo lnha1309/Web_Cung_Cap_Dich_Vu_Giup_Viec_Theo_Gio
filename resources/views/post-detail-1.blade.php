@@ -1,8 +1,5 @@
 @extends('layouts.base')
 @section('title', 'bTaskee ra mắt bBeauty - bTaskee')
-@section('global_styles')
-<link rel="stylesheet" href="{{ asset('css/header-footer.css') }}">
-@endsection
 @push('styles')
 <style>
     * {

@@ -1,8 +1,5 @@
 @extends('layouts.base')
-@section('title', 'Thông Cáo Báo Chí - bTaskee')
-@section('global_styles')
-<link rel="stylesheet" href="{{ asset('css/header-footer.css') }}">
-@endsection
+@section('title', 'Tin tức báo chí')
 @push('styles')
 <style>
     * {
@@ -10,15 +7,16 @@
         padding: 0;
         box-sizing: border-box;
     }
-
     body {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         background-color: #f5f5f5;
+        overflow-x: hidden; /* Prevent horizontal scroll */
     }
 
     .container {
         max-width: 1100px;
         margin: 0 auto;
+        padding: 0 20px; /* Default padding */
     }
 
     h1 {
@@ -37,12 +35,15 @@
     }
 
     .post-card {
-        background: white;
-        border-radius: 8px;
+        background: #fff;
+        border-radius: 8px; /* Requirement: 8px */
         overflow: hidden;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08); /* Requirement: specific shadow */
         transition: transform 0.3s ease, box-shadow 0.3s ease;
         cursor: pointer;
+        margin-bottom: 20px; /* Requirement: margin-bottom */
+        display: flex;
+        flex-direction: column;
     }
 
     .post-card:hover {
@@ -51,28 +52,41 @@
     }
 
     .post-image {
-        width: 100%;
-        height: 250px;
-        object-fit: cover;
+        width: 100%; /* Requirement: 100% width */
+        height: auto; /* Requirement: auto height */
+        aspect-ratio: 16 / 9; /* Requirement: 16:9 ratio */
+        object-fit: cover; /* Requirement: cover */
+        display: block;
     }
 
     .post-content {
-        padding: 25px;
+        padding: 20px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
     }
 
     .post-title {
-        font-size: 20px;
+        font-size: 16px; /* Requirement: 15-16px */
         font-weight: bold;
         color: #1a1a1a;
-        margin-bottom: 15px;
+        margin-bottom: 10px;
         line-height: 1.4;
-        min-height: 80px;
+        
+        /* Requirement: line-clamp 2 */
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-height: 44px; /* Approx 2 lines height to maintain alignment */
     }
 
     .post-date {
         font-size: 14px;
         color: #888;
-        margin-top: 15px;
+        margin-top: auto; /* Push to bottom */
+        padding-top: 10px;
     }
 
     @media (max-width: 1024px) {
@@ -83,17 +97,22 @@
     }
 
     @media (max-width: 768px) {
+        .container {
+            padding: 0 16px; /* Requirement: 12-16px padding */
+        }
+
         .post-grid {
             grid-template-columns: 1fr;
             gap: 20px;
         }
 
         h1 {
-            font-size: 36px;
+            font-size: 32px; /* Adjusted for mobile */
+            margin-bottom: 30px;
         }
 
         .post-title {
-            font-size: 20px;
+            font-size: 16px;
         }
     }
 </style>

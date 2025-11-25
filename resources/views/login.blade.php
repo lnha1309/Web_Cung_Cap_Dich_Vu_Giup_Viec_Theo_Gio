@@ -205,6 +205,51 @@
             color: #666;
             margin-top: 6px;
         }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 15px;
+            }
+            
+            .login-container {
+                width: 100%;
+            }
+            
+            h1 {
+                font-size: 26px;
+                margin-bottom: 20px;
+            }
+            
+            .logo-wrapper img {
+                max-width: 120px;
+            }
+            
+            input[type="text"],
+            input[type="password"],
+            input[type="email"] {
+                padding: 12px 16px;
+                font-size: 15px;
+            }
+            
+            .login-button {
+                padding: 12px;
+                font-size: 16px;
+            }
+            
+            .forgot-hint {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .inline-actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .otp-button {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body>

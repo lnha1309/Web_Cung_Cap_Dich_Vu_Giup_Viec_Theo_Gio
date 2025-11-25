@@ -1,8 +1,5 @@
 @extends('layouts.base')
 @section('title', 'Giới thiệu')
-@section('global_styles')
-<link rel="stylesheet" href="{{ asset('css/header-footer.css') }}">
-@endsection
 @push('styles')
 <style>
     * {
@@ -383,8 +380,18 @@
         }
 
         .partners-container {
-            grid-template-columns: 1fr;
+            grid-template-columns: repeat(2, 1fr);
             gap: 25px;
+        }
+        
+        .partner-card {
+             flex-direction: column;
+             text-align: center;
+             padding: 30px;
+        }
+        
+        .partner-logo {
+            margin-bottom: 15px;
         }
     }
 
@@ -394,19 +401,35 @@
         }
 
         .mission-title {
-            font-size: 1.5rem;
+            font-size: 1.8rem;
             margin-bottom: 30px;
         }
 
         .mission-section p {
-            font-size: 0.95rem;
-            line-height: 1.7;
+            font-size: 1rem;
+            line-height: 1.6;
             margin-bottom: 30px;
-            padding: 0 15px;
+            padding: 0;
         }
 
         .banner-image {
-            width: 95%;
+            width: 100%;
+        }
+        
+        .video-section {
+            height: auto;
+            min-height: 0;
+            aspect-ratio: 16/9;
+        }
+
+        .intro-video {
+            position: static;
+            transform: none;
+            width: 100%;
+            height: 100%;
+            min-width: 0;
+            min-height: 0;
+            object-fit: cover;
         }
 
         .about-section {
@@ -415,23 +438,34 @@
 
         .about-item {
             grid-template-columns: 1fr;
-            gap: 30px;
-            margin-bottom: 60px;
+            gap: 40px;
+            margin-bottom: 80px;
+            display: flex;
+            flex-direction: column;
         }
 
-        .about-item:nth-child(even) .about-image,
-        .about-item:nth-child(even) .about-content {
-            order: initial;
+        .about-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .about-item:nth-child(even) .about-image {
+            order: -1;
+        }
+        
+        .about-item .about-image {
+            order: -1;
         }
 
         .about-image {
-            height: 350px;
+            height: 250px;
+            border-radius: 15px;
         }
 
         .about-title {
-            font-size: 1.5rem;
+            font-size: 1.6rem;
+            margin-bottom: 15px;
         }
-
+        
         .about-content {
             padding: 0;
         }
@@ -441,127 +475,94 @@
         }
 
         .value-card {
-            padding: 30px 25px;
+            padding: 30px 20px;
+        }
+        
+        .value-container {
+             margin-bottom: 50px;
         }
 
         .vision-mission-container {
-            padding: 40px 25px;
+            padding: 30px 20px;
             border-radius: 20px;
+        }
+
+        .block-header {
+            flex-direction: column;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .block-icon {
+            margin-right: 0;
+            margin-bottom: 15px;
+            width: 50px;
+            height: 50px;
         }
 
         .block-title {
             font-size: 1.5rem;
         }
-
-        .block-icon {
-            width: 50px;
-            height: 50px;
-            margin-right: 15px;
+        
+        .block-description {
+            text-align: justify;
         }
 
         .partners-section {
             padding: 60px 15px;
         }
-
+        
         .partners-title {
             font-size: 1.6rem;
-            margin-bottom: 35px;
-        }
-
-        .partner-card {
-            padding: 30px 25px;
-            flex-direction: column;
             text-align: center;
+            margin-bottom: 40px;
         }
 
-        .partner-logo {
-            width: 80px;
-            height: 80px;
+        .partners-container {
+            grid-template-columns: 1fr;
+            gap: 20px;
         }
-
-        .back-home-btn {
-            font-size: 1rem;
-            padding: 16px 40px;
-        }
-    }
-
-    @media (max-width: 480px) {
-        .mission-title {
-            font-size: 1.3rem;
-        }
-
-        .mission-section p {
-            font-size: 0.9rem;
-            line-height: 1.6;
-            text-align: left;
-        }
-
-        .about-title {
-            font-size: 1.3rem;
-        }
-
-        .about-image {
-            height: 300px;
-        }
-
-        .value-title {
-            font-size: 1.5rem;
-        }
-
-        .value-icon {
-            width: 50px;
-            height: 50px;
-            margin-bottom: 15px;
-        }
-
-        .value-card-title {
-            font-size: 1rem;
-        }
-
-        .value-card-description {
-            font-size: 0.85rem;
-        }
-
-        .vision-mission-container {
-            padding: 35px 20px;
-        }
-
-        .block-title {
-            font-size: 1.3rem;
-        }
-
-        .block-description {
-            font-size: 0.9rem;
-        }
-
-        .block-header {
-            margin-bottom: 20px;
-        }
-
-        .block-icon {
-            width: 45px;
-            height: 45px;
-        }
-
-        .partners-title {
-            font-size: 1.4rem;
-        }
-
+        
         .partner-card {
             padding: 25px 20px;
+            flex-direction: row;
+            align-items: center;
+            text-align: left;
         }
-
+        
+        .partner-logo {
+            width: 60px;
+            height: 60px;
+            margin-bottom: 0;
+        }
+        
         .partner-name {
             font-size: 1.2rem;
         }
-
+        
         .partner-description {
-            font-size: 0.85rem;
+            font-size: 0.9rem;
         }
-
+        
         .back-home-btn {
-            font-size: 0.95rem;
-            padding: 14px 35px;
+            width: 100%;
+            display: block;
+            padding: 15px;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .partner-card {
+            flex-direction: column;
+            text-align: center;
+        }
+        
+        .partner-logo {
+            margin-bottom: 15px;
+        }
+        
+        .mission-title {
+            font-size: 1.5rem;
         }
     }
 </style>

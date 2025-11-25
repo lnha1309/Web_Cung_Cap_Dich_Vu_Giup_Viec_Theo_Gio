@@ -5,6 +5,6 @@
 @hasSection('global_styles')
 @yield('global_styles')
 @else
-<link rel="stylesheet" href="{{ asset('css/main.css') }}">
+<link rel="stylesheet" href="{{ asset('css/main.css') }}?v={{ time() }}">
 @endif
 @stack('styles')

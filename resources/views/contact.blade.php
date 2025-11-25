@@ -1,8 +1,6 @@
 @extends('layouts.base')
 @section('title', 'Liên hệ - BTaskee')
-@section('global_styles')
-<link rel="stylesheet" href="{{ asset('css/header-footer.css') }}">
-@endsection
+
 @push('styles')
 <style>
     * {
@@ -16,7 +14,7 @@
         background-color: #f5f5f5;
     }
 
-    .contact-container {
+    .contact-page-container {
         max-width: 1200px;
         margin: 40px auto;
         background: white;
@@ -126,26 +124,26 @@
         color: #1a1a1a;
     }
 
-    .contact-item {
+    .contact-page-item {
         margin-bottom: 35px;
         display: flex;
         align-items: flex-start;
         gap: 15px;
     }
 
-    .contact-item-icon {
+    .contact-page-item-icon {
         width: 30px;
         height: 30px;
         flex-shrink: 0;
     }
 
-    .contact-item-icon img {
+    .contact-page-item-icon img {
         width: 100%;
         height: 100%;
         object-fit: contain;
     }
 
-    .contact-item-value {
+    .contact-page-item-value {
         font-size: 18px;
         font-weight: 600;
         color: #1a1a1a;
@@ -360,7 +358,7 @@
 </style>
 @endpush
 @section('content')
-<div class="contact-container">
+<div class="contact-page-container">
     <div class="contact-content">
         <div class="form-section">
             <h1>Gửi phản hồi</h1>
@@ -393,18 +391,18 @@
         <div class="contact-info-section">
             <h2>Liên hệ</h2>
 
-            <div class="contact-item">
-                <div class="contact-item-icon">
+            <div class="contact-page-item">
+                <div class="contact-page-item-icon">
                     <img src="assets/icon-contact.png" alt="Email">
                 </div>
-                <div class="contact-item-value">support@btaskee.com</div>
+                <div class="contact-page-item-value">support@btaskee.com</div>
             </div>
 
-            <div class="contact-item">
-                <div class="contact-item-icon">
+            <div class="contact-page-item">
+                <div class="contact-page-item-icon">
                     <img src="assets/icon-call.png" alt="Phone">
                 </div>
-                <div class="contact-item-value">1900.636.736</div>
+                <div class="contact-page-item-value">1900.636.736</div>
             </div>
 
             <div class="illustration-image">

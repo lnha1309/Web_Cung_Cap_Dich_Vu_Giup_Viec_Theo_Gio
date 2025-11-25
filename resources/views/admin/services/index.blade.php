@@ -312,6 +312,30 @@
         color: var(--color-info-dark);
         background: var(--color-background);
     }
+
+    @media screen and (max-width: 768px) {
+        .page-header {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 1rem;
+        }
+
+        .page-header div {
+            margin-bottom: 0.5rem;
+        }
+
+        .filters {
+            grid-template-columns: 1fr;
+        }
+
+        /* Hide less critical columns on mobile */
+        th:nth-child(1), td:nth-child(1), /* ID */
+        th:nth-child(4), td:nth-child(4), /* Area */
+        th:nth-child(5), td:nth-child(5)  /* Rooms */
+        {
+            display: none;
+        }
+    }
 </style>
 @endpush
 

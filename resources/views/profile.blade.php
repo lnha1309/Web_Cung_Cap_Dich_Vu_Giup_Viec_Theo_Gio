@@ -3,18 +3,18 @@
 @section('title', 'Thong tin ca nhan')
 
 @section('content')
-<section style="max-width: 800px; margin: 40px auto; padding: 24px; border-radius: 16px; border: 1px solid #e0e0e0; box-shadow: 0 8px 24px rgba(0,0,0,0.04); background-color: #ffffff;">
-    <h1 style="font-size: 24px; margin-bottom: 20px; color: #1a1a1a;">Thong tin ca nhan</h1>
+<section class="profile-container">
+    <h1 class="profile-title">Thong tin ca nhan</h1>
 
     @if (session('status'))
-        <div style="padding: 10px 12px; border-radius: 8px; background-color: #e8f5e9; color: #2e7d32; font-size: 14px; margin-bottom: 16px;">
+        <div class="alert alert-success">
             {{ session('status') }}
         </div>
     @endif
 
     @if ($errors->any())
-        <div style="padding: 10px 12px; border-radius: 8px; background-color: #ffebee; color: #c62828; font-size: 14px; margin-bottom: 16px;">
-            <ul style="margin:0; padding-left:18px;">
+        <div class="alert alert-error">
+            <ul>
                 @foreach ($errors->all() as $error)
                     <li>{{ $error }}</li>
                 @endforeach
@@ -25,55 +25,55 @@
     <form method="POST" action="{{ route('profile.update') }}" id="profileForm">
         @csrf
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div class="profile-grid">
             <div class="form-group">
-                <label style="display:block; margin-bottom:6px; font-weight:500;">Ho va ten</label>
+                <label>Ho va ten</label>
                 <input
                     type="text"
                     name="Ten_KH"
                     value="{{ old('Ten_KH', $customer->Ten_KH) }}"
                     data-editable="true"
                     readonly
-                    style="width:100%; padding:10px 12px; border-radius:10px; border:2px solid #ddd; font-size:14px;"
+                    class="form-control"
                 >
             </div>
 
             <div class="form-group">
-                <label style="display:block; margin-bottom:6px; font-weight:500;">So dien thoai</label>
+                <label>So dien thoai</label>
                 <input
                     type="text"
                     name="SDT"
                     value="{{ old('SDT', $customer->SDT) }}"
                     data-editable="true"
                     readonly
-                    style="width:100%; padding:10px 12px; border-radius:10px; border:2px solid #ddd; font-size:14px;"
+                    class="form-control"
                 >
             </div>
 
             <div class="form-group">
-                <label style="display:block; margin-bottom:6px; font-weight:500;">Email</label>
+                <label>Email</label>
                 <input
                     type="email"
                     value="{{ $customer->Email }}"
                     readonly
-                    style="width:100%; padding:10px 12px; border-radius:10px; border:2px solid #eee; background-color:#fafafa; font-size:14px;"
+                    class="form-control form-control-readonly"
                 >
             </div>
 
             <div class="form-group">
-                <label style="display:block; margin-bottom:6px; font-weight:500;">Ten dang nhap</label>
+                <label>Ten dang nhap</label>
                 <input
                     type="text"
                     value="{{ $account->TenDN }}"
                     readonly
-                    style="width:100%; padding:10px 12px; border-radius:10px; border:2px solid #eee; background-color:#fafafa; font-size:14px;"
+                    class="form-control form-control-readonly"
                 >
             </div>
         </div>
 
-        <div style="margin-top: 24px;">
-            <h2 style="font-size: 18px; margin-bottom: 12px; color:#1a1a1a;">Dia chi</h2>
-            <p style="font-size: 13px; color:#666; margin-bottom:10px;">Ban co the luu toi da 3 dia chi.</p>
+        <div class="address-section">
+            <h2 class="section-title">Dia chi</h2>
+            <p class="section-subtitle">Ban co the luu toi da 3 dia chi.</p>
 
             @php
                 $oldAddresses = old('addresses', []);
@@ -88,20 +88,19 @@
                     $apartment = $oldItem['CanHo'] ?? ($existing->CanHo ?? '');
                     $district = $oldItem['district'] ?? '';
                 @endphp
-                <div class="form-group" style="margin-bottom: 16px;">
-                    <label style="display:block; margin-bottom:6px; font-weight:500;">Dia chi {{ $i + 1 }}</label>
+                <div class="form-group address-group">
+                    <label>Dia chi {{ $i + 1 }}</label>
                     <input type="hidden" name="addresses[{{ $i }}][id]" value="{{ $id }}">
                     <input type="hidden" name="addresses[{{ $i }}][district]" value="{{ $district }}">
                     <input
                         type="text"
                         name="addresses[{{ $i }}][DiaChiDayDu]"
                         value="{{ $value }}"
-                        class="address-input"
+                        class="address-input form-control mb-2"
                         data-index="{{ $i }}"
                         data-editable="true"
                         readonly
                         placeholder="Nhap dia chi va chon tu goi y Google Maps"
-                        style="width:100%; padding:10px 12px; border-radius:10px; border:2px solid #ddd; font-size:14px; margin-bottom:6px;"
                     >
                     <input
                         type="text"
@@ -109,14 +108,13 @@
                         value="{{ $apartment }}"
                         data-editable="true"
                         readonly
+                        class="form-control form-control-sm"
                         placeholder="Can ho (vi du: Can ho A2-12, Chung cu XYZ)"
-                        style="width:100%; padding:8px 12px; border-radius:10px; border:2px solid #ddd; font-size:13px;"
                     >
                     <button
                         type="button"
                         class="delete-address"
                         data-index="{{ $i }}"
-                        style="margin-top:8px; padding:6px 12px; border-radius:999px; border:1px solid #c62828; background:#ffebee; color:#c62828; font-size:12px; cursor:pointer; display:none;"
                     >
                         Xoa dia chi nay
                     </button>
@@ -124,24 +122,180 @@
             @endfor
         </div>
 
-        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:24px;">
+        <div class="form-actions">
             <button
                 type="button"
                 id="editProfileButton"
-                style="padding:10px 18px; border-radius:999px; border:2px solid #004d2e; background:#ffffff; color:#004d2e; font-weight:500; cursor:pointer;"
+                class="btn btn-outline"
             >
                 Sua thong tin
             </button>
             <button
                 type="submit"
                 id="saveProfileButton"
-                style="padding:10px 18px; border-radius:999px; border:none; background:#004d2e; color:#ffffff; font-weight:500; cursor:pointer; display:none;"
+                class="btn btn-primary"
+                style="display:none;"
             >
                 Luu thay doi
             </button>
         </div>
     </form>
 </section>
+
+@push('styles')
+<style>
+    .profile-container {
+        max-width: 800px;
+        margin: 40px auto;
+        padding: 24px;
+        border-radius: 16px;
+        border: 1px solid #e0e0e0;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.04);
+        background-color: #ffffff;
+    }
+
+    .profile-title {
+        font-size: 24px;
+        margin-bottom: 20px;
+        color: #1a1a1a;
+    }
+
+    .alert {
+        padding: 10px 12px;
+        border-radius: 8px;
+        font-size: 14px;
+        margin-bottom: 16px;
+    }
+
+    .alert-success {
+        background-color: #e8f5e9;
+        color: #2e7d32;
+    }
+
+    .alert-error {
+        background-color: #ffebee;
+        color: #c62828;
+    }
+
+    .alert-error ul {
+        margin: 0;
+        padding-left: 18px;
+    }
+
+    .profile-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    .form-group {
+        margin-bottom: 16px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 500;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 2px solid #ddd;
+        font-size: 14px;
+    }
+
+    .form-control-readonly {
+        border: 2px solid #eee;
+        background-color: #fafafa;
+    }
+
+    .form-control-sm {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+
+    .mb-2 {
+        margin-bottom: 6px;
+    }
+
+    .address-section {
+        margin-top: 24px;
+    }
+
+    .section-title {
+        font-size: 18px;
+        margin-bottom: 12px;
+        color: #1a1a1a;
+    }
+
+    .section-subtitle {
+        font-size: 13px;
+        color: #666;
+        margin-bottom: 10px;
+    }
+
+    .delete-address {
+        margin-top: 8px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid #c62828;
+        background: #ffebee;
+        color: #c62828;
+        font-size: 12px;
+        cursor: pointer;
+        display: none;
+    }
+
+    .form-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 24px;
+    }
+
+    .btn {
+        padding: 10px 18px;
+        border-radius: 999px;
+        font-weight: 500;
+        cursor: pointer;
+    }
+
+    .btn-outline {
+        border: 2px solid #004d2e;
+        background: #ffffff;
+        color: #004d2e;
+    }
+
+    .btn-primary {
+        border: none;
+        background: #004d2e;
+        color: #ffffff;
+    }
+
+    @media (max-width: 768px) {
+        .profile-container {
+            margin: 20px;
+            padding: 20px;
+        }
+
+        .profile-grid {
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+
+        .form-actions {
+            flex-direction: column;
+        }
+
+        .btn {
+            width: 100%;
+            text-align: center;
+        }
+    }
+</style>
+@endpush
 
 <script src="https://maps.googleapis.com/maps/api/js?key={{ config('services.google.maps_key') }}&libraries=places"></script>
 <script>

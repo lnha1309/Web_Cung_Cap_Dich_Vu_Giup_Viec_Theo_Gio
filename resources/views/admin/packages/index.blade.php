@@ -60,6 +60,29 @@
     .pagination li a, .pagination li span { display: inline-block; padding: 0.5rem 0.85rem; border-radius: var(--border-radius-1); background: var(--color-white); border: 1px solid var(--color-light); color: var(--color-dark); }
     .pagination li.active span { background: var(--color-primary); color: var(--color-white); border-color: var(--color-primary); }
     .pagination li.disabled span { color: var(--color-info-dark); background: var(--color-background); }
+
+    @media screen and (max-width: 768px) {
+        .page-header {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 1rem;
+        }
+        
+        .page-header div {
+            margin-bottom: 0.5rem;
+        }
+
+        .filters {
+            grid-template-columns: 1fr;
+        }
+
+        /* Hide less critical columns on mobile */
+        th:nth-child(1), td:nth-child(1), /* ID */
+        th:nth-child(5), td:nth-child(5)  /* Description */
+        {
+            display: none;
+        }
+    }
 </style>
 @endpush
 

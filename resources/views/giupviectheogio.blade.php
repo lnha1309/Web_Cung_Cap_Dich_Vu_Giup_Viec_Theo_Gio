@@ -1,8 +1,6 @@
 @extends('layouts.base')
-@section('title', 'Dịch vụ Giúp việc theo giờ')
-@section('global_styles')
-<link rel="stylesheet" href="{{ asset('css/header-footer.css') }}">
-@endsection
+@section('title', 'Dịch vụ giúp việc theo giờ')
+
 @push('styles')
 <style>
     /* --- 1. Thiết lập chung & Bảng màu --- */
@@ -26,31 +24,31 @@
         line-height: 1.6;
     }
 
-    .container {
+    .hourly-container {
         width: 90%;
         max-width: 1100px;
         margin: 0 auto;
     }
 
-    section {
+    .hourly-section {
         padding: 70px 0;
     }
 
-    h2 {
+    .hourly-section h2 {
         font-size: 2.5rem;
         text-align: center;
         margin-bottom: 50px;
         color: var(--primary-color);
     }
 
-    img {
+    .hourly-section img {
         max-width: 100%;
         height: auto;
         border-radius: 12px;
     }
 
     /* Nút bấm chung */
-    .btn {
+    .hourly-btn {
         display: inline-block;
         padding: 12px 28px;
         border-radius: 50px;
@@ -61,121 +59,121 @@
         cursor: pointer;
     }
 
-    .btn-primary {
+    .hourly-btn-primary {
         background-color: var(--primary-color);
         color: var(--text-light);
         border: 2px solid var(--primary-color);
     }
 
-    .btn-primary:hover {
+    .hourly-btn-primary:hover {
         background-color: var(--primary-color-dark);
         border-color: var(--primary-color-dark);
     }
 
-    .btn-secondary {
+    .hourly-btn-secondary {
         background-color: transparent;
         color: var(--primary-color);
         border: 2px solid var(--primary-color);
     }
 
-    .btn-secondary:hover {
+    .hourly-btn-secondary:hover {
         background-color: var(--primary-color);
         color: var(--text-light);
     }
 
     /* --- 1. Phần Hero (Split Layout) --- */
-    .hero-section {
+    .hourly-hero-section {
         padding-top: 50px;
         display: flex;
         align-items: center;
         gap: 40px;
     }
 
-    .hero-content {
+    .hourly-hero-content {
         flex: 1;
     }
 
-    .hero-content h1 {
+    .hourly-hero-content h1 {
         font-size: 3.2rem;
         color: var(--primary-color);
         margin-bottom: 20px;
     }
 
-    .hero-content .tagline {
+    .hourly-hero-content .tagline {
         font-size: 1.2rem;
         margin-bottom: 30px;
     }
 
-    .hero-buttons .btn {
+    .hourly-hero-buttons .hourly-btn {
         margin-right: 15px;
     }
 
-    .hero-image {
+    .hourly-hero-image {
         flex: 1;
     }
 
-    .hero-image img {
+    .hourly-hero-image img {
         box-shadow: 0 10px 30px rgba(0, 77, 46, 0.1);
     }
 
     /* --- 2. Dịch vụ này dành cho ai? --- */
-    .who-for {
+    .hourly-who-for {
         background-color: var(--background-gray-light);
     }
 
-    .who-for .container {
+    .hourly-who-for .hourly-container {
         display: flex;
         align-items: center;
         gap: 50px;
     }
 
-    .who-image {
+    .hourly-who-image {
         flex: 1;
     }
 
-    .who-content {
+    .hourly-who-content {
         flex: 1;
     }
 
-    .who-content h2 {
+    .hourly-who-content h2 {
         text-align: left;
     }
 
-    .who-list {
+    .hourly-who-list {
         list-style: none;
         padding-left: 0;
     }
 
-    .who-list li {
+    .hourly-who-list li {
         font-size: 1.1rem;
         margin-bottom: 20px;
         display: flex;
         align-items: center;
     }
 
-    .who-list .icon {
+    .hourly-who-list .icon {
         font-size: 1.5rem;
         color: var(--primary-color);
         margin-right: 15px;
     }
 
     /* --- 3. Danh Sách Công Việc (Layout xen kẽ) --- */
-    .included-row {
+    .hourly-included-row {
         display: flex;
         align-items: center;
         gap: 50px;
         margin-bottom: 60px;
     }
 
-    .included-row.row-reverse {
+    .hourly-included-row.row-reverse {
         flex-direction: row-reverse;
     }
 
-    .included-content {
+    .hourly-included-content {
         flex: 1;
     }
 
-    .included-image-wrapper img {
+    .hourly-included-image-wrapper img {
         width: 600px;
         height: 350px;
         object-fit: cover;
@@ -183,25 +181,25 @@
         border-radius: 12px;
     }
 
-    .included-content h3 {
+    .hourly-included-content h3 {
         font-size: 1.8rem;
         color: var(--primary-color);
         margin-bottom: 20px;
     }
 
-    .included-content ul {
+    .hourly-included-content ul {
         list-style: none;
         padding-left: 0;
     }
 
-    .included-content li {
+    .hourly-included-content li {
         position: relative;
         padding-left: 30px;
         margin-bottom: 12px;
         font-size: 1.05rem;
     }
 
-    .included-content li::before {
+    .hourly-included-content li::before {
         content: '✓';
         position: absolute;
         left: 0;
@@ -211,7 +209,7 @@
         font-size: 1.2rem;
     }
 
-    .not-included {
+    .hourly-not-included {
         margin-top: 40px;
         background-color: #fff8f8;
         border: 1px solid #ffe0e0;
@@ -220,60 +218,60 @@
         text-align: center;
     }
 
-    .not-included h4 {
+    .hourly-not-included h4 {
         color: #d9534f;
         margin-bottom: 10px;
     }
 
     @media (max-width: 992px) {
-        .included-row {
+        .hourly-included-row {
             flex-direction: column !important;
             gap: 30px;
             margin-bottom: 40px;
         }
 
-        .included-content h3 {
+        .hourly-included-content h3 {
             text-align: center;
         }
     }
 
     /* --- 4. Quy trình đặt dịch vụ --- */
-    .how-it-works {
+    .hourly-how-it-works {
         background-color: var(--background-pastel-light);
     }
 
-    .steps-grid {
+    .hourly-steps-grid {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 40px;
         text-align: center;
     }
 
-    .step img {
+    .hourly-step img {
         width: 120px;
         height: 120px;
         margin-bottom: 20px;
     }
 
-    .step h4 {
+    .hourly-step h4 {
         font-size: 1.3rem;
         color: var(--primary-color);
     }
 
     /* --- 5. Bảng giá --- */
-    .pricing-intro {
+    .hourly-pricing-intro {
         text-align: center;
         max-width: 600px;
         margin: 0 auto 40px auto;
     }
 
-    .pricing-grid {
+    .hourly-pricing-grid {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 30px;
     }
 
-    .pricing-card {
+    .hourly-pricing-card {
         border: 1px solid var(--border-color);
         border-radius: 12px;
         padding: 30px;
@@ -286,114 +284,156 @@
     }
 
     /* Chỉ hiệu ứng hover nhẹ, KHÔNG có màu xanh mặc định */
-    .pricing-card:hover {
+    .hourly-pricing-card:hover {
         transform: translateY(-5px);
         box-shadow: 0 8px 25px rgba(0, 77, 46, 0.1);
     }
 
     /* Class mới cho card được chọn */
-    .pricing-card.selected {
+    .hourly-pricing-card.selected {
         border-color: var(--primary-color);
         border-width: 2px;
         box-shadow: 0 8px 25px rgba(0, 77, 46, 0.15);
     }
 
-    .pricing-card h3 {
+    .hourly-pricing-card h3 {
         font-size: 1.5rem;
         color: var(--primary-color);
     }
 
-    .price {
+    .hourly-price {
         font-size: 2.8rem;
         font-weight: bold;
         color: var(--text-dark);
         margin: 15px 0;
     }
 
-    .price span {
+    .hourly-price span {
         font-size: 1rem;
         font-weight: normal;
         color: var(--text-secondary);
     }
 
-    .pricing-card ul {
+    .hourly-pricing-card ul {
         list-style: none;
         padding: 0;
         margin: 20px 0;
         text-align: left;
     }
 
-    .pricing-card li {
+    .hourly-pricing-card li {
         margin-bottom: 10px;
         padding-left: 25px;
         position: relative;
     }
 
-    .pricing-card li::before {
+    .hourly-pricing-card li::before {
         content: '✓';
         position: absolute;
         left: 0;
         color: var(--primary-color);
     }
     
-    .pricing-card .btn {
+    .hourly-pricing-card .hourly-btn {
         margin-top: auto;
     }
 
     /* --- Responsive cho di động --- */
     @media (max-width: 992px) {
-        h2 {
+        .hourly-section h2 {
             font-size: 2.2rem;
         }
 
-        .hero-section {
+        .hourly-hero-section {
             flex-direction: column;
             text-align: center;
         }
 
-        .hero-content h1 {
+        .hourly-hero-content h1 {
             font-size: 2.8rem;
         }
 
-        .who-for .container {
+        .hourly-who-for .hourly-container {
             flex-direction: column;
         }
 
-        .who-content h2 {
+        .hourly-who-content h2 {
             text-align: center;
         }
 
-        .pricing-grid {
+        .hourly-pricing-grid {
             grid-template-columns: 1fr;
         }
 
-        .pricing-card {
+        .hourly-pricing-card {
             max-width: 400px;
             margin: 0 auto;
         }
     }
 
     @media (max-width: 768px) {
-        h2 {
+        .hourly-container {
+            width: calc(100% - 32px);
+        }
+
+        .hourly-section h2 {
             font-size: 2rem;
         }
 
-        .hero-section {
+        .hourly-hero-section {
             padding-top: 20px;
         }
 
-        .hero-content h1 {
+        .hourly-hero-content h1 {
             font-size: 2.5rem;
         }
 
-        .hero-buttons {
+        .hourly-hero-buttons {
             display: flex;
             flex-direction: column;
             gap: 15px;
         }
 
-        .steps-grid {
+        .hourly-steps-grid {
             grid-template-columns: 1fr;
+        }
+
+        /* Pricing Optimization */
+        .hourly-pricing-grid {
+            gap: 20px;
+        }
+
+        .hourly-pricing-card {
+            padding: 30px 20px 40px 20px;
+            width: 100%; /* Ensure full width within max-width */
+        }
+
+        .hourly-pricing-card p {
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            min-height: 3em; /* Ensure space for at least 2 lines (1.5 * 2) to equalise height */
+        }
+
+        .hourly-pricing-card li {
+            padding-left: 32px;
+            margin-bottom: 12px;
+        }
+
+        .hourly-pricing-card li::before {
+            font-size: 20px;
+            top: -2px;
+        }
+
+        .hourly-pricing-card .hourly-btn {
+            min-height: 48px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
         }
     }
 </style>
@@ -402,10 +442,10 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const pricingCards = document.querySelectorAll('.pricing-card');
+    const pricingCards = document.querySelectorAll('.hourly-pricing-card');
     
     pricingCards.forEach(card => {
-        const button = card.querySelector('.btn');
+        const button = card.querySelector('.hourly-btn');
         
         button.addEventListener('click', function(e) {
             e.preventDefault();
@@ -429,28 +469,28 @@ document.addEventListener('DOMContentLoaded', function() {
 @endpush
 
 @section('content')
-<section class="hero-section container">
-    <div class="hero-content">
+<section class="hourly-section hourly-hero-section hourly-container">
+    <div class="hourly-hero-content">
         <h1>Dịch vụ Giúp việc theo giờ</h1>
         <p class="tagline">Linh hoạt, tin cậy, cho không gian sống luôn sạch tinh tươm. Bạn chọn giờ, chúng tôi lo việc nhà.</p>
-        <div class="hero-buttons">
-            <a href="{{ url('select-address') }}" class="btn btn-primary">Đặt lịch ngay</a>
-            <a href="#pricing" class="btn btn-secondary">Xem bảng giá</a>
+        <div class="hourly-hero-buttons">
+            <a href="{{ url('select-address') }}" class="hourly-btn hourly-btn-primary">Đặt lịch ngay</a>
+            <a href="#pricing" class="hourly-btn hourly-btn-secondary">Xem bảng giá</a>
         </div>
     </div>
-    <div class="hero-image">
+    <div class="hourly-hero-image">
         <img src="{{ asset('assets/hero-image.jpg') }}" alt="Nhân viên giúp việc theo giờ đang dọn dẹp">
     </div>
 </section>
 
-<section class="who-for">
-    <div class="container">
-        <div class="who-image">
+<section class="hourly-section hourly-who-for">
+    <div class="hourly-container">
+        <div class="hourly-who-image">
             <img src="{{ asset('assets/who-for.jfif') }}" alt="Người phụ nữ thư giãn trên sofa">
         </div>
-        <div class="who-content">
+        <div class="hourly-who-content">
             <h2>Dịch vụ này dành cho ai?</h2>
-            <ul class="who-list">
+            <ul class="hourly-who-list">
                 <li><span class="icon">✓</span>Người bận rộn với công việc, không có thời gian dọn dẹp.</li>
                 <li><span class="icon">✓</span>Gia đình trẻ cần thêm thời gian chăm sóc con cái, nghỉ ngơi.</li>
                 <li><span class="icon">✓</span>Người sống một mình muốn dọn dẹp căn hộ nhanh chóng.</li>
@@ -460,11 +500,11 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </section>
 
-<section class="included container">
+<section class="hourly-section hourly-included hourly-container">
     <h2>Dịch vụ bao gồm những gì?</h2>
 
-    <div class="included-row">
-        <div class="included-content">
+    <div class="hourly-included-row">
+        <div class="hourly-included-content">
             <h3>Phòng khách / Phòng ngủ</h3>
             <ul>
                 <li>Quét, hút bụi và lau sàn nhà.</li>
@@ -474,13 +514,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 <li>Thu dọn rác.</li>
             </ul>
         </div>
-        <div class="included-image-wrapper">
+        <div class="hourly-included-image-wrapper">
             <img src="{{ asset('assets/included-phongkhach.webp') }}" alt="Phòng khách sạch sẽ">
         </div>
     </div>
 
-    <div class="included-row row-reverse">
-        <div class="included-content">
+    <div class="hourly-included-row row-reverse">
+        <div class="hourly-included-content">
             <h3>Nhà bếp</h3>
             <ul>
                 <li>Rửa sạch chén bát (cho 1 bữa ăn gần nhất).</li>
@@ -490,13 +530,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 <li>Thu dọn rác.</li>
             </ul>
         </div>
-        <div class="included-image-wrapper">
+        <div class="hourly-included-image-wrapper">
             <img src="{{ asset('assets/included-nhabep.jpg') }}" alt="Nhà bếp gọn gàng">
         </div>
     </div>
 
-    <div class="included-row">
-        <div class="included-content">
+    <div class="hourly-included-row">
+        <div class="hourly-included-content">
             <h3>Nhà vệ sinh</h3>
             <ul>
                 <li>Cọ rửa bồn cầu, bồn rửa mặt, vòi sen/bồn tắm.</li>
@@ -504,32 +544,32 @@ document.addEventListener('DOMContentLoaded', function() {
                 <li>Lau sàn nhà vệ sinh.</li>
             </ul>
         </div>
-        <div class="included-image-wrapper">
+        <div class="hourly-included-image-wrapper">
             <img src="{{ asset('assets/included-nhavesinh.jpg') }}" alt="Nhà vệ sinh sáng bóng">
         </div>
     </div>
 
-    <div class="not-included">
+    <div class="hourly-not-included">
         <h4>Lưu ý: Dịch vụ KHÔNG bao gồm:</h4>
         <p>Giặt ủi, phơi, gấp quần áo; Nấu ăn; Vệ sinh bên trong các thiết bị (tủ lạnh, lò nướng); Lau kính trên cao; Di chuyển đồ đạc nặng; Vệ sinh sau xây dựng.</p>
     </div>
 </section>
 
-<section class="how-it-works">
-    <div class="container">
+<section class="hourly-section hourly-how-it-works">
+    <div class="hourly-container">
         <h2>Chỉ với 3 bước đơn giản</h2>
-        <div class="steps-grid">
-            <div class="step">
+        <div class="hourly-steps-grid">
+            <div class="hourly-step">
                 <img src="{{ asset('assets/step1.png') }}" alt="Biểu tượng lịch">
                 <h4>1. Chọn lịch hẹn</h4>
                 <p>Chọn ngày, giờ và số giờ bạn cần. Hệ thống luôn cập nhật lịch trống.</p>
             </div>
-            <div class="step">
+            <div class="hourly-step">
                 <img src="{{ asset('assets/step2.png') }}" alt="Biểu tượng ngôi nhà">
                 <h4>2. Nhập thông tin</h4>
                 <p>Cung cấp địa chỉ của bạn và bất kỳ ghi chú đặc biệt nào cho nhân viên.</p>
             </div>
-            <div class="step">
+            <div class="hourly-step">
                 <img src="{{ asset('assets/step3.png') }}" alt="Biểu tượng nhân viên dọn dẹp">
                 <h4>3. Xác nhận & Thư giãn</h4>
                 <p>Chúng tôi xác nhận lịch và nhân viên sẽ có mặt đúng hẹn. Tận hưởng nhà sạch!</p>
@@ -538,41 +578,41 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </section>
 
-<section id="pricing" class="pricing container">
+<section id="pricing" class="hourly-section hourly-pricing hourly-container">
     <h2>Bảng giá dịch vụ</h2>
-    <p class="pricing-intro">Chúng tôi cam kết một mức giá minh bạch, không phát sinh phụ phí. Bạn chỉ trả tiền cho thời gian bạn sử dụng.</p>
-    <div class="pricing-grid">
-        <div class="pricing-card">
+    <p class="hourly-pricing-intro">Chúng tôi cam kết một mức giá minh bạch, không phát sinh phụ phí. Bạn chỉ trả tiền cho thời gian bạn sử dụng.</p>
+    <div class="hourly-pricing-grid">
+        <div class="hourly-pricing-card">
             <h3>Gói 2 giờ</h3>
-            <div class="price">192.000đ</div>
+            <div class="hourly-price">192.000đ</div>
             <p>Lý tưởng cho căn hộ studio hoặc 1 phòng ngủ.</p>
             <ul>
                 <li>Dọn dẹp cơ bản</li>
                 <li>Tập trung 1-2 khu vực</li>
             </ul>
-            <a href="#" class="btn btn-secondary">Chọn gói này</a>
+            <a href="#" class="hourly-btn hourly-btn-secondary">Chọn gói này</a>
         </div>
 
-        <div class="pricing-card">
+        <div class="hourly-pricing-card">
             <h3>Gói 3 giờ</h3>
-            <div class="price">240.000đ</div>
+            <div class="hourly-price">240.000đ</div>
             <p>Phổ biến nhất! Phù hợp cho nhà 2 phòng ngủ.</p>
             <ul>
                 <li>Dọn dẹp toàn diện</li>
                 <li>Đủ thời gian cho các khu vực</li>
             </ul>
-            <a href="#" class="btn btn-secondary">Chọn gói này</a>
+            <a href="#" class="hourly-btn hourly-btn-secondary">Chọn gói này</a>
         </div>
 
-        <div class="pricing-card">
+        <div class="hourly-pricing-card">
             <h3>Gói 4 giờ</h3>
-            <div class="price">320.000đ</div>
+            <div class="hourly-price">320.000đ</div>
             <p>Dành cho nhà lớn, hoặc cần dọn dẹp kỹ.</p>
             <ul>
                 <li>Dọn dẹp sâu, chi tiết</li>
                 <li>Bao quát toàn bộ nhà</li>
             </ul>
-            <a href="#" class="btn btn-secondary">Chọn gói này</a>
+            <a href="#" class="hourly-btn hourly-btn-secondary">Chọn gói này</a>
         </div>
     </div>
 </section>

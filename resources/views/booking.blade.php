@@ -16,7 +16,7 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background-color: #f5efe7;
             color: #333;
-            overflow: hidden;
+            overflow: auto;
         }
 
         .header {
@@ -794,11 +794,650 @@
             color: #444;
         }
 
-        .surcharge-row .s-label {
+        .price-row .s-label {
             flex: 1;
             padding-right: 12px;
         }
 
+        /* Responsive Styles for Booking Page */
+        @media (max-width: 1024px) {
+            .container {
+                flex-direction: column;
+                height: auto;
+                padding: 10px;
+                gap: 20px;
+            }
+
+            .left-panel {
+                flex: none;
+                width: 100%;
+                position: static;
+                margin-bottom: 0;
+            }
+            
+            .left-panel.month-booking {
+                max-height: none;
+                overflow-y: visible;
+            }
+
+            .right-panel {
+                width: 100%;
+                flex: none;
+                overflow-y: visible;
+                height: auto;
+                padding-top: 0;
+                justify-content: flex-start;
+            }
+            
+            .header {
+                padding: 5px 20px;
+            }
+            
+            .header-logo {
+                left: 20px;
+            }
+            
+            .header-logo img {
+                height: 50px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .progress-steps {
+                gap: 10px;
+            }
+            
+            .step {
+                min-width: 80px;
+            }
+            
+            .step-number {
+                width: 30px;
+                height: 30px;
+                font-size: 14px;
+            }
+            
+            .step-label {
+                font-size: 12px;
+                text-align: center;
+            }
+            
+            .progress-steps::before {
+                top: 15px;
+                left: 40px;
+                right: 40px;
+            }
+            
+            .header-logo {
+                display: none; /* Hide logo on very small screens to save space for steps */
+            }
+            
+            .header {
+                justify-content: center;
+            }
+        }
+
+        /* Additional Mobile Responsive Enhancements */
+        @media (max-width: 768px) {
+            /* Service Selection */
+            .service-selection h1 {
+                font-size: 22px;
+                padding: 0 10px;
+            }
+
+            .service-selection .subtitle {
+                font-size: 14px;
+                padding: 0 10px;
+            }
+
+            .service-options {
+                flex-direction: column;
+                gap: 12px;
+                padding: 0 10px;
+            }
+
+            .service-option {
+                width: 100%;
+                padding: 16px;
+            }
+
+            .service-option h3 {
+                font-size: 16px;
+            }
+
+            .service-option p {
+                font-size: 13px;
+            }
+
+            /* Weekday Selector */
+            .weekdays-selector {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 6px;
+            }
+
+            .weekday-option {
+                padding: 10px 4px;
+                font-size: 12px;
+            }
+
+            /* Date Range */
+            .date-range-selector {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            /* Booking Form */
+            .booking-form {
+                padding: 20px;
+            }
+
+            .page-header h1 {
+                font-size: 20px;
+            }
+
+            .form-section h3 {
+                font-size: 18px;
+            }
+
+            /* Duration Options */
+            .duration-options {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .duration-option {
+                padding: 12px;
+            }
+
+            .duration-option .hours {
+                font-size: 16px;
+            }
+
+            .duration-option .price {
+                font-size: 13px;
+            }
+
+            /* Extra Tasks */
+            .extra-tasks {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .extra-task {
+                padding: 12px;
+            }
+
+            .extra-task img {
+                width: 40px;
+                height: 40px;
+            }
+
+            /* Form Groups */
+            .form-group label {
+                font-size: 16px;
+            }
+
+            .form-group select,
+            .form-group input {
+                padding: 10px 14px;
+                font-size: 14px;
+            }
+
+            /* Options Group */
+            .option-item {
+                padding: 12px;
+            }
+
+            .option-item img {
+                width: 28px;
+                height: 28px;
+            }
+
+            .option-item .label {
+                font-size: 13px;
+            }
+
+            /* Left Panel - Booking Summary */
+            .booking-card {
+                padding: 12px;
+            }
+
+            .booking-card h2 {
+                font-size: 16px;
+                margin-bottom: 12px;
+            }
+
+            .booking-item {
+                padding: 10px;
+                flex-wrap: wrap;
+                align-items: flex-start;
+            }
+
+            .booking-item > div {
+                flex: 1;
+                min-width: 0;
+                max-width: calc(100% - 50px);
+            }
+
+            .booking-item label {
+                font-size: 10px;
+                margin-bottom: 4px;
+            }
+
+            .booking-item .value {
+                font-size: 11px;
+                word-break: break-word;
+                line-height: 1.4;
+            }
+
+            .booking-item .sub-info {
+                font-size: 10px;
+                word-break: break-word;
+                line-height: 1.3;
+                margin-top: 4px;
+            }
+
+            .booking-item .edit-icon {
+                flex-shrink: 0;
+                margin-left: 8px;
+            }
+
+            /* Price Card */
+            .price-card {
+                padding: 8px;
+            }
+
+            .price-value {
+                font-size: 20px;
+            }
+
+            .price-label {
+                font-size: 12px;
+            }
+
+            /* Info Card */
+            .info-card {
+                padding: 12px;
+            }
+
+            .info-card h3 {
+                font-size: 14px;
+            }
+
+            .info-card p {
+                font-size: 13px;
+            }
+
+            /* Payment Screen */
+            .payment-card {
+                padding: 20px;
+            }
+
+            .payment-header {
+                margin: -20px -20px 16px -20px;
+                padding: 12px 16px;
+            }
+
+            .payment-header h3 {
+                font-size: 14px;
+            }
+
+            .worker-profile-section {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+                padding-bottom: 16px;
+                margin-bottom: 16px;
+            }
+
+            .worker-profile-section img {
+                width: 60px;
+                height: 60px;
+            }
+
+            .worker-details h4 {
+                font-size: 16px;
+            }
+
+            .worker-stats-payment {
+                font-size: 13px;
+                gap: 12px;
+            }
+
+            .price-breakdown-section h3 {
+                font-size: 16px;
+            }
+
+            .price-row {
+                font-size: 13px;
+                flex-wrap: wrap;
+                gap: 4px;
+            }
+
+            .price-row .label {
+                font-size: 12px;
+                flex: 1;
+                min-width: 120px;
+            }
+
+            .price-row .value {
+                font-size: 12px;
+                text-align: right;
+            }
+
+            .price-detail {
+                font-size: 11px;
+                line-height: 1.4;
+                word-break: break-word;
+            }
+
+            .surcharge-row {
+                font-size: 12px;
+                flex-wrap: wrap;
+                gap: 4px;
+                margin-bottom: 8px;
+            }
+
+            .surcharge-row .s-label {
+                font-size: 11px;
+                flex: 1;
+                min-width: 100px;
+                padding-right: 8px;
+                word-break: break-word;
+            }
+
+            .surcharge-row .s-value {
+                font-size: 12px;
+                white-space: nowrap;
+            }
+
+            .total-due {
+                font-size: 14px;
+            }
+
+            /* Payment Buttons */
+            .payment-buttons {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .payment-buttons .btn {
+                padding: 12px;
+                font-size: 14px;
+            }
+
+            /* Voucher Card */
+            .voucher-card {
+                padding: 12px;
+            }
+
+            .voucher-card h3 {
+                font-size: 14px;
+            }
+
+            .voucher-input-wrapper {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .voucher-input-wrapper input {
+                padding: 10px 12px;
+                font-size: 13px;
+            }
+
+            .voucher-input-wrapper .btn-apply-voucher {
+                width: 100%;
+                padding: 10px;
+                font-size: 13px;
+            }
+
+            /* Modals */
+            .modal {
+                width: 95vw;
+                max-height: 85vh;
+            }
+
+            .modal-header {
+                padding: 12px 16px;
+            }
+
+            .modal-header h3 {
+                font-size: 16px;
+            }
+
+            .modal-body {
+                padding: 12px 16px;
+            }
+
+            .modal-body .task-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .modal-body .task-section {
+                padding: 10px 12px;
+            }
+
+            .modal-body .task-section h4 {
+                font-size: 13px;
+            }
+
+            .modal-body .task-section li {
+                font-size: 12px;
+            }
+
+            /* Payment Method Options */
+            .payment-method-option {
+                padding: 10px 12px;
+            }
+
+            .payment-method-option h4 {
+                font-size: 14px;
+            }
+
+            .payment-method-option p {
+                font-size: 12px;
+            }
+
+            /* Next Button */
+            .next-button {
+                padding: 12px 30px;
+                font-size: 14px;
+            }
+
+            .repeat-next-button {
+                padding: 12px;
+                font-size: 14px;
+            }
+
+            /* Repeat Summary */
+            .repeat-summary {
+                padding: 12px;
+            }
+
+            .repeat-summary p {
+                font-size: 13px;
+            }
+
+            .repeat-summary .total-sessions {
+                font-size: 16px;
+            }
+
+            /* Time Slots (if any) */
+            .time-slots {
+                gap: 8px;
+            }
+
+            .time-slot {
+                padding: 8px 12px;
+                font-size: 13px;
+            }
+
+            /* Ensure touch targets are at least 44px */
+            .step-number,
+            .booking-item .edit-icon,
+            .option-item .help-icon,
+            .modal-close,
+            .btn-apply-voucher,
+            .btn-remove-voucher {
+                min-width: 44px;
+                min-height: 44px;
+            }
+
+            /* Prevent horizontal scroll */
+            body {
+                overflow-x: hidden;
+            }
+
+            .container {
+                overflow-x: hidden;
+            }
+        }
+
+        /* Tablet Specific Styles */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .service-options {
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+
+            .service-option {
+                width: calc(50% - 10px);
+            }
+
+            .duration-options {
+                flex-wrap: wrap;
+            }
+
+            .duration-option {
+                flex: 1 1 calc(50% - 6px);
+            }
+
+            .extra-tasks {
+                flex-wrap: wrap;
+            }
+
+            .extra-task {
+                flex: 1 1 calc(50% - 6px);
+            }
+
+            .weekdays-selector {
+                grid-template-columns: repeat(7, 1fr);
+            }
+
+            .modal-body .task-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* Small Mobile Devices */
+        @media (max-width: 480px) {
+            .header {
+                padding: 5px 10px;
+            }
+
+            .progress-steps {
+                gap: 5px;
+            }
+
+            .step {
+                min-width: 60px;
+            }
+
+            .step-number {
+                width: 24px;
+                height: 24px;
+                font-size: 12px;
+            }
+
+            .step-label {
+                font-size: 10px;
+            }
+
+            .progress-steps::before {
+                left: 30px;
+                right: 30px;
+            }
+
+            .service-selection h1 {
+                font-size: 18px;
+            }
+
+            .booking-form {
+                padding: 15px;
+            }
+
+            .payment-card {
+                padding: 15px;
+            }
+
+            .payment-header {
+                margin: -15px -15px 12px -15px;
+            }
+
+            .price-row .label,
+            .surcharge-row .s-label {
+                font-size: 11px;
+                min-width: 90px;
+            }
+
+            .price-row .value,
+            .surcharge-row .s-value {
+                font-size: 11px;
+            }
+
+            .booking-card {
+                padding: 10px;
+            }
+
+            .booking-card h2 {
+                font-size: 14px;
+            }
+
+            .booking-item {
+                padding: 8px;
+            }
+
+            .booking-item label {
+                font-size: 9px;
+            }
+
+            .booking-item .value {
+                font-size: 10px;
+            }
+
+            .booking-item .sub-info {
+                font-size: 9px;
+            }
+
+            .weekdays-selector {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .modal {
+                width: 98vw;
+            }
+        }
+
+        /* Landscape Mobile Optimization */
+        @media (max-width: 768px) and (orientation: landscape) {
+            .header {
+                padding: 3px 15px;
+            }
+
+            .header-logo img {
+                height: 40px;
+            }
+
+            .step-number {
+                width: 28px;
+                height: 28px;
+            }
+
+            .progress-steps {
+                gap: 8px;
+            }
+        }
         .surcharge-row .s-value {
             white-space: nowrap;
             font-weight: 600;

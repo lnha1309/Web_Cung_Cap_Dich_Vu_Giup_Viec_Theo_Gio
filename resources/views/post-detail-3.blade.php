@@ -1,8 +1,5 @@
 @extends('layouts.base')
 @section('title', 'bTaskee Chính Thức Ra Mắt Dịch Vụ Vệ Sinh Công Nghiệp - bTaskee')
-@section('global_styles')
-<link rel="stylesheet" href="{{ asset('css/header-footer.css') }}">
-@endsection
 @push('styles')
 <style>
     * {

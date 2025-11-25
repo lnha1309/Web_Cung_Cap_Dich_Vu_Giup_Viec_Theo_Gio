@@ -1,8 +1,5 @@
 @extends('layouts.base')
 @section('title', 'Trở thành nhân viên bTaskee')
-@section('global_styles')
-<link rel="stylesheet" href="{{ asset('css/header-footer.css') }}">
-@endsection
 @push('styles')
 <style>
     * {
@@ -53,7 +50,6 @@
         font-size: 18px;
         color: #333;
         margin-bottom: 20px;
-        display: flex;
         align-items: center;
         line-height: 1.5;
     }
@@ -576,139 +572,234 @@
         background-color: #1f4432;
     }
 
-    @media (max-width: 968px) {
+    /* Responsive Styles for Mobile */
+    @media (max-width: 768px) {
+        /* Main Section */
         .main-section {
             flex-direction: column;
-            padding: 20px 0;
+            padding: 1.5rem 1rem;
+            gap: 2rem;
         }
 
         .content {
             max-width: 100%;
+            padding: 0 0.5rem;
         }
 
         .image-section {
             max-width: 100%;
+            padding: 0 0.5rem;
         }
 
         h1 {
-            font-size: 36px;
+            font-size: 28px;
+            margin-bottom: 20px;
+            line-height: 1.3;
         }
 
+        .subtitle {
+            font-size: 16px;
+            margin-bottom: 24px;
+        }
+
+        .benefits li {
+            font-size: 16px;
+            margin-bottom: 16px;
+        }
+
+        .benefits li::before {
+            font-size: 20px;
+            margin-right: 12px;
+        }
+
+        /* Stats Section */
         .stats-section {
             flex-direction: column;
-            padding: 30px 20px;
-            gap: 30px;
-            border-radius: 30px;
+            padding: 24px 16px;
+            gap: 24px;
+            border-radius: 24px;
+            margin: 24px 1rem 0;
         }
 
         .stat-item {
             width: 100%;
-            justify-content: center;
+            justify-content: flex-start;
+            gap: 16px;
         }
 
-        .job-container {
-            padding: 30px 12px 28px 12px;
-            border-radius: 22px;
+        .stat-text {
+            font-size: 15px;
         }
 
-        .job-title {
-            font-size: 24px;
-            margin-bottom: 20px;
+        /* Apply CTA */
+        .apply-cta-wrapper {
+            margin: 24px 1rem 0;
+            padding: 0 0.5rem;
         }
 
-        .job-pics-row {
-            gap: 20px;
+        .apply-cta-btn {
+            padding: 12px 28px;
+            font-size: 16px;
+            max-width: 300px;
         }
 
-        .job-pic {
-            min-width: 160px;
+        /* Requirements Container */
+        .requirements-container {
+            margin: 32px 1rem 0;
+            padding: 32px 20px;
+            border-radius: 24px;
         }
 
-        .cook-container {
-            padding: 30px 12px 28px 12px;
-            border-radius: 22px;
+        .requirements-title {
+            font-size: 22px;
+            margin-bottom: 24px;
         }
 
-        .cook-title {
-            font-size: 24px;
-            margin-bottom: 20px;
+        .requirements-list {
+            font-size: 16px;
+            padding: 0 0.5rem;
         }
 
-        .cook-pics-row {
-            gap: 20px;
+        .requirements-list li {
+            padding-left: 28px;
+            margin-bottom: 14px;
         }
 
-        .cook-pic {
-            min-width: 160px;
+        .requirements-list li::before {
+            font-size: 16px;
         }
 
-        .cleaner-container {
-            padding: 30px 12px 28px 12px;
-            border-radius: 22px;
-        }
-
-        .cleaner-title {
-            font-size: 24px;
-            margin-bottom: 20px;
-        }
-
-        .cleaner-pics-row {
-            gap: 20px;
-        }
-
-        .cleaner-pic {
-            min-width: 160px;
-        }
-
+        /* Job Containers */
+        .job-container,
+        .cook-container,
+        .cleaner-container,
         .laundry-container {
-            padding: 30px 12px 28px 12px;
-            border-radius: 22px;
+            margin: 32px 1rem 0;
+            padding: 32px 16px 24px 16px;
+            border-radius: 24px;
         }
 
+        .job-title,
+        .cook-title,
+        .cleaner-title,
         .laundry-title {
+            font-size: 22px;
+            margin-bottom: 24px;
+        }
+
+        .job-pics-row,
+        .cook-pics-row,
+        .cleaner-pics-row,
+        .laundry-pics-row {
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .job-pic,
+        .cook-pic,
+        .cleaner-pic,
+        .laundry-pic {
+            min-width: 100%;
+            max-width: 100%;
+        }
+
+        .job-pic h3,
+        .cook-pic h3,
+        .cleaner-pic h3,
+        .laundry-pic h3 {
+            font-size: 18px;
+            margin: 14px 0 8px;
+        }
+
+        .job-desc,
+        .cook-desc,
+        .cleaner-desc,
+        .laundry-desc {
+            font-size: 15px;
+        }
+
+        .job-apply-btn {
+            font-size: 14px;
+            padding: 12px 24px;
+        }
+
+        /* Partner Privileges */
+        .partner-privileges-container {
+            margin: 32px 1rem 0;
+            padding: 0 16px 32px 16px;
+        }
+
+        .partner-privileges-title {
             font-size: 24px;
             margin-bottom: 20px;
+            text-align: center;
         }
 
-        .laundry-pics-row {
-            gap: 20px;
-        }
-
-        .laundry-pic {
-            min-width: 160px;
+        .partner-image img {
+            max-height: 200px;
+            margin-bottom: 32px;
         }
 
         .privileges-list {
             flex-direction: column;
             align-items: center;
+            gap: 32px;
         }
 
         .privilege-item {
             max-width: 100%;
-            margin-bottom: 32px;
             text-align: center;
+            margin-bottom: 0;
+        }
+
+        .privilege-icon {
+            margin: 0 auto 12px;
         }
 
         .privilege-text h3 {
-            font-size: 20px;
+            font-size: 18px;
+        }
+
+        .privilege-text p {
+            font-size: 15px;
+        }
+
+        /* Register Steps */
+        .register-steps-container {
+            margin: 32px 0 0;
+            padding: 40px 16px;
+        }
+
+        .register-steps-title {
+            font-size: 24px;
+            margin-bottom: 32px;
+            text-align: center;
         }
 
         .steps-bar {
             flex-direction: column;
             align-items: center;
+            gap: 32px;
+            padding: 0;
         }
 
         .step-item {
             max-width: 100%;
-            margin-bottom: 40px;
+            margin-bottom: 0;
+        }
+
+        .step-item h3 {
+            font-size: 17px;
+            margin-bottom: 12px;
+            padding-top: 24px;
+        }
+
+        .step-item p {
+            font-size: 15px;
         }
 
         .steps-bar::before {
             display: none;
-        }
-
-        .step-item:last-child {
-            margin-bottom: 0;
         }
     }
 </style>

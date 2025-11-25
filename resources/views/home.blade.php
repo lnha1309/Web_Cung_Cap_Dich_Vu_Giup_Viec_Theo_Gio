@@ -50,10 +50,10 @@
 
     <!-- CTA Buttons -->
         <section class="cta-section">
-        <a href="{{ url('select-address') }}">
+        <a href="{{ url('select-address') }}" class="btn-book-link">
             <button class="btn-book">Đặt dịch vụ</button>
         </a>
-        <a href="{{ url('giupviectheogio') }}">
+        <a href="{{ url('giupviectheogio') }}" class="btn-find-link">
             <button class="btn-find">Khám phá dịch vụ</button>
         </a>
     </section>
@@ -527,7 +527,7 @@ Tất cả nhân viên đều có kinh nghiệm và được kiểm duyệt rõ 
     .voucher-banner {
         padding: 3px 10px;
         margin: 10px auto 6px;
-        max-width: 65%;
+        max-width: 90%;
     }
     
     .voucher-title {

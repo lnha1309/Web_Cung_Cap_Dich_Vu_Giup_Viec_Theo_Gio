@@ -12,18 +12,35 @@
             align-items: center;
             min-height: 100vh;
             padding: 20px;
+            background-color: #f9f9f9; /* Added background color for better contrast */
         }
-        .register-container { width: 100%; max-width: 450px; }
-        h1 { text-align: center; margin-bottom: 30px; color: #333; }
+        .register-container { 
+            width: 100%; 
+            max-width: 500px; /* Slightly increased max-width */
+            background: #fff;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        h1 { text-align: center; margin-bottom: 30px; color: #333; font-size: 28px; }
         .form-group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 8px; color: #333; }
-        input { width: 100%; padding: 14px; border: 2px solid #ccc; border-radius: 10px; font-size: 15px; }
+        label { display: block; margin-bottom: 8px; color: #555; font-weight: 500; }
+        input { 
+            width: 100%; 
+            padding: 14px; 
+            border: 2px solid #e1e1e1; 
+            border-radius: 10px; 
+            font-size: 15px; 
+            transition: border-color 0.3s;
+            box-sizing: border-box; /* Ensure padding doesn't affect width */
+        }
         input:focus { border-color: #004d2e; outline: none; }
 
         .otp-group { display: flex; gap: 10px; align-items: center; }
         .otp-button, .verify-button {
             background: #004d2e; color: white; border: none; border-radius: 8px;
             padding: 12px 20px; cursor: pointer; transition: 0.3s; font-weight: 600;
+            white-space: nowrap; /* Prevent text wrapping */
         }
         .otp-button:hover, .verify-button:hover { background: #003d23; }
         .otp-button:disabled { background: #ccc; cursor: not-allowed; }
@@ -39,7 +56,8 @@
         .register-button {
             width: 100%; padding: 14px; background: #004d2e;
             color: white; font-size: 18px; border: none; border-radius: 10px;
-            cursor: pointer; transition: 0.3s;
+            cursor: pointer; transition: 0.3s; font-weight: bold;
+            margin-top: 10px;
         }
         .register-button:hover { background: #003d23; }
 
@@ -53,6 +71,35 @@
             background-color: #fdecea;
             color: #b71c1c;
             border: 1px solid #f5c6cb;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .register-container {
+                padding: 30px 20px;
+                max-width: 100%;
+            }
+            h1 { font-size: 24px; margin-bottom: 25px; }
+        }
+
+        @media (max-width: 480px) {
+            body { padding: 15px; }
+            .register-container { padding: 25px 15px; }
+            h1 { font-size: 22px; margin-bottom: 20px; }
+            
+            .otp-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .otp-button { width: 100%; }
+            
+            .otp-input-group {
+                flex-direction: column;
+            }
+            .verify-button { width: 100%; margin-top: 10px; }
+            
+            input { padding: 12px; font-size: 14px; }
+            .register-button { padding: 12px; font-size: 16px; }
         }
     </style>
 </head>
