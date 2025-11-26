@@ -297,7 +297,7 @@
     }
 
     .hourly-pricing-card h3 {
-        font-size: 1.5rem;
+        font-size: 1.2rem;
         color: var(--primary-color);
     }
 
@@ -583,40 +583,58 @@ document.addEventListener('DOMContentLoaded', function() {
 <section id="pricing" class="hourly-section hourly-pricing hourly-container">
     <h2>Bảng giá dịch vụ</h2>
     <p class="hourly-pricing-intro">Chúng tôi cam kết một mức giá minh bạch, không phát sinh phụ phí. Bạn chỉ trả tiền cho thời gian bạn sử dụng.</p>
+    @php
+        $packagesByDuration = collect($hourlyPackages ?? [])->keyBy('duration');
+        $packageContent = [
+            2 => [
+                'fallback_name' => 'Gói 2 giờ',
+                'fallback_price' => 192000,
+                'description' => 'Lý tưởng cho căn hộ studio hoặc 1 phòng ngủ.',
+                'features' => [
+                    'Dọn dẹp cơ bản',
+                    'Tập trung 1-2 khu vực',
+                ],
+            ],
+            3 => [
+                'fallback_name' => 'Gói 3 giờ',
+                'fallback_price' => 240000,
+                'description' => 'Phổ biến nhất! Phù hợp cho nhà 2 phòng ngủ.',
+                'features' => [
+                    'Dọn dẹp toàn diện',
+                    'Đủ thời gian cho các khu vực',
+                ],
+            ],
+            4 => [
+                'fallback_name' => 'Gói 4 giờ',
+                'fallback_price' => 320000,
+                'description' => 'Dành cho nhà lớn, hoặc cần dọn dẹp kỹ.',
+                'features' => [
+                    'Dọn dẹp sâu, chi tiết',
+                    'Bao quát toàn bộ nhà',
+                ],
+            ],
+        ];
+    @endphp
     <div class="hourly-pricing-grid">
-        <div class="hourly-pricing-card" data-duration="2">
-            <h3>Gói 2 giờ</h3>
-            <div class="hourly-price">192.000đ</div>
-            <p>Lý tưởng cho căn hộ studio hoặc 1 phòng ngủ.</p>
-            <ul>
-                <li>Dọn dẹp cơ bản</li>
-                <li>Tập trung 1-2 khu vực</li>
-            </ul>
-            <a href="{{ route('booking.selectAddress', ['duration' => 2]) }}" class="hourly-btn hourly-btn-secondary" data-duration="2">Chọn gói này</a>
-        </div>
-
-        <div class="hourly-pricing-card" data-duration="3">
-            <h3>Gói 3 giờ</h3>
-            <div class="hourly-price">240.000đ</div>
-            <p>Phổ biến nhất! Phù hợp cho nhà 2 phòng ngủ.</p>
-            <ul>
-                <li>Dọn dẹp toàn diện</li>
-                <li>Đủ thời gian cho các khu vực</li>
-            </ul>
-            <a href="{{ route('booking.selectAddress', ['duration' => 3]) }}" class="hourly-btn hourly-btn-secondary" data-duration="3">Chọn gói này</a>
-        </div>
-
-        <div class="hourly-pricing-card" data-duration="4">
-            <h3>Gói 4 giờ</h3>
-            <div class="hourly-price">320.000đ</div>
-            <p>Dành cho nhà lớn, hoặc cần dọn dẹp kỹ.</p>
-            <ul>
-                <br>
-                <li>Dọn dẹp sâu, chi tiết</li>
-                <li>Bao quát toàn bộ nhà</li>
-            </ul>
-            <a href="{{ route('booking.selectAddress', ['duration' => 4]) }}" class="hourly-btn hourly-btn-secondary" data-duration="4">Chọn gói này</a>
-        </div>
+        @foreach($packageContent as $duration => $content)
+            @php
+                $data = $packagesByDuration->get($duration, []);
+                $name = $data['name'] ?? $content['fallback_name'];
+                $price = $data['price'] ?? $content['fallback_price'];
+                $description = $data['description'] ?? $content['description'];
+            @endphp
+            <div class="hourly-pricing-card" data-duration="{{ $duration }}">
+                <h3>{{ $name }}</h3>
+                <div class="hourly-price">{{ number_format((float) $price, 0, ',', '.') }}đ</div>
+                <p>{{ $description }}</p>
+                <ul>
+                    @foreach($content['features'] as $feature)
+                        <li>{{ $feature }}</li>
+                    @endforeach
+                </ul>
+                <a href="{{ route('booking.selectAddress', ['duration' => $duration]) }}" class="hourly-btn hourly-btn-secondary" data-duration="{{ $duration }}">Chọn gói này</a>
+            </div>
+        @endforeach
     </div>
 </section>
 @endsection
