@@ -14,7 +14,9 @@ use App\Http\Controllers\AdminPackageController;
 use App\Http\Controllers\AdminSurchargeController;
 use App\Http\Controllers\AdminPromotionController;
 use App\Http\Controllers\Api\ApiNotificationController;
+use App\Http\Controllers\ApplyRegisterController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\AdminCandidateController;
 
 Route::get('/', function () {
     if (Auth::check() && Auth::user()->ID_LoaiTK === 'admin') {
@@ -109,6 +111,19 @@ Route::middleware('auth')->group(function () {
         Route::resource('surcharges', AdminSurchargeController::class)->except(['create', 'edit', 'show']);
         Route::resource('promotions', AdminPromotionController::class)->except(['create', 'edit', 'show']);
         Route::patch('promotions/{promotion}/toggle', [AdminPromotionController::class, 'toggle'])->name('promotions.toggle');
+        Route::get('/orders', [App\Http\Controllers\AdminOrderController::class, 'index'])->name('orders.index');
+        Route::get('/orders/{order}', [App\Http\Controllers\AdminOrderController::class, 'show'])->name('orders.show');
+        
+        // Candidate Management
+        Route::post('candidates/sync', [AdminCandidateController::class, 'sync'])->name('candidates.sync');
+        Route::post('candidates/approve', [AdminCandidateController::class, 'approve'])->name('candidates.approve');
+        Route::resource('candidates', AdminCandidateController::class)->only(['index']);
+        
+        // Employee Management
+        Route::resource('employees', App\Http\Controllers\AdminEmployeeController::class)->only(['index']);
+
+        // Customer Management
+        Route::resource('customers', App\Http\Controllers\AdminCustomerController::class)->only(['index']);
     });
 
     Route::get('/my-bookings', [BookingController::class, 'history'])->name('bookings.history');
@@ -134,6 +149,7 @@ Route::get('/payment/vnpay-return', [BookingController::class, 'vnpayReturn'])->
 Route::get('/apply', function () {
     return view('apply');
 });
+Route::post('/apply/register', [ApplyRegisterController::class, 'store'])->name('apply.register');
 
 Route::get('/giupviectheogio', function () {
     $packages = [

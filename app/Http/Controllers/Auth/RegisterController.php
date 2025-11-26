@@ -152,7 +152,7 @@ class RegisterController extends Controller
             'TenDN' => $validated['TenDN'],
             'MatKhau' => $validated['password'],
             'ID_LoaiTK' => 'customer',
-            'TrangThaiTK' => 'active',
+            'TrangThaiTK' => 'inactive',
         ]);
 
         KhachHang::create([

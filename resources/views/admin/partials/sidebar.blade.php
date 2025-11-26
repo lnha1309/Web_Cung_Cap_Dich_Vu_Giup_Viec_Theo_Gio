@@ -4,9 +4,8 @@
 
 <aside>
     <div class="top">
-        <div class="logo" id="logo-toggle" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+        <div class="logo" style="display: flex; align-items: center; gap: 0.5rem;">
             <img src="{{ asset('assets/logo.png') }}" class="logo-full" alt="bTaskee Logo" />
-            <img src="{{ asset('assets/logo2.png') }}" class="logo-collapsed" alt="bTaskee Logo" />
         </div>
         <div class="close" id="close-btn">
             <span class="material-icons-sharp"> close </span>
@@ -17,6 +16,10 @@
         <a href="{{ route('admin.dashboard') }}" class="{{ $activeItem === 'dashboard' ? 'active' : '' }}">
             <span class="material-icons-sharp"> dashboard </span>
             <h3>Dashboard</h3>
+        </a>
+        <a href="{{ route('admin.orders.index') }}" class="{{ $activeItem === 'orders' ? 'active' : '' }}">
+            <span class="material-icons-sharp"> receipt_long </span>
+            <h3>Đơn hàng</h3>
         </a>
         <a href="{{ route('admin.services.index') }}" class="{{ $activeItem === 'services' ? 'active' : '' }}">
             <span class="material-icons-sharp"> miscellaneous_services </span>
@@ -33,6 +36,18 @@
         <a href="{{ route('admin.promotions.index') }}" class="{{ $activeItem === 'promotions' ? 'active' : '' }}">
             <span class="material-icons-sharp"> sell </span>
             <h3>Khuyến mãi</h3>
+        </a>
+        <a href="{{ route('admin.candidates.index') }}" class="{{ $activeItem === 'candidates' ? 'active' : '' }}">
+            <span class="material-icons-sharp"> people </span>
+            <h3>Ứng viên</h3>
+        </a>
+        <a href="{{ route('admin.employees.index') }}" class="{{ $activeItem === 'employees' ? 'active' : '' }}">
+            <span class="material-icons-sharp"> badge </span>
+            <h3>Nhân viên</h3>
+        </a>
+        <a href="{{ route('admin.customers.index') }}" class="{{ $activeItem === 'customers' ? 'active' : '' }}">
+            <span class="material-icons-sharp"> person </span>
+            <h3>Khách hàng</h3>
         </a>
         <a href="{{ route('logout') }}" onclick="event.preventDefault(); document.getElementById('admin-logout-form').submit();">
             <span class="material-icons-sharp"> logout </span>

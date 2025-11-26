@@ -7,9 +7,7 @@
 <style>
     /* Remove duplicate root variables as they are in style.css */
     
-    main {
-        margin-top: 1.4rem;
-    }
+    /* Remove duplicate root variables as they are in style.css */
 
     /* Date Filter Styling */
     main .date {
@@ -284,76 +282,7 @@
     .status-badge.secondary { background: #f3e5f5; color: #9c27b0; }
     .status-badge.dark { background: #eceff1; color: #607d8b; }
 
-    /* Collapsible Sidebar Styles */
-    aside {
-        transition: all 300ms ease;
-        position: sticky;
-        top: 0;
-        height: 100vh;
-        overflow-y: auto; /* Allow scrolling within sidebar if content is too long */
-    }
-
-    /* Hide scrollbar for Chrome, Safari and Opera */
-    aside::-webkit-scrollbar {
-        display: none;
-    }
-
-    /* Hide scrollbar for IE, Edge and Firefox */
-    aside {
-        -ms-overflow-style: none;  /* IE and Edge */
-        scrollbar-width: none;  /* Firefox */
-    }
-
-    aside.collapsed {
-        width: 5rem;
-    }
-
-    aside.collapsed .logo {
-        width: max-content;
-        overflow: visible;
-    }
-
-    aside.collapsed .logo img {
-        width: auto;
-        max-width: none;
-    }
-
-    /* Dual Logo Logic */
-    .logo-collapsed {
-        display: none;
-    }
-
-    aside.collapsed .logo-full {
-        display: none;
-    }
-
-    aside.collapsed .logo-collapsed {
-        display: block;
-    }
-
-
-
-    aside.collapsed .logo h2 {
-        display: none;
-    }
-
-    aside.collapsed .sidebar h3 {
-        display: none;
-    }
-
-    aside.collapsed .sidebar a {
-        display: flex;
-        justify-content: center;
-    }
-
-    aside.collapsed .sidebar a:last-child {
-        position: relative;
-        margin-top: 1.8rem;
-    }
-
-    aside.collapsed .close {
-        align-items: center;
-    }
+    .status-badge.dark { background: #eceff1; color: #607d8b; }
 
     main .insights small {
         margin-top: 1.3rem;
@@ -479,81 +408,8 @@
     .status-badge.secondary { background: #f3e5f5; color: #9c27b0; }
     .status-badge.dark { background: #eceff1; color: #607d8b; }
 
-    /* Collapsible Sidebar Styles */
-    aside {
-        transition: all 300ms ease;
-        position: sticky;
-        top: 0;
-        height: 100vh;
-        overflow-y: auto; /* Allow scrolling within sidebar if content is too long */
-    }
-
-    /* Hide scrollbar for Chrome, Safari and Opera */
-    aside::-webkit-scrollbar {
-        display: none;
-    }
-
-    /* Hide scrollbar for IE, Edge and Firefox */
-    aside {
-        -ms-overflow-style: none;  /* IE and Edge */
-        scrollbar-width: none;  /* Firefox */
-    }
-
-    aside.collapsed {
-        width: 5rem;
-    }
-
-    aside.collapsed .logo {
-        width: max-content;
-        overflow: visible;
-    }
-
-    aside.collapsed .logo img {
-        width: auto;
-        max-width: none;
-    }
-
-    /* Dual Logo Logic */
-    .logo-collapsed {
-        display: none;
-    }
-
-    aside.collapsed .logo-full {
-        display: none;
-    }
-
-    aside.collapsed .logo-collapsed {
-        display: block;
-    }
-
-
-
-    aside.collapsed .logo h2 {
-        display: none;
-    }
-
-    aside.collapsed .sidebar h3 {
-        display: none;
-    }
-
-    aside.collapsed .sidebar a {
-        display: flex;
-        justify-content: center;
-    }
-
-    aside.collapsed .sidebar a:last-child {
-        position: relative;
-        margin-top: 1.8rem;
-    }
-
-    aside.collapsed .close {
-        display: none;
-    }
-    
     /* Adjust grid when sidebar is collapsed */
-    body.sidebar-collapsed .container {
-        grid-template-columns: 5rem auto;
-    }
+    /* Moved to style.css */
 
     /* Toggle Button */
     .sidebar-toggle {
@@ -719,7 +575,7 @@
                 @endforeach
             </tbody>
         </table>
-        <a href="#">Show All</a>
+        <a href="{{ route('admin.orders.index') }}">Show All</a>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -829,18 +685,6 @@
                     }
                 }
             });
-
-            // Sidebar Toggle Logic
-            const logoToggle = document.getElementById('logo-toggle');
-            const aside = document.querySelector('aside');
-            const body = document.body;
-
-            if (logoToggle) {
-                logoToggle.addEventListener('click', () => {
-                    aside.classList.toggle('collapsed');
-                    body.classList.toggle('sidebar-collapsed');
-                });
-            }
         });
     </script>
   </main>
