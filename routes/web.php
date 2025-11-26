@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use App\Models\DonDat;
+use App\Models\DichVu;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\BookingController;
@@ -151,7 +152,52 @@ Route::get('/apply', function () {
 Route::post('/apply/register', [ApplyRegisterController::class, 'store'])->name('apply.register');
 
 Route::get('/giupviectheogio', function () {
-    return view('giupviectheogio');
+    $packages = [
+        2 => [
+            'duration' => 2,
+            'name' => 'Gói 2 giờ',
+            'price' => 192000,
+            'description' => 'Lý tưởng cho căn hộ studio hoặc 1 phòng ngủ.',
+            'id' => 'DV001',
+        ],
+        3 => [
+            'duration' => 3,
+            'name' => 'Gói 3 giờ',
+            'price' => 240000,
+            'description' => 'Phổ biến nhất! Phù hợp cho nhà 2 phòng ngủ.',
+            'id' => 'DV002',
+        ],
+        4 => [
+            'duration' => 4,
+            'name' => 'Gói 4 giờ',
+            'price' => 320000,
+            'description' => 'Dành cho nhà lớn, hoặc cần dọn dẹp kỹ.',
+            'id' => 'DV003',
+        ],
+    ];
+
+    $services = DichVu::whereIn('ID_DV', ['DV001', 'DV002', 'DV003'])->get();
+
+    foreach ($services as $service) {
+        $duration = (int) round($service->ThoiLuong ?? 0);
+        if (!isset($packages[$duration])) {
+            continue;
+        }
+
+        $packages[$duration]['name'] = $service->TenDV ?: $packages[$duration]['name'];
+        $packages[$duration]['price'] = (float) $service->GiaDV;
+        $packages[$duration]['id'] = $service->ID_DV;
+
+        if (!empty($service->MoTa)) {
+            $packages[$duration]['description'] = $service->MoTa;
+        }
+    }
+
+    ksort($packages);
+
+    return view('giupviectheogio', [
+        'hourlyPackages' => array_values($packages),
+    ]);
 });
 
 Route::get('/giupviectheothang', function () {

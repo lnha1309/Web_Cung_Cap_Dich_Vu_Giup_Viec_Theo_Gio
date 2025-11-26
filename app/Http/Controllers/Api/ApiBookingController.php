@@ -16,6 +16,7 @@ use App\Models\NhanVien;
 use App\Models\TaiKhoan;
 use App\Support\IdGenerator;
 use App\Services\SurchargeService;
+use App\Services\VNPayService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -104,6 +105,31 @@ class ApiBookingController extends Controller
         $service = DichVu::find($booking->ID_DV);
         $address = DiaChi::find($booking->ID_DC);
         $staff = $booking->ID_NV ? NhanVien::find($booking->ID_NV) : null;
+        $paymentRecord = LichSuThanhToan::where('ID_DD', $id)
+            ->orderByDesc('ThoiGian')
+            ->first();
+        $paymentStatus = 'unknown';
+        $paymentDeadline = null;
+        if ($paymentRecord && $paymentRecord->PhuongThucThanhToan === 'VNPay') {
+            $createdAt = $paymentRecord->ThoiGian ?: $booking->NgayTao;
+            $paymentDeadline = $createdAt ? Carbon::parse($createdAt)->addMinutes(5) : null;
+            if (empty($paymentRecord->MaGiaoDichVNPAY) || $paymentRecord->TrangThai === 'ChoXuLy') {
+                if ($paymentDeadline && Carbon::now()->greaterThanOrEqualTo($paymentDeadline)) {
+                    // Auto cancel booking if payment expired
+                    $booking->TrangThaiDon = 'cancelled';
+                    $booking->save();
+                    $paymentRecord->TrangThai = 'ThatBai';
+                    $paymentRecord->save();
+                    $paymentStatus = 'failed';
+                } else {
+                    $paymentStatus = 'pending';
+                }
+            } elseif ($paymentRecord->MaGiaoDichVNPAY && $paymentRecord->TrangThai === 'ThanhCong') {
+                $paymentStatus = 'success';
+            } else {
+                $paymentStatus = 'failed';
+            }
+        }
         
         // Get applied vouchers
         $vouchers = ChiTietKhuyenMai::where('ID_DD', $id)->get();
@@ -138,6 +164,8 @@ class ApiBookingController extends Controller
                     'avatar' => $this->normalizeImageUrl($staff->HinhAnh),
                 ] : null,
                 'payment_method' => $this->latestPaymentMethod($booking->ID_DD),
+                'payment_status' => $paymentStatus,
+                'payment_deadline' => $paymentDeadline ? $paymentDeadline->toDateTimeString() : null,
                 'created_at' => $booking->NgayTao,
                 'vouchers' => $vouchers->map(function ($v) {
                     return [
@@ -153,7 +181,7 @@ class ApiBookingController extends Controller
      * Create new booking
      * POST /api/bookings
      */
-    public function store(Request $request, SurchargeService $surchargeService)
+    public function store(Request $request, SurchargeService $surchargeService, VNPayService $vnPayService)
     {
         $validator = \Validator::make($request->all(), [
             'order_type' => ['required', 'in:hour,month'],
@@ -175,6 +203,7 @@ class ApiBookingController extends Controller
             'repeat_days.*' => ['integer', 'between:0,6'],
             'note' => ['nullable', 'string'],
             'payment_method' => ['nullable', 'in:cash,vnpay'],
+            'return_url' => ['nullable', 'string'],
         ]);
 
         if ($validator->fails()) {
@@ -195,6 +224,8 @@ class ApiBookingController extends Controller
         }
 
         $paymentMethod = $request->payment_method ?? 'cash';
+        $returnUrlOverride = $request->return_url;
+        $paymentUrl = null;
 
         // Check vouchers reuse
         if ($request->has('vouchers') && is_array($request->vouchers)) {
@@ -215,33 +246,19 @@ class ApiBookingController extends Controller
             $addressText = trim($request->address_text);
             $addressUnit = $request->address_unit ? trim($request->address_unit) : null;
 
-            // Try to find existing address
-            $query = $khachHang->diaChis()
-                ->where('is_Deleted', false)
-                ->where('DiaChiDayDu', $addressText);
-            if ($addressUnit) {
-                $query->where('CanHo', $addressUnit);
-            }
+            // Luon tao dia chi tam thoi (khong gan ID_KH) de khong luu vao danh sach dia chi da luu
+            $quan = $this->guessQuanFromAddress($addressText);
+            $newIdDc = IdGenerator::next('DiaChi', 'ID_DC', 'DC_');
 
-            $existingAddress = $query->first();
+            DiaChi::create([
+                'ID_DC' => $newIdDc,
+                'ID_KH' => null,
+                'ID_Quan' => $quan?->ID_Quan,
+                'CanHo' => $addressUnit,
+                'DiaChiDayDu' => $addressText,
+            ]);
 
-            if ($existingAddress) {
-                $idDc = $existingAddress->ID_DC;
-            } else {
-                // Create new address
-                $quan = $this->guessQuanFromAddress($addressText);
-                $newIdDc = IdGenerator::next('DiaChi', 'ID_DC', 'DC_');
-
-                DiaChi::create([
-                    'ID_DC' => $newIdDc,
-                    'ID_KH' => $khachHang->ID_KH,
-                    'ID_Quan' => $quan?->ID_Quan,
-                    'CanHo' => $addressUnit,
-                    'DiaChiDayDu' => $addressText,
-                ]);
-
-                $idDc = $newIdDc;
-            }
+            $idDc = $newIdDc;
         }
 
         // Create booking
@@ -271,6 +288,7 @@ class ApiBookingController extends Controller
         $tongTien += $surchargeResult['total'];
         $tongSauGiam += $surchargeResult['total'];
 
+        // Giữ trạng thái theo logic nhân viên, không thêm trạng thái mới
         $trangThaiDon = $request->staff_id ? 'assigned' : 'finding_staff';
 
         $booking = DonDat::create([
@@ -321,22 +339,43 @@ class ApiBookingController extends Controller
             }
         }
 
-        // Create payment record
+        // Create payment record and generate VNPay URL if needed
+        if ($paymentMethod === 'vnpay') {
+            $baseReturnUrl = config('vnpay.return_url');
+            $returnUrl = $baseReturnUrl;
+            if ($returnUrlOverride) {
+                $separator = str_contains($baseReturnUrl, '?') ? '&' : '?';
+                $returnUrl = $baseReturnUrl . $separator . 'app_redirect=' . urlencode($returnUrlOverride);
+            }
+
+            $paymentUrl = $vnPayService->createPaymentUrl([
+                'txn_ref' => $idDon,
+                'amount' => $tongSauGiam,
+                'order_info' => 'Thanh toan don dat ' . $idDon,
+                'return_url' => $returnUrl,
+            ]);
+        }
+
         LichSuThanhToan::create([
             'ID_LSTT' => IdGenerator::next('LichSuThanhToan', 'ID_LSTT', 'LSTT_'),
             'PhuongThucThanhToan' => $paymentMethod === 'vnpay' ? 'VNPay' : 'TienMat',
             'TrangThai' => $paymentMethod === 'cash' ? 'ThanhCong' : 'ChoXuLy',
             'SoTienThanhToan' => $tongSauGiam,
             'MaGiaoDichVNPAY' => null,
+            'ThoiGian' => now(),
             'ID_DD' => $idDon,
         ]);
 
         return response()->json([
             'success' => true,
-            'message' => 'Tạo đơn đặt thành công.',
+            'message' => 'Tao don dat thanh cong.',
             'data' => [
                 'booking_id' => $idDon,
                 'status' => $trangThaiDon,
+                'payment_url' => $paymentUrl,
+                'payment_deadline' => $paymentMethod === 'vnpay'
+                    ? now()->addMinutes(5)->toDateTimeString()
+                    : null,
             ]
         ], 201);
     }
@@ -715,3 +754,4 @@ class ApiBookingController extends Controller
         return $record?->PhuongThucThanhToan;
     }
 }
+

@@ -11,7 +11,7 @@ class VNPayService
         $vnp_TmnCode    = Config::get('vnpay.tmn_code');
         $vnp_HashSecret = Config::get('vnpay.hash_secret');
         $vnp_Url        = Config::get('vnpay.url');
-        $vnp_ReturnUrl  = Config::get('vnpay.return_url');
+        $vnp_ReturnUrl  = $params['return_url'] ?? Config::get('vnpay.return_url');
 
         $vnp_TxnRef    = $params['txn_ref'];
         $vnp_OrderInfo = $params['order_info'] ?? 'Thanh toan don dat';
@@ -54,4 +54,3 @@ class VNPayService
         return $vnp_Url . '?' . $queryString . '&vnp_SecureHash=' . $vnpSecureHash;
     }
 }
-

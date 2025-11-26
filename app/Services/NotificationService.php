@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Models\ThongBao;
 use App\Models\DonDat;
+use App\Mail\OrderStatusMail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class NotificationService
 {
@@ -36,6 +38,8 @@ class NotificationService
             'customer_id' => $booking->ID_KH,
             'booking_id' => $booking->ID_DD,
         ]);
+
+        $this->sendOrderEmail($booking, 'created');
 
         return $notification;
     }
@@ -83,6 +87,13 @@ class NotificationService
             'customer_id' => $booking->ID_KH,
             'booking_id' => $booking->ID_DD,
             'cancel_type' => $cancelType,
+        ]);
+
+        $mailType = $cancelType === 'payment_failed' ? 'failed' : 'cancelled';
+        $this->sendOrderEmail($booking, $mailType, [
+            'reason' => $reason,
+            'refund_amount' => $refundAmount,
+            'payment_method' => $paymentMethod,
         ]);
 
         return $notification;
@@ -215,6 +226,7 @@ class NotificationService
         $reasonMap = [
             'user_cancel' => 'Khách hàng tự hủy',
             'auto_cancel_2h' => 'Hệ thống tự động hủy do không tìm được nhân viên trong 2 giờ trước giờ bắt đầu',
+            'payment_failed' => 'Thanh toán VNPay thất bại',
         ];
 
         return $reasonMap[$cancelType] ?? 'Không xác định';
@@ -248,5 +260,42 @@ class NotificationService
         }
 
         return null; // Don't notify for minor changes
+    }
+
+    /**
+     * Send detailed email about order status.
+     */
+    private function sendOrderEmail($booking, string $type, array $extra = []): void
+    {
+        try {
+            $booking->loadMissing(['dichVu', 'diaChi', 'khachHang']);
+            $customer = $booking->khachHang;
+            $email = $customer->Email ?? null;
+
+            if (!$email) {
+                return;
+            }
+
+            $data = [
+                'booking' => $booking,
+                'type' => $type,
+                'customer_name' => $customer->Ten_KH ?? 'Quý khách',
+                'service_name' => $booking->dichVu->TenDV ?? 'Dịch vụ',
+                'start_time' => $this->getFormattedStartTime($booking),
+                'address' => $booking->diaChi->DiaChiDayDu ?? null,
+                'amount' => $booking->TongTienSauGiam ?? $booking->TongTien ?? 0,
+                'reason' => $extra['reason'] ?? null,
+                'refund_amount' => $extra['refund_amount'] ?? 0,
+                'payment_method' => $extra['payment_method'] ?? null,
+            ];
+
+            Mail::to($email)->send(new OrderStatusMail($data));
+        } catch (\Exception $e) {
+            Log::error('Failed to send order email', [
+                'booking_id' => $booking->ID_DD ?? null,
+                'type' => $type,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }
