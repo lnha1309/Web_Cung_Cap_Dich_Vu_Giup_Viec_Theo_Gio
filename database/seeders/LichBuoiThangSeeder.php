@@ -15,7 +15,7 @@ class LichBuoiThangSeeder extends Seeder
                 'ID_DD' => 'DD002',
                 'NgayLam' => '2025-11-18',
                 'GioBatDau' => '08:00:00',
-                'TrangThaiBuoi' => 'scheduled',
+                'TrangThaiBuoi' => 'finding_staff',
                 'ID_NV' => 'NV002',
             ],
             [
@@ -23,7 +23,7 @@ class LichBuoiThangSeeder extends Seeder
                 'ID_DD' => 'DD002',
                 'NgayLam' => '2025-11-20',
                 'GioBatDau' => '08:00:00',
-                'TrangThaiBuoi' => 'scheduled',
+                'TrangThaiBuoi' => 'finding_staff',
                 'ID_NV' => 'NV002',
             ],
             [
@@ -37,4 +37,3 @@ class LichBuoiThangSeeder extends Seeder
         ]);
     }
 }
-

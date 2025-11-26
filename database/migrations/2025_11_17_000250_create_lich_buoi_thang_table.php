@@ -13,7 +13,7 @@ return new class extends Migration
             $table->string('ID_DD', 50);
             $table->date('NgayLam');
             $table->time('GioBatDau');
-            $table->enum('TrangThaiBuoi', ['scheduled', 'completed', 'cancelled'])->default('scheduled');
+            $table->enum('TrangThaiBuoi', ['finding_staff', 'scheduled', 'completed', 'cancelled'])->default('finding_staff');
             $table->string('ID_NV', 50)->nullable();
 
             $table->foreign('ID_DD')

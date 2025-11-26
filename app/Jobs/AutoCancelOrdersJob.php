@@ -105,10 +105,10 @@ class AutoCancelOrdersJob implements ShouldQueue
         $orders = DonDat::where('LoaiDon', 'month')
             ->whereIn('TrangThaiDon', ['assigned', 'finding_staff'])
             ->whereHas('lichBuoiThang', function ($query) {
-                $query->where('TrangThaiBuoi', 'scheduled');
+                $query->whereIn('TrangThaiBuoi', ['scheduled', 'finding_staff']);
             })
             ->with(['lichBuoiThang' => function ($query) {
-                $query->where('TrangThaiBuoi', 'scheduled')
+                $query->whereIn('TrangThaiBuoi', ['scheduled', 'finding_staff'])
                     ->orderBy('NgayLam')
                     ->orderBy('GioBatDau');
             }])

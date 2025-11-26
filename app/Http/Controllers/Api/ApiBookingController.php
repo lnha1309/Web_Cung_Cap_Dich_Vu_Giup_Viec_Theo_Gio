@@ -8,8 +8,11 @@ use App\Models\ChiTietKhuyenMai;
 use App\Models\ChiTietPhuThu;
 use App\Models\DiaChi;
 use App\Models\DichVu;
+use App\Models\GoiThang;
+use App\Models\LichBuoiThang;
 use App\Models\LichLamViec;
 use App\Models\LichSuThanhToan;
+use App\Models\LichTheoTuan;
 use App\Models\Quan;
 use App\Models\DanhGiaNhanVien;
 use App\Models\NhanVien;
@@ -17,10 +20,13 @@ use App\Models\TaiKhoan;
 use App\Support\IdGenerator;
 use App\Services\SurchargeService;
 use App\Services\VNPayService;
+use App\Services\RefundService;
+use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class ApiBookingController extends Controller
 {
@@ -134,6 +140,42 @@ class ApiBookingController extends Controller
         // Get applied vouchers
         $vouchers = ChiTietKhuyenMai::where('ID_DD', $id)->get();
 
+        // Collect month sessions if applicable
+        $sessions = collect();
+        $sessionData = collect();
+        $firstSessionDate = $booking->NgayLam;
+        $firstSessionStart = $booking->GioBatDau ? substr($booking->GioBatDau, 0, 5) : null;
+
+        if ($booking->LoaiDon === 'month') {
+            $sessions = LichBuoiThang::where('ID_DD', $id)
+                ->orderBy('NgayLam')
+                ->orderBy('GioBatDau')
+                ->get();
+
+            $sessionData = $sessions->map(function ($session) {
+                return [
+                    'id' => $session->ID_Buoi,
+                    'date' => $session->NgayLam,
+                    'start_time' => $session->GioBatDau ? substr($session->GioBatDau, 0, 5) : null,
+                    'status' => $session->TrangThaiBuoi,
+                    'staff_id' => $session->ID_NV,
+                ];
+            });
+
+            if ($sessions->isNotEmpty()) {
+                $first = $sessions->first();
+                $firstSessionDate = $firstSessionDate ?? $first->NgayLam;
+                $firstSessionStart = $firstSessionStart ?? ($first->GioBatDau ? substr($first->GioBatDau, 0, 5) : null);
+            }
+        }
+
+        $sessionCounts = [
+            'total' => $sessionData->count(),
+            'completed' => $sessions->where('TrangThaiBuoi', 'completed')->count(),
+            'cancelled' => $sessions->where('TrangThaiBuoi', 'cancelled')->count(),
+        ];
+        $sessionCounts['upcoming'] = max(0, $sessionCounts['total'] - $sessionCounts['completed'] - $sessionCounts['cancelled']);
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -150,8 +192,8 @@ class ApiBookingController extends Controller
                     'full_address' => $address->DiaChiDayDu,
                 ] : null,
                 'note' => $booking->GhiChu,
-                'work_date' => $booking->NgayLam,
-                'start_time' => $booking->GioBatDau ? substr($booking->GioBatDau, 0, 5) : null,
+                'work_date' => $firstSessionDate,
+                'start_time' => $firstSessionStart,
                 'duration_hours' => (float) $booking->ThoiLuongGio,
                 'status' => $booking->TrangThaiDon,
                 'total_amount' => (float) $booking->TongTien,
@@ -173,6 +215,8 @@ class ApiBookingController extends Controller
                         'discount_amount' => (float) $v->TienGiam,
                     ];
                 }),
+                'sessions' => $sessionData,
+                'session_counts' => $sessionCounts,
             ]
         ]);
     }
@@ -190,7 +234,7 @@ class ApiBookingController extends Controller
             'address_text' => ['nullable', 'string'],
             'address_unit' => ['nullable', 'string'],
             'work_date' => ['nullable', 'date'],
-            'start_time' => ['nullable', 'date_format:H:i'],
+            'start_time' => ['required_if:order_type,month', 'date_format:H:i'],
             'duration_hours' => ['nullable', 'integer', 'min:1'],
             'total_amount' => ['required', 'numeric', 'min:0'],
             'discounted_amount' => ['nullable', 'numeric', 'min:0'],
@@ -199,8 +243,11 @@ class ApiBookingController extends Controller
             'vouchers.*.code' => ['required', 'string'],
             'vouchers.*.discount_amount' => ['nullable', 'numeric'],
             'has_pets' => ['nullable', 'boolean'],
-            'repeat_days' => ['nullable', 'array'],
+            'repeat_days' => ['required_if:order_type,month', 'array', 'min:1'],
             'repeat_days.*' => ['integer', 'between:0,6'],
+            'package_months' => ['required_if:order_type,month', 'integer', 'in:1,2,3,6'],
+            'repeat_start_date' => ['nullable', 'date'],
+            'repeat_end_date' => ['nullable', 'date'],
             'note' => ['nullable', 'string'],
             'payment_method' => ['nullable', 'in:cash,vnpay'],
             'return_url' => ['nullable', 'string'],
@@ -260,35 +307,118 @@ class ApiBookingController extends Controller
 
             $idDc = $newIdDc;
         }
-
-        // Create booking
+        // Prepare booking data
         $prefix = $request->order_type === 'month' ? 'DD_month_' : 'DD_hour_';
         $idDon = IdGenerator::next('DonDat', 'ID_DD', $prefix);
 
-        $tongTien = (float) $request->total_amount;
+        $gioBatDau = $request->start_time ? $request->start_time . ':00' : null;
+        $hasPets = $request->has('has_pets') ? (bool) $request->has_pets : false;
+        $repeatDays = is_array($request->repeat_days)
+            ? array_values(array_unique(array_map('intval', $request->repeat_days)))
+            : [];
+        $ngayLam = $request->order_type === 'hour' ? $request->work_date : null;
+
+        $idGoi = null;
+        $startDate = null;
+        $endDateExclusive = null;
+        $sessionCount = 1;
+        $weekendSessionCount = 0;
+
+        if ($request->order_type === 'month') {
+            $packageMonths = (int) ($request->package_months ?? 0);
+
+            if (empty($repeatDays)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Vui long chon thu lap lai.',
+                ], 422);
+            }
+
+            $goiMap = [
+                1 => 'GT01',
+                2 => 'GT02',
+                3 => 'GT03',
+                6 => 'GT04',
+            ];
+
+            $idGoi = $goiMap[$packageMonths] ?? null;
+            if ($idGoi === null) {
+                $idGoi = GoiThang::where('SoNgay', $packageMonths * 30)->value('ID_Goi');
+            }
+
+            if ($idGoi === null) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Goi thang khong hop le.',
+                ], 422);
+            }
+
+            $defaultSoNgay = $packageMonths > 0 ? $packageMonths * 30 : 0;
+            $soNgayDb = GoiThang::where('ID_Goi', $idGoi)->value('SoNgay');
+            $soNgay = $soNgayDb ?: $defaultSoNgay;
+
+            if ($soNgay <= 0) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'So ngay hieu luc goi khong hop le.',
+                ], 422);
+            }
+
+            if ($request->repeat_start_date) {
+                try {
+                    $startDate = Carbon::parse($request->repeat_start_date)->startOfDay();
+                } catch (\Throwable) {
+                    $startDate = null;
+                }
+            }
+
+            if ($startDate === null) {
+                $startDate = $this->computePackageStartDate(Carbon::now(), $repeatDays);
+            }
+
+            $endDateExclusive = $startDate->copy()->addDays($soNgay);
+
+            $sessionCount = $this->countSessionsInRange($repeatDays, $startDate, $endDateExclusive);
+            $weekendDays = array_intersect($repeatDays, [0, 6]);
+            $weekendSessionCount = empty($weekendDays)
+                ? 0
+                : $this->countSessionsInRange($weekendDays, $startDate, $endDateExclusive);
+        }
+
+        $service = DichVu::findOrFail($request->service_id);
+
+        if ($request->order_type === 'month') {
+            $basePrice = (float) $service->GiaDV;
+            $package = $idGoi ? GoiThang::find($idGoi) : null;
+            $packagePercent = $package && $package->PhanTramGiam !== null
+                ? (float) $package->PhanTramGiam
+                : 0.0;
+
+            $gross = $basePrice * $sessionCount;
+            $packageDiscount = $gross * $packagePercent / 100;
+            $tongTien = max(0, $gross - $packageDiscount);
+        } else {
+            $tongTien = (float) $request->total_amount;
+        }
+
         $tongSauGiam = $request->has('discounted_amount') && $request->discounted_amount !== null
             ? (float) $request->discounted_amount
             : $tongTien;
-        $gioBatDau = $request->start_time ? $request->start_time . ':00' : null;
-
-        $hasPets = $request->has('has_pets') ? (bool) $request->has_pets : false;
-        $repeatDays = is_array($request->repeat_days)
-            ? array_map('intval', $request->repeat_days)
-            : [];
-        $ngayLam = $request->order_type === 'hour' ? $request->work_date : null;
 
         $surchargeResult = $surchargeService->calculate(
             $request->order_type,
             $ngayLam,
             $gioBatDau,
             $request->order_type === 'month' ? $repeatDays : [],
-            $hasPets
+            $hasPets,
+            $sessionCount,
+            $weekendSessionCount
         );
 
         $tongTien += $surchargeResult['total'];
         $tongSauGiam += $surchargeResult['total'];
 
-        // Giữ trạng thái theo logic nhân viên, không thêm trạng thái mới
+        // Giu trang thai theo logic nhan vien, khong them trang thai moi
         $trangThaiDon = $request->staff_id ? 'assigned' : 'finding_staff';
 
         $booking = DonDat::create([
@@ -298,17 +428,49 @@ class ApiBookingController extends Controller
             'ID_KH' => $khachHang->ID_KH,
             'ID_DC' => $idDc,
             'GhiChu' => $request->note,
-            'NgayLam' => $request->work_date,
+            'NgayLam' => $ngayLam,
             'GioBatDau' => $gioBatDau,
             'ThoiLuongGio' => $request->duration_hours,
-            'ID_Goi' => null,
-            'NgayBatDauGoi' => null,
-            'NgayKetThucGoi' => null,
+            'ID_Goi' => $idGoi,
+            'NgayBatDauGoi' => $startDate ? $startDate->toDateString() : null,
+            'NgayKetThucGoi' => $endDateExclusive
+                ? $endDateExclusive->copy()->subDay()->toDateString()
+                : null,
             'TrangThaiDon' => $trangThaiDon,
             'TongTien' => $tongTien,
             'TongTienSauGiam' => $tongSauGiam,
             'ID_NV' => $request->staff_id,
         ]);
+
+        if ($request->order_type === 'month') {
+            foreach ($repeatDays as $day) {
+                LichTheoTuan::create([
+                    'ID_LichTuan' => IdGenerator::next('LichTheoTuan', 'ID_LichTuan', 'LTT'),
+                    'ID_DD' => $idDon,
+                    'Thu' => $day,
+                    'GioBatDau' => $gioBatDau,
+                ]);
+            }
+
+            if ($startDate && $endDateExclusive) {
+                $cursor = $startDate->copy();
+                $endExclusive = $endDateExclusive->copy();
+
+                while ($cursor->lt($endExclusive)) {
+                    if (in_array($cursor->dayOfWeek, $repeatDays, true)) {
+                        LichBuoiThang::create([
+                            'ID_Buoi' => IdGenerator::next('LichBuoiThang', 'ID_Buoi', 'LBT_'),
+                            'ID_DD' => $idDon,
+                            'NgayLam' => $cursor->toDateString(),
+                            'GioBatDau' => $gioBatDau,
+                            'TrangThaiBuoi' => 'finding_staff',
+                            'ID_NV' => null,
+                        ]);
+                    }
+                    $cursor->addDay();
+                }
+            }
+        }
 
         if ($booking->TrangThaiDon === 'assigned' && $booking->ID_NV) {
             $this->notifyStaffAssigned($booking);
@@ -539,7 +701,7 @@ class ApiBookingController extends Controller
      * Cancel booking
      * PUT /api/bookings/{id}/cancel
      */
-    public function cancel(Request $request, $id)
+        public function cancel(Request $request, $id, RefundService $refundService, NotificationService $notificationService)
     {
         $user = $request->user();
         $khachHang = $user->khachHang;
@@ -547,7 +709,7 @@ class ApiBookingController extends Controller
         if (!$khachHang) {
             return response()->json([
                 'success' => false,
-                'error' => 'Không tìm thấy thông tin khách hàng.'
+                'error' => 'Khong tim thay thong tin khach hang.'
             ], 404);
         }
 
@@ -558,27 +720,47 @@ class ApiBookingController extends Controller
         if (!$booking) {
             return response()->json([
                 'success' => false,
-                'error' => 'Không tìm thấy đơn đặt.'
+                'error' => 'Khong tim thay don dat.'
             ], 404);
         }
 
-        if (in_array($booking->TrangThaiDon, ['done', 'cancelled'])) {
+        if (in_array($booking->TrangThaiDon, ['done', 'cancelled', 'completed', 'confirmed'])) {
             return response()->json([
                 'success' => false,
-                'error' => 'Không thể hủy đơn đặt này.'
+                'error' => 'Khong the huy don dat nay.'
             ], 422);
         }
 
-        $booking->TrangThaiDon = 'cancelled';
-        $booking->save();
+        DB::beginTransaction();
+        try {
+            $booking->TrangThaiDon = 'cancelled';
+            $booking->save();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Hủy đơn đặt thành công.'
-        ]);
+            $refundResult = $refundService->refundOrder($booking, 'user_cancel');
+            $notificationService->notifyOrderCancelled($booking, 'user_cancel', $refundResult);
+
+            DB::commit();
+
+            $message = 'Huy don dat thanh cong.';
+            if (!empty($refundResult['amount'])) {
+                $message .= ' Hoan ' . number_format($refundResult['amount']) . ' VND.';
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'refund' => $refundResult,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'error' => 'Khong the huy don: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
-    private function notifyStaffAssigned(DonDat $booking): void
+private function notifyStaffAssigned(DonDat $booking): void
     {
         try {
             $nhanVien = NhanVien::where('ID_NV', $booking->ID_NV)->first();
@@ -740,6 +922,35 @@ class ApiBookingController extends Controller
         }
 
         return null;
+    }
+
+    private function countSessionsInRange(array $weekdays, $startDate, $endDateExclusive): int
+    {
+        $normalizedDays = array_unique(array_map('intval', $weekdays));
+        sort($normalizedDays);
+
+        $start = $startDate instanceof Carbon ? $startDate->copy()->startOfDay() : Carbon::parse($startDate)->startOfDay();
+        $endExclusive = $endDateExclusive instanceof Carbon ? $endDateExclusive->copy()->startOfDay() : Carbon::parse($endDateExclusive)->startOfDay();
+
+        $count = 0;
+        $cursor = $start->copy();
+
+        while ($cursor->lt($endExclusive)) {
+            if (in_array((int) $cursor->dayOfWeek, $normalizedDays, true)) {
+                $count++;
+            }
+            $cursor->addDay();
+        }
+
+        return $count;
+    }
+
+    private function computePackageStartDate(Carbon $orderDate, array $weekdays): Carbon
+    {
+        $normalizedDays = array_values(array_unique(array_map('intval', $weekdays)));
+        $normalizedDays = array_filter($normalizedDays, static fn ($d) => $d >= 0 && $d <= 6);
+
+        return $orderDate->copy()->addDays(3)->startOfDay();
     }
 
     /**

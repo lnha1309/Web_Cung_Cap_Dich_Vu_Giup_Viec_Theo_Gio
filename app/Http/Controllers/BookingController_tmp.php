@@ -178,7 +178,7 @@ class BookingController extends Controller
         $customer = $account?->khachHang;
 
         if (!$customer) {
-            return response()->json(['error' => 'Vui lA2ng �`a?ng nhA?p trA��c khi A�p mA� khuyA�n mA�i'], 403);
+            return response()->json(['error' => 'Vui lA2ng  `a?ng nhA?p trA  c khi A p mA  khuyA n mA i'], 403);
         }
 
         $km = KhuyenMai::where('ID_KM', $code)
@@ -250,7 +250,7 @@ class BookingController extends Controller
 
         $appliedVouchers = $validated['vouchers'] ?? [];
 
-        // KhA'ng cho khA-ch hA�ng A�p lA�i bA?t kA� mA� khuyA�n mA�i nA�o A�A� tA?ng s��` d��ng trA??c A�A�y
+        // KhA'ng cho khA-ch hA ng A p lA i bA?t kA  mA  khuyA n mA i nA o A A  tA?ng s  ` d  ng trA??c A A y
         if (!empty($appliedVouchers)) {
             foreach ($appliedVouchers as $voucher) {
                 if (empty($voucher['id_km'])) {
@@ -273,7 +273,7 @@ class BookingController extends Controller
 
                 if ($hasUsed) {
                     return response()->json([
-                        'error' => 'M�� khuyA�n mA�i ' . $code . ' bA?n A� t��`ng s��` d��ng cho �`����n trA??c A�A�y nA�n khA'ng th��� A�p lA�i.',
+                        'error' => 'Mã khuyến mãi ' . $code . ' bạn đã từng sử dụng cho đơn trước đây nên không thể áp lại.',
                     ], 422);
                 }
             }
@@ -295,10 +295,10 @@ class BookingController extends Controller
             : '';
 
         if ($diaChiText !== '') {
-            // �`��c lA� pA-n hiA�n �`ang lA� chu��>i kA?t hA?p tA� t��� select-address:
-            //  - N���u khA'ch nh��?p unit-address:  "unit, <streetAddress>"
-            //  - N���u khA'ng nh��?p unit-address:  "<streetAddress>"
-            // TA?i confirm, ta uu tiA�n dA?ng thA?ng hai trA??ng rieng neu co.
+            //  `  c lA  pA-n hiA n  `ang lA  chu  >i kA?t hA?p tA  t    select-address:
+            //  - N   u khA'ch nh  ?p unit-address:  "unit, <streetAddress>"
+            //  - N   u khA'ng nh  ?p unit-address:  "<streetAddress>"
+            // TA?i confirm, ta uu tiA n dA?ng thA?ng hai trA??ng rieng neu co.
             $rawUnit   = $validated['dia_chi_unit']   ?? null;
             $rawStreet = $validated['dia_chi_street'] ?? null;
 
@@ -310,11 +310,11 @@ class BookingController extends Controller
                 ? trim($rawStreet)
                 : $diaChiText;
 
-            // KhA'ng tA?o mA?i / cA?p nhA?t �`��<a ch��% �`A? luu cua khA'ch
-            // o day. Chi thu xem co A`�a chi nao da ton tai trong danh sach
+            // KhA'ng tA?o mA?i / cA?p nhA?t  `  <a ch  %  `A? luu cua khA'ch
+            // o day. Chi thu xem co A` a chi nao da ton tai trong danh sach
             // dia chi da luu cua khA'ch thi tai su dung ID_DC do; neu khong
-            // thi tao dia chi moi nhung khong gan ID_KH (�`a?A�a chi chi gan
-            // voi �`A?n A`a�t, khA'ng toi la dia chi da luu cua khA'ch).
+            // thi tao dia chi moi nhung khong gan ID_KH ( `a?A a chi chi gan
+            // voi  `A?n A`a t, khA'ng toi la dia chi da luu cua khA'ch).
             $query = $customer->diaChis()->where('DiaChiDayDu', $full);
             if ($canHo !== null) {
                 $query->where('CanHo', $canHo);
@@ -548,7 +548,7 @@ class BookingController extends Controller
             return $quan;
         }
 
-        // Thu loai bo cac tien to thong dung trong TenQuan va A`�a chi
+        // Thu loai bo cac tien to thong dung trong TenQuan va A` a chi
         $normalize = static function (string $value): string {
             $value = preg_replace('/^(Quận|Huyện|TP\\.?|Thành phố)\\s+/iu', '', $value);
             return trim((string) $value);

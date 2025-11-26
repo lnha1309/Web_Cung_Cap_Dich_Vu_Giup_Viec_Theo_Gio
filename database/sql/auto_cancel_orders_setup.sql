@@ -52,7 +52,7 @@ BEGIN
             lbt.ID_DD,
             MIN(CONCAT(lbt.NgayLam, ' ', lbt.GioBatDau)) AS FirstSessionTime
         FROM LichBuoiThang lbt
-        WHERE lbt.TrangThaiBuoi = 'scheduled'
+        WHERE lbt.TrangThaiBuoi IN ('scheduled','finding_staff')
         GROUP BY lbt.ID_DD
     ) first_session ON dd.ID_DD = first_session.ID_DD
     SET dd.TrangThaiDon = 'cancelled'

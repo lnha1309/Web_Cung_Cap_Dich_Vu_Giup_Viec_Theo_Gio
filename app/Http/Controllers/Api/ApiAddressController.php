@@ -244,62 +244,172 @@ class ApiAddressController extends Controller
     /**
      * Helper function to guess district from address
      */
-    private function guessQuanFromAddress(string $address): ?Quan
-    {
-        $address = trim($address);
-        if ($address === '') {
-            return null;
-        }
-
-        $segments = array_map('trim', explode(',', $address));
-        $candidate = null;
-
-        if (count($segments) >= 3) {
-            $candidate = $segments[count($segments) - 2];
-        } elseif (count($segments) >= 2) {
-            $candidate = $segments[1];
-        } else {
-            $candidate = $address;
-        }
-
-        $candidate = trim((string) $candidate);
-        if ($candidate === '') {
-            return null;
-        }
-
-        $quan = Quan::where('TenQuan', 'like', '%' . $candidate . '%')->first();
-        if ($quan) {
-            return $quan;
-        }
-
-        $normalize = static function (string $value): string {
-            $value = preg_replace('/^(Quan|Huyen|TP\.?|Thanh pho)\s+/iu', '', $value);
-            return trim((string) $value);
-        };
-
-        $normalizedCandidate = $normalize($candidate);
-        if ($normalizedCandidate === '') {
-            return null;
-        }
-
-        $quans = Quan::all();
-
-        foreach ($quans as $quanItem) {
-            if (!$quanItem->TenQuan) {
-                continue;
-            }
-
-            $normalizedTenQuan = $normalize($quanItem->TenQuan);
-            if ($normalizedTenQuan !== '' &&
-                mb_stripos($normalizedCandidate, $normalizedTenQuan) !== false) {
-                return $quanItem;
-            }
-
-            if (mb_stripos($address, $quanItem->TenQuan) !== false) {
-                return $quanItem;
-            }
-        }
-
+/**
+ * Helper function to guess district from address
+ * Tối ưu hóa dựa trên format Google Maps
+ */
+private function guessQuanFromAddress(string $address): ?Quan
+{
+    $address = trim($address);
+    if ($address === '') {
         return null;
     }
+
+    // Normalize helper
+    $normalize = function (string $value): string {
+        $value = mb_strtolower($value, 'UTF-8');
+        // Remove diacritics
+        $value = str_replace(
+            ['à','á','ả','ã','ạ','ă','ằ','ắ','ẳ','ẵ','ặ','â','ầ','ấ','ẩ','ẫ','ậ',
+             'đ',
+             'è','é','ẻ','ẽ','ẹ','ê','ề','ế','ể','ễ','ệ',
+             'ì','í','ỉ','ĩ','ị',
+             'ò','ó','ỏ','õ','ọ','ô','ồ','ố','ổ','ỗ','ộ','ơ','ờ','ớ','ở','ỡ','ợ',
+             'ù','ú','ủ','ũ','ụ','ư','ừ','ứ','ử','ữ','ự',
+             'ỳ','ý','ỷ','ỹ','ỵ'],
+            ['a','a','a','a','a','a','a','a','a','a','a','a','a','a','a','a','a',
+             'd',
+             'e','e','e','e','e','e','e','e','e','e','e',
+             'i','i','i','i','i',
+             'o','o','o','o','o','o','o','o','o','o','o','o','o','o','o','o','o',
+             'u','u','u','u','u','u','u','u','u','u','u',
+             'y','y','y','y','y'],
+            $value
+        );
+        $value = preg_replace('/\s+/', ' ', $value);
+        return trim($value);
+    };
+
+    // Tách địa chỉ thành các segments (phân cách bởi dấu phẩy)
+    $segments = array_map('trim', explode(',', $address));
+    
+    // DEBUG - Xóa sau khi fix
+    \Log::info('=== ADDRESS MATCHING DEBUG ===');
+    \Log::info('Input address: ' . $address);
+    \Log::info('Segments: ' . json_encode($segments));
+    
+    // Lấy tất cả quận
+    $quans = Quan::all();
+    \Log::info('Total districts in DB: ' . $quans->count());
+    
+    // Build danh sách patterns để match cho từng quận
+    $districtPatterns = [];
+    foreach ($quans as $quan) {
+        $tenQuan = trim($quan->TenQuan);
+        if (!$tenQuan) continue;
+        
+        $normalizedTenQuan = $normalize($tenQuan);
+        $patterns = [];
+        
+        // Pattern 1: Tên đầy đủ (Quận 7, Huyện Nhà Bè, TP Thủ Đức)
+        $patterns[] = [
+            'normalized' => $normalizedTenQuan,
+            'type' => 'full'
+        ];
+        
+        // Pattern 2: Tên không có prefix (chỉ áp dụng cho tên chữ)
+        // Dùng string manipulation thay vì regex để tránh vấn đề Unicode
+        $normalizedTenQuanForParsing = $normalize($tenQuan);
+        
+        // Loại bỏ prefix bằng str_replace
+        $withoutPrefix = $normalizedTenQuanForParsing;
+        $prefixes = ['quan ', 'huyen ', 'tp ', 'tp. ', 'thanh pho '];
+        
+        foreach ($prefixes as $prefix) {
+            if (strpos($withoutPrefix, $prefix) === 0) {
+                $withoutPrefix = substr($withoutPrefix, strlen($prefix));
+                $withoutPrefix = trim($withoutPrefix);
+                break;
+            }
+        }
+        
+        // Nếu đã loại bỏ được prefix và còn lại tên quận
+        if ($withoutPrefix !== $normalizedTenQuanForParsing && $withoutPrefix !== '') {
+            // Chỉ thêm pattern nếu KHÔNG phải là quận số
+            $isQuanSo = preg_match('/^\d+$/', $withoutPrefix);
+            
+            if (!$isQuanSo) {
+                $patterns[] = [
+                    'normalized' => $withoutPrefix,
+                    'type' => 'name_only'
+                ];
+            }
+        }
+        
+        // DEBUG - Log patterns for Nhà Bè
+        if (strpos($tenQuan, 'Nhà Bè') !== false || strpos($normalizedTenQuan, 'nha be') !== false) {
+            \Log::info("District: '{$tenQuan}' (ID: {$quan->ID_Quan})");
+            \Log::info("  Normalized full: '{$normalizedTenQuan}'");
+            \Log::info("  Patterns: " . json_encode($patterns));
+        }
+        
+        $districtPatterns[] = [
+            'quan' => $quan,
+            'patterns' => $patterns
+        ];
+    }
+    
+    // Thử match theo thứ tự ưu tiên segments
+    // Ưu tiên: segment thứ 3 từ cuối (thường là quận), rồi đến các segment khác
+    $priorityIndices = [];
+    if (count($segments) >= 3) {
+        $priorityIndices[] = count($segments) - 3; // Segment thứ 3 từ cuối
+    }
+    if (count($segments) >= 2) {
+        $priorityIndices[] = count($segments) - 2; // Segment thứ 2 từ cuối
+    }
+    for ($i = 0; $i < count($segments); $i++) {
+        if (!in_array($i, $priorityIndices)) {
+            $priorityIndices[] = $i;
+        }
+    }
+    
+    // Match theo từng segment
+    foreach ($priorityIndices as $idx) {
+        $segment = trim($segments[$idx]);
+        if ($segment === '') continue;
+        
+        $normalizedSegment = $normalize($segment);
+        
+        // DEBUG
+        \Log::info("Checking segment [$idx]: '$segment' (normalized: '$normalizedSegment')");
+        
+        // Thử match với từng quận
+        foreach ($districtPatterns as $item) {
+            foreach ($item['patterns'] as $pattern) {
+                $needle = $pattern['normalized'];
+                
+                // Exact match
+                if ($normalizedSegment === $needle) {
+                    \Log::info("✓ EXACT MATCH: {$item['quan']->TenQuan}");
+                    return $item['quan'];
+                }
+                
+                // Contains match với word boundary
+                if (preg_match('/(^|\s)' . preg_quote($needle, '/') . '(\s|$)/u', $normalizedSegment)) {
+                    \Log::info("✓ CONTAINS MATCH: {$item['quan']->TenQuan}");
+                    return $item['quan'];
+                }
+            }
+        }
+    }
+    
+    // Fallback: tìm trong toàn bộ địa chỉ
+    \Log::info('No segment match found, trying full address...');
+    $normalizedAddress = $normalize($address);
+    \Log::info('Normalized full address: ' . $normalizedAddress);
+    
+    foreach ($districtPatterns as $item) {
+        foreach ($item['patterns'] as $pattern) {
+            $needle = $pattern['normalized'];
+            if (preg_match('/(^|[\s,])' . preg_quote($needle, '/') . '([\s,]|$)/u', $normalizedAddress)) {
+                \Log::info("✓ FALLBACK MATCH: {$item['quan']->TenQuan}");
+                return $item['quan'];
+            }
+        }
+    }
+    
+    \Log::info('✗ NO MATCH FOUND');
+    return null;
+}
 }

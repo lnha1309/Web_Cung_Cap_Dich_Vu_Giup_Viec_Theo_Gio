@@ -643,7 +643,7 @@ class BookingController extends Controller
                             'ID_DD'        => $idDon,
                             'NgayLam'      => $cursor->toDateString(),
                             'GioBatDau'    => $gioBatDau,
-                            'TrangThaiBuoi'=> 'scheduled',
+                            'TrangThaiBuoi'=> 'finding_staff',
                             'ID_NV'        => null,
                         ]);
                     }
@@ -698,21 +698,19 @@ class BookingController extends Controller
             ]);
         }
 
-        // Chỉ gửi thông báo đặt đơn ngay khi không dùng VNPay.
-        if ($paymentMethod !== 'vnpay') {
-            try {
-                $notificationService = app(NotificationService::class);
-                // Reload booking with relationships for notification
-                $bookingForNotification = DonDat::with('dichVu')->find($idDon);
-                if ($bookingForNotification) {
-                    $notificationService->notifyOrderCreated($bookingForNotification);
-                }
-            } catch (\Exception $e) {
-                Log::error('Failed to send order creation notification', [
-                    'booking_id' => $idDon,
-                    'error' => $e->getMessage(),
-                ]);
+        // Send notification to customer about order creation
+        try {
+            $notificationService = app(NotificationService::class);
+            // Reload booking with relationships for notification
+            $bookingForNotification = DonDat::with('dichVu')->find($idDon);
+            if ($bookingForNotification) {
+                $notificationService->notifyOrderCreated($bookingForNotification);
             }
+        } catch (\Exception $e) {
+            Log::error('Failed to send order creation notification', [
+                'booking_id' => $idDon,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         $response = [
@@ -729,6 +727,11 @@ class BookingController extends Controller
 
     public function vnpayReturn(Request $request)
     {
+        Log::info('VNPay return callback', [
+            'query' => $request->query(),
+            'ip'    => $request->ip(),
+        ]);
+
         $vnp_SecureHash = $request->query('vnp_SecureHash');
         $inputData      = [];
         foreach ($request->query() as $key => $value) {
@@ -754,7 +757,7 @@ class BookingController extends Controller
         $transactionNo = $request->query('vnp_TransactionNo');
 
         $status  = 'failed';
-        $message = 'Thanh toán thất bại, vui lòng thử lại.';
+        $message = 'Thanh toan that bai.';
 
         if ($isValidSignature && $responseCode === '00') {
             $status  = 'success';
@@ -803,55 +806,55 @@ class BookingController extends Controller
                         $payment->MaGiaoDichVNPAY = $transactionNo;
                         $payment->save();
                     }
-
-                    // Gửi thông báo tạo đơn (đã hoãn ở bước confirm với VNPay)
-                    try {
-                        $notificationService = app(NotificationService::class);
-                        $notificationService->notifyOrderCreated($order);
-                    } catch (\Exception $e) {
-                        Log::error('Failed to send order creation notification after VNPay success', [
-                            'booking_id' => $order->ID_DD,
-                            'error' => $e->getMessage(),
-                        ]);
-                    }
                 }
             }
         } elseif (!$isValidSignature) {
             $message = 'Chu ky khong hop le.';
-        } else {
-            // Giao dịch thất bại hoặc người dùng thoát giữa chừng: xóa đơn + lịch sử pending
-            if ($txnRef) {
-                $deleted = $this->deletePendingVnpayOrder($txnRef);
-                if (!$deleted) {
-                    Log::warning('Failed to delete pending VNPay order after failed return', [
-                        'booking_id' => $txnRef,
-                        'response_code' => $responseCode,
-                    ]);
-                }
-            }
         }
 
+        Log::info('VNPay return handled', [
+            'txn_ref'        => $txnRef,
+            'response_code'  => $responseCode,
+            'transaction_no' => $transactionNo,
+            'status'         => $status,
+            'valid_signature'=> $isValidSignature,
+        ]);
+
         $appRedirect = $request->query('app_redirect');
-
         if ($appRedirect) {
-            $target = $appRedirect;
-            $params = [
-                'status' => $status,
-                'orderId' => $txnRef,
+            $query = array_filter([
+                'status'        => $status,
+                'orderId'       => $txnRef,
                 'transactionNo' => $transactionNo,
-                'responseCode' => $responseCode,
-            ];
-            $separator = str_contains($target, '?') ? '&' : '?';
-            $target .= $separator . http_build_query($params);
+                'responseCode'  => $responseCode,
+            ], static fn ($value) => $value !== null && $value !== '');
 
-            return response()->make(
-                '<html><head><meta http-equiv="refresh" content="0;url=' . e($target) . '" /></head><body>'
-                . '<p>Dang chuyen ve ung dung ...</p>'
-                . '<script>window.location.href="' . e($target) . '";</script>'
-                . '</body></html>',
-                200,
-                ['Content-Type' => 'text/html']
-            );
+            $redirectUrl = $appRedirect;
+            if (!empty($query)) {
+                $redirectUrl .= (str_contains($redirectUrl, '?') ? '&' : '?') . http_build_query($query);
+            }
+
+            $safeUrl = htmlspecialchars($redirectUrl, ENT_QUOTES, 'UTF-8');
+            $jsUrl = json_encode($redirectUrl, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
+
+            $html = <<<HTML
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Dang chuyen ve ung dung</title>
+    <meta http-equiv="refresh" content="0;url={$safeUrl}">
+    <script>
+        setTimeout(function () { window.location.href = {$jsUrl}; }, 100);
+    </script>
+</head>
+<body>
+    <p>Dang chuyen ve ung dung. Neu khong tu dong, vui long bam <a href="{$safeUrl}">tai day</a>.</p>
+</body>
+</html>
+HTML;
+
+            return response($html);
         }
 
         return view('payment-result', [
@@ -861,59 +864,6 @@ class BookingController extends Controller
             'transactionNo' => $transactionNo,
             'responseCode'  => $responseCode,
         ]);
-    }
-
-    /**
-     * Delete a pending VNPay booking and its related data when payment is abandoned.
-     */
-    private function deletePendingVnpayOrder(string $orderId): bool
-    {
-        $order = DonDat::find($orderId);
-        if (!$order) {
-            return false;
-        }
-
-        $pendingPayment = LichSuThanhToan::where('ID_DD', $orderId)
-            ->where('PhuongThucThanhToan', 'VNPay')
-            ->whereIn('TrangThai', ['ChoXuLy', 'ChuaXuLy'])
-            ->exists();
-
-        if (!$pendingPayment) {
-            return false;
-        }
-
-        try {
-            DB::transaction(function () use ($order, $orderId) {
-                // Gửi thông báo thất bại trước khi xóa đơn
-                try {
-                    $notificationService = app(NotificationService::class);
-                    $notificationService->notifyOrderCancelled($order, 'payment_failed', [
-                        'payment_method' => 'VNPay',
-                        'amount' => 0,
-                    ]);
-                } catch (\Exception $e) {
-                    Log::error('Failed to send payment failed notification', [
-                        'booking_id' => $orderId,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-
-                LichBuoiThang::where('ID_DD', $orderId)->delete();
-                LichTheoTuan::where('ID_DD', $orderId)->delete();
-                ChiTietKhuyenMai::where('ID_DD', $orderId)->delete();
-                ChiTietPhuThu::where('ID_DD', $orderId)->delete();
-                LichSuThanhToan::where('ID_DD', $orderId)->delete();
-                DonDat::where('ID_DD', $orderId)->delete();
-            });
-
-            return true;
-        } catch (\Exception $e) {
-            Log::error('Error deleting pending VNPay order', [
-                'booking_id' => $orderId,
-                'error' => $e->getMessage(),
-            ]);
-            return false;
-        }
     }
 
     private function notifyStaffAssigned(DonDat $booking): void
@@ -1414,6 +1364,5 @@ class BookingController extends Controller
         ];
     }
 }
-
 
 

@@ -778,6 +778,19 @@
             font-weight: 500;
         }
 
+        .package-discount-row {
+            display: none;
+        }
+
+        .package-discount-row.show {
+            display: flex;
+        }
+
+        .package-discount-row .value {
+            color: #2e7d32;
+            font-weight: 600;
+        }
+
         .price-detail {
             font-size: 12px;
             color: #999;
@@ -1261,6 +1274,10 @@
 
             .repeat-summary .total-sessions {
                 font-size: 16px;
+            }
+
+            .package-discount-summary {
+                font-size: 13px;
             }
 
             /* Time Slots (if any) */
@@ -1809,6 +1826,18 @@
             font-weight: 600;
             color: #004d2e;
             margin-top: 8px;
+        }
+
+        .package-discount-summary {
+            margin-top: 10px;
+            color: #2e7d32;
+            font-weight: 600;
+        }
+
+        .package-discount-summary .package-discount-percent {
+            font-weight: 500;
+            margin-left: 6px;
+            color: #2e7d32;
         }
 
         .repeat-next-button {
@@ -3123,6 +3152,11 @@
                         <p>Các ngày đã chọn: <strong id="selectedDaysText"></strong></p>
                         <p>Từ <strong id="dateRangeText"></strong></p>
                         <p class="total-sessions">Tổng số buổi: <span id="totalSessions">0</span> buổi</p>
+                        <p class="package-discount-summary" id="packageDiscountSummary" style="display: none;">
+                            Giảm gói <span id="packageDiscountLabel">-</span>:
+                            <strong id="packageDiscountValue">-</strong>
+                            <span class="package-discount-percent" id="packageDiscountPercent"></span>
+                        </p>
                     </div>
 
                     <button class="repeat-next-button" id="repeatNextButton" disabled>Tiếp theo</button>
@@ -3260,7 +3294,7 @@
             <!-- Worker Selection Screen -->
 <div class="worker-selection-screen" id="workerSelectionScreen">
     <div class="worker-selection-header">
-        <h1>Chon nhan vien cua ban</h1>
+        <h1>Chọn nhân viên của bạn</h1>
         <div style="width: 120px;"></div>
     </div>
 
@@ -3275,8 +3309,8 @@
                 </div>
             </div>
             <div class="worker-actions">
-                <button class="btn-view">Xem ho so</button>
-                <button class="btn-choose" onclick="showPaymentScreen()">Chon nhan vien</button>
+                <button class="btn-view">Xem hồ sơ</button>
+                <button class="btn-choose" onclick="showPaymentScreen()">Chọn nhân viên</button>
             </div>
         </div>
 
@@ -3290,8 +3324,8 @@
                 </div>
             </div>
             <div class="worker-actions">
-                <button class="btn-view">Xem ho so</button>
-                <button class="btn-choose" onclick="showPaymentScreen()">Chon nhan vien</button>
+                <button class="btn-view">Xem hồ sơ</button>
+                <button class="btn-choose" onclick="showPaymentScreen()">Chọn nhân viên</button>
             </div>
         </div>
 
@@ -3305,8 +3339,8 @@
                 </div>
             </div>
             <div class="worker-actions">
-                <button class="btn-view">Xem ho so</button>
-                <button class="btn-choose" onclick="showPaymentScreen()">Chon nhan vien</button>
+                <button class="btn-view">Xem hồ sơ</button>
+                <button class="btn-choose" onclick="showPaymentScreen()">Chọn nhân viên</button>
             </div>
         </div>
     </div>
@@ -3363,6 +3397,10 @@
                         <div class="price-row">
                             <div class="label">Phí đặt dịch vụ</div>
                             <div class="value" id="serviceFeeAmount">-</div>
+                        </div>
+                        <div class="price-row package-discount-row" id="packageDiscountRow">
+                            <div class="label" id="packageDiscountLabelPayment">Giảm gói tháng</div>
+                            <div class="value" id="packageDiscountAmount">-</div>
                         </div>
                         {{-- Ẩn chi tiết giờ cố định ở payment screen --}}
 
@@ -3471,6 +3509,78 @@
             }
             const percent = Math.round((discount / original) * 100);
             return percent > 0 ? `(-${percent}%)` : '';
+        }
+
+        function getPackageDiscountInfo() {
+            const state = window.bookingState || {};
+            const isMonth = (state.type === 'month') || (typeof selectedOption !== 'undefined' && selectedOption === 'repeat');
+
+            const discountAmount = Number(state.packageDiscountAmount || 0);
+            const discountPercent = Number(state.packageDiscountPercent || 0);
+            const gross = Number(state.grossBeforePackageDiscount || 0);
+            const months = state.packageMonths || null;
+
+            const hasDiscount = isMonth && discountAmount > 0 && gross > 0;
+
+            return {
+                hasDiscount,
+                discountAmount,
+                discountPercent,
+                gross,
+                months,
+            };
+        }
+
+        function updatePackageDiscountDisplay() {
+            const info = getPackageDiscountInfo();
+
+            const summaryRow = document.getElementById('packageDiscountSummary');
+            const summaryValue = document.getElementById('packageDiscountValue');
+            const summaryPercent = document.getElementById('packageDiscountPercent');
+            const summaryLabel = document.getElementById('packageDiscountLabel');
+
+            if (summaryRow) {
+                if (info.hasDiscount) {
+                    summaryRow.style.display = 'block';
+                    if (summaryLabel) {
+                        summaryLabel.textContent = info.months ? `${info.months} tháng` : 'tháng';
+                    }
+                    if (summaryValue) {
+                        summaryValue.textContent = `-${formatVND(info.discountAmount)} VNĐ`;
+                    }
+                    if (summaryPercent) {
+                        summaryPercent.textContent = info.discountPercent ? `(-${info.discountPercent}%)` : '';
+                    }
+                } else {
+                    summaryRow.style.display = 'none';
+                    if (summaryPercent) {
+                        summaryPercent.textContent = '';
+                    }
+                }
+            }
+
+            const paymentRow = document.getElementById('packageDiscountRow');
+            const paymentAmount = document.getElementById('packageDiscountAmount');
+            const paymentLabel = document.getElementById('packageDiscountLabelPayment');
+
+            if (paymentRow) {
+                if (info.hasDiscount) {
+                    paymentRow.classList.add('show');
+                    paymentRow.style.display = 'flex';
+                    if (paymentAmount) {
+                        paymentAmount.textContent = `-${formatVND(info.discountAmount)}VNĐ`;
+                    }
+                    if (paymentLabel) {
+                        paymentLabel.textContent = info.months ? `Giảm gói ${info.months} tháng` : 'Giảm gói tháng';
+                    }
+                } else {
+                    paymentRow.classList.remove('show');
+                    paymentRow.style.display = 'none';
+                    if (paymentAmount) {
+                        paymentAmount.textContent = '-';
+                    }
+                }
+            }
         }
 
         // Helper function to check if a date is weekend
@@ -3640,6 +3750,29 @@
             console.error('Error calling initializeDates:', e);
         }
 
+        function normalizeImageUrl(raw) {
+            if (!raw || typeof raw !== 'string') return null;
+            const origin = window.location.origin;
+
+            // If already absolute URL, try to rebase local hosts to current origin for storage files
+            if (raw.startsWith('http://') || raw.startsWith('https://')) {
+                try {
+                    const url = new URL(raw);
+                    const loopbackHosts = ['10.0.2.2', '127.0.0.1', 'localhost'];
+                    const isStoragePath = url.pathname && url.pathname.startsWith('/storage/');
+                    if (isStoragePath && loopbackHosts.includes(url.hostname)) {
+                        return origin + url.pathname + url.search;
+                    }
+                    return raw;
+                } catch (e) {
+                    return raw;
+                }
+            }
+
+            const clean = raw.replace(/^\/+/, '');
+            return `${origin}/storage/${clean}`;
+        }
+
         // ==================== SERVICE OPTIONS ====================
         const serviceOptions = document.querySelectorAll('.service-option');
         const nextButton = document.getElementById('nextButton');
@@ -3721,6 +3854,10 @@
                 window.bookingState.packageMonths = null;
                 window.bookingState.repeatStartDate = null;
                 window.bookingState.repeatEndDate = null;
+                window.bookingState.packageDiscountAmount = 0;
+                window.bookingState.grossBeforePackageDiscount = 0;
+                window.bookingState.packageDiscountPercent = 0;
+                updatePackageDiscountDisplay();
                 if (startDateGroup) startDateGroup.style.display = 'block';
                 if (startDateInput) {
                     startDateInput.disabled = false;
@@ -3806,6 +3943,11 @@
                 repeatNextButton.disabled = true;
                 viewCalendarBtn.style.display = 'none';
                 if (monthServiceNote) monthServiceNote.style.display = 'none';
+                window.bookingState = window.bookingState || {};
+                window.bookingState.packageDiscountAmount = 0;
+                window.bookingState.grossBeforePackageDiscount = 0;
+                window.bookingState.packageDiscountPercent = 0;
+                updatePackageDiscountDisplay();
                 return;
             }
 
@@ -3852,6 +3994,11 @@
                 repeatNextButton.disabled = true;
                 viewCalendarBtn.style.display = 'none';
                 monthServiceNote.style.display = 'none';
+                window.bookingState = window.bookingState || {};
+                window.bookingState.packageDiscountAmount = 0;
+                window.bookingState.grossBeforePackageDiscount = 0;
+                window.bookingState.packageDiscountPercent = 0;
+                updatePackageDiscountDisplay();
                 return;
             }
 
@@ -4147,12 +4294,20 @@
             const repeatSessionsValue = document.getElementById('repeatSessionsValue');
             const repeatPeriodValue = document.getElementById('repeatPeriodValue');
             const workloadValue = document.getElementById('workloadValue');
+            const packageDiscountSummary = document.getElementById('packageDiscountSummary');
+            const packageDiscountValue = document.getElementById('packageDiscountValue');
+            const packageDiscountPercent = document.getElementById('packageDiscountPercent');
+            const packageDiscountLabel = document.getElementById('packageDiscountLabel');
             
             if (timeValue) timeValue.textContent = '';
             if (repeatDaysValue) repeatDaysValue.textContent = '';
             if (repeatSessionsValue) repeatSessionsValue.textContent = '';
             if (repeatPeriodValue) repeatPeriodValue.textContent = '';
             if (workloadValue) workloadValue.textContent = '';
+            if (packageDiscountSummary) packageDiscountSummary.style.display = 'none';
+            if (packageDiscountValue) packageDiscountValue.textContent = '-';
+            if (packageDiscountPercent) packageDiscountPercent.textContent = '';
+            if (packageDiscountLabel) packageDiscountLabel.textContent = '-';
             
             // Reset service name to default
             const serviceName = document.getElementById('serviceName');
@@ -4301,6 +4456,10 @@
                 window.bookingState.id_dv = null;
                 window.bookingState.repeatStartDate = null;
                 window.bookingState.repeatEndDate = null;
+                window.bookingState.grossBeforePackageDiscount = 0;
+                window.bookingState.packageDiscountAmount = 0;
+                window.bookingState.packageDiscountPercent = 0;
+                updatePackageDiscountDisplay();
             };
 
             if (!hours) {
@@ -4342,6 +4501,9 @@
                 window.bookingState.totalAfterDiscount = total;
                 window.bookingState.id_dv = idDv;
                 window.bookingState.packageDiscountPercent = discountPercent;
+                window.bookingState.packageMonths = months;
+                window.bookingState.grossBeforePackageDiscount = gross;
+                window.bookingState.packageDiscountAmount = discountAmount;
                 // Store session counts for surcharge display
                 const repeatDays = Array.isArray(window.bookingState.repeatDays) ? window.bookingState.repeatDays.map(Number) : [];
                 const start = window.bookingState.repeatStartDate || null;
@@ -4353,6 +4515,7 @@
                 window.bookingState.totalSessions = sessions;
                 window.bookingState.weekendSessions = weekendSessions;
 
+                updatePackageDiscountDisplay();
                 updateBookingCardTime();
                 return;
             }
@@ -4368,7 +4531,12 @@
             window.bookingState.totalPrice = basePrice;
             window.bookingState.totalAfterDiscount = basePrice;
             window.bookingState.id_dv = idDv;
+            window.bookingState.packageMonths = null;
+            window.bookingState.grossBeforePackageDiscount = basePrice;
+            window.bookingState.packageDiscountAmount = 0;
+            window.bookingState.packageDiscountPercent = 0;
 
+            updatePackageDiscountDisplay();
             updateBookingCardTime();
         }
 
@@ -5114,8 +5282,9 @@ function animateLoadingScreen() {
 
     // Ảnh và tên nhân viên
     const imgEl = card.querySelector('img');
-    if (imgEl && nv.HinhAnh) {
-        imgEl.src = nv.HinhAnh;
+    if (imgEl) {
+        const imgSrc = normalizeImageUrl(nv.hinh_anh || nv.HinhAnh);
+        imgEl.src = imgSrc || ('https://ui-avatars.com/api/?name=' + encodeURIComponent(nv.Ten_NV || 'NV') + '&background=004d2e&color=fff&size=150');
     }
 
     const nameEl = card.querySelector('h3');
@@ -5249,8 +5418,11 @@ if (!chosen && staffList.length > 0) {
 
 
         // Map sang field trong DB: HinhAnh, Ten_NV
-        if (imgEl && chosen.HinhAnh) {
-            imgEl.src = chosen.HinhAnh;
+        if (imgEl) {
+            const imgSrc = normalizeImageUrl(chosen.HinhAnh || chosen.hinh_anh);
+            if (imgSrc) {
+                imgEl.src = imgSrc;
+            }
         }
 
         if (nameEl && chosen.Ten_NV) {
@@ -5425,7 +5597,8 @@ avatars.forEach((avatar, idx) => {
     const ratingEl = avatar.querySelector('.rating');
     // Luôn cập nhật ảnh, backend đã xử lý fallback
     if (imgEl) {
-        imgEl.src = nv.hinh_anh || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(nv.ten_nv || 'NV') + '&background=004d2e&color=fff&size=150';
+        const normalized = normalizeImageUrl(nv.hinh_anh || nv.HinhAnh);
+        imgEl.src = normalized || ('https://ui-avatars.com/api/?name=' + encodeURIComponent(nv.ten_nv || 'NV') + '&background=004d2e&color=fff&size=150');
     }
     if (nameEl) {
         nameEl.textContent = nv.ten_nv;
@@ -5454,7 +5627,8 @@ cards.forEach((card, idx) => {
     const nameEl = card.querySelector('h3');
     // Luôn cập nhật ảnh, backend đã xử lý fallback
     if (imgEl) {
-        imgEl.src = nv.hinh_anh || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(nv.ten_nv || 'NV') + '&background=004d2e&color=fff&size=150';
+        const normalized = normalizeImageUrl(nv.hinh_anh || nv.HinhAnh);
+        imgEl.src = normalized || ('https://ui-avatars.com/api/?name=' + encodeURIComponent(nv.ten_nv || 'NV') + '&background=004d2e&color=fff&size=150');
     }
     if (nameEl) {
         nameEl.textContent = nv.ten_nv;
@@ -5504,7 +5678,7 @@ cards.forEach((card, idx) => {
                 const statsEls = card.querySelectorAll('.worker-stats .stat-item');
 
                 const imgSrc = nv && (nv.hinh_anh || nv.HinhAnh)
-                    ? (nv.hinh_anh || nv.HinhAnh)
+                    ? normalizeImageUrl(nv.hinh_anh || nv.HinhAnh)
                     : (imgEl ? imgEl.src : '');
                 const ten = nv && (nv.ten_nv || nv.Ten_NV)
                     ? (nv.ten_nv || nv.Ten_NV)
@@ -5850,7 +6024,10 @@ window.showPaymentScreen = function () {
 
             if (view) {
                 console.log('✓ Có selectedWorkerView, cập nhật DOM', view);
-                if (imgEl && view.img) imgEl.src = view.img;
+                if (imgEl && view.img) {
+                    const normalized = normalizeImageUrl(view.img);
+                    imgEl.src = normalized || view.img;
+                }
                 if (nameEl && view.name) nameEl.textContent = view.name;
                 
                 if (statItems.length > 0 && view.stat1) {
@@ -5868,7 +6045,10 @@ window.showPaymentScreen = function () {
                 const staffList = window.bookingState.staffList || [];
                 if (staffList.length > 0) {
                     const firstStaff = staffList[0];
-                    if (imgEl && firstStaff.hinh_anh) imgEl.src = firstStaff.hinh_anh;
+                    if (imgEl && firstStaff.hinh_anh) {
+                        const normalized = normalizeImageUrl(firstStaff.hinh_anh || firstStaff.HinhAnh);
+                        imgEl.src = normalized || firstStaff.hinh_anh;
+                    }
                     if (nameEl && firstStaff.ten_nv) nameEl.textContent = firstStaff.ten_nv;
                     
                     if (statItems.length > 0 && firstStaff.score != null) {
@@ -5975,6 +6155,13 @@ window.showPaymentScreen = function () {
                 }
             }
 
+            const grossBeforePackage = Number(window.bookingState?.grossBeforePackageDiscount || 0);
+            const packageDiscountAmount = Number(window.bookingState?.packageDiscountAmount || 0);
+            const packageDiscountPercent = Number(window.bookingState?.packageDiscountPercent || 0);
+            const isMonthBooking = (window.bookingState?.type === 'month') || (typeof selectedOption !== 'undefined' && selectedOption === 'repeat');
+            const serviceDisplayAmount = (isMonthBooking && grossBeforePackage > 0) ? grossBeforePackage : baseTotal;
+            const displayServiceAmount = serviceDisplayAmount > 0 ? serviceDisplayAmount : baseTotal;
+
             // Tong phu thu (da gom thu cung/cuoi tuan/gio cao diem neu co)
             const surchargeTotal = typeof calculateSurchargeTotal === 'function'
                 ? Number(calculateSurchargeTotal()) || 0
@@ -5987,8 +6174,31 @@ window.showPaymentScreen = function () {
             const discountTotal = vouchers.reduce((sum, v) => sum + (Number(v.tien_giam) || 0), 0);
 
             const serviceFeeAmountEl = document.getElementById('serviceFeeAmount');
-            if (serviceFeeAmountEl && baseTotal) {
-                serviceFeeAmountEl.textContent = `${formatVND(baseTotal)}VNĐ`;
+            if (serviceFeeAmountEl) {
+                serviceFeeAmountEl.textContent = `${formatVND(displayServiceAmount)}VNĐ`;
+            }
+
+            const packageDiscountRow = document.getElementById('packageDiscountRow');
+            const packageDiscountValueEl = document.getElementById('packageDiscountAmount');
+            const packageDiscountLabelEl = document.getElementById('packageDiscountLabelPayment');
+
+            if (packageDiscountRow) {
+                if (isMonthBooking && packageDiscountAmount > 0) {
+                    packageDiscountRow.classList.add('show');
+                    packageDiscountRow.style.display = 'flex';
+                    if (packageDiscountValueEl) {
+                        const percentText = packageDiscountPercent ? ` (-${packageDiscountPercent}%)` : '';
+                        packageDiscountValueEl.textContent = `-${formatVND(packageDiscountAmount)}VNĐ${percentText}`;
+                    }
+                    if (packageDiscountLabelEl) {
+                        const months = window.bookingState?.packageMonths;
+                        packageDiscountLabelEl.textContent = months ? `Giảm gói ${months} tháng` : 'Giảm gói tháng';
+                    }
+                } else {
+                    packageDiscountRow.classList.remove('show');
+                    packageDiscountRow.style.display = 'none';
+                    if (packageDiscountValueEl) packageDiscountValueEl.textContent = '-';
+                }
             }
 
             const otherCostsTotalEl = document.getElementById('otherCostsTotal');
@@ -6024,6 +6234,8 @@ window.showPaymentScreen = function () {
             if (finalAmountLabelEl) {
                 finalAmountLabelEl.textContent = '';
             }
+
+            updatePackageDiscountDisplay();
         };
     })();
 </script>
@@ -6701,6 +6913,3 @@ window.showPaymentScreen = function () {
 </body>
 
 </html>
-
-
-
