@@ -72,6 +72,12 @@ class LoginController extends Controller
                 ->withInput($request->only('TenDN'));
         }
 
+        if ($account->TrangThaiTK === 'inactive') {
+            return back()
+                ->withErrors(['login' => 'Tai khoan cua ban dang cho kich hoat. Vui long lien he quan tri vien.'])
+                ->withInput($request->only('TenDN'));
+        }
+
         if (Hash::needsRehash($account->MatKhau)) {
             $account->MatKhau = $credentials['password'];
             $account->save();

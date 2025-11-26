@@ -82,4 +82,9 @@ class DonDat extends Model
     {
         return $this->belongsTo(NhanVien::class, 'ID_NV', 'ID_NV');
     }
+
+    public function phuThu()
+    {
+        return $this->belongsToMany(PhuThu::class, 'ChiTietPhuThu', 'ID_DD', 'ID_PT')->withPivot('Ghichu');
+    }
 }

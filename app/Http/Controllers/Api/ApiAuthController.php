@@ -62,6 +62,7 @@ class ApiAuthController extends Controller
                 'TenDN' => $request->username,
                 'MatKhau' => Hash::make($request->password),
                 'ID_LoaiTK' => 'customer', // adjust to your account type id
+                'TrangThaiTK' => 'inactive',
             ]);
 
             // Create KhachHang
@@ -175,6 +176,13 @@ class ApiAuthController extends Controller
             return response()->json([
                 'success' => false,
                 'error' => 'Tai khoan cua ban da bi khoa. Vui long lien he tong dai.',
+            ], 403);
+        }
+
+        if ($taiKhoan->TrangThaiTK === 'inactive') {
+            return response()->json([
+                'success' => false,
+                'error' => 'Tai khoan cua ban dang cho kich hoat. Vui long lien he tong dai.',
             ], 403);
         }
 

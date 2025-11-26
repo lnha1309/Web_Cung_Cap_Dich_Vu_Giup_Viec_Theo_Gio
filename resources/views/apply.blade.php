@@ -332,7 +332,7 @@
 
     <h2>HƯỚNG DẪN ĐĂNG KÝ</h2>
     <div class="guide-steps">
-      <p><strong>Bước 1:</strong> Tạo tài khoản nhân viên với xác thực 2 lớp (OTP + Email)</p>
+      <p><strong>Bước 1:</strong> Tạo tài khoản nhân viên với xác thực Email</p>
       <p><strong>Bước 2:</strong> Điền đầy đủ thông tin chi tiết ứng tuyển</p>
       <p><strong>Bước 3:</strong> Hoàn tất và chờ thông báo từ HR</p>
     </div>
@@ -342,7 +342,7 @@
       <ul>
         <li>Mỗi ứng viên chỉ được đăng ký <strong>1 LẦN DUY NHẤT</strong></li>
         <li>Số điện thoại và Email <strong>KHÔNG THỂ SỬA ĐỔI</strong> sau khi đăng ký</li>
-        <li>Bạn phải xác thực cả <strong>OTP (SMS)</strong> và <strong>Mã xác thực Email</strong></li>
+        <li>Bạn phải xác thực <strong>Mã Email</strong></li>
         <li>Vui lòng kiểm tra kỹ thông tin trước khi gửi</li>
         <li>Thông báo kết quả sẽ được gửi qua điện thoại và email</li>
       </ul>
@@ -426,17 +426,21 @@
         <label for="email">Email *</label>
         <div class="verification-group">
           <input type="email" id="email" placeholder="example@gmail.com" required>
-          <button type="button" id="sendEmailCodeBtn">Gửi Mã Email</button>
+          <button type="button" id="sendEmailCodeBtn">Gửi OTP</button>
         </div>
+        <div class="info-text" id="emailTimer"></div>
         <span class="error" id="emailError">Email không hợp lệ</span>
         <span class="success-text" id="emailSuccess">✓ Mã xác thực đã được gửi đến email!</span>
-        <p class="info-text">Mã xác thực sẽ được gửi đến email của bạn</p>
+        <p class="info-text">Mã OTP sẽ được gửi đến email của bạn</p>
       </div>
 
       <div class="verification-section" id="emailCodeSection">
         <div class="form-group">
           <label for="emailCode">Nhập Mã Xác Thực Email (6 chữ số) *</label>
-          <input type="text" id="emailCode" maxlength="6" placeholder="Nhập 6 chữ số từ email" class="verification-code">
+          <div class="verification-group">
+            <input type="text" id="emailCode" maxlength="6" placeholder="Nhập 6 chữ số từ email" class="verification-code">
+            <button type="button" id="verifyEmailCodeBtn">Xác nhận</button>
+          </div>
           <span class="error" id="emailCodeError">Mã xác thực email không đúng</span>
           <span class="success-text" id="emailCodeSuccess">✓ Xác thực email thành công!</span>
         </div>
@@ -444,22 +448,9 @@
 
       <div class="form-group">
         <label for="phone">Số điện thoại *</label>
-        <div class="verification-group">
-          <input type="text" id="phone" placeholder="0912345678" required>
-          <button type="button" id="sendOtpBtn">Gửi OTP</button>
-        </div>
+        <input type="text" id="phone" placeholder="0912345678" required>
         <span class="error" id="phoneError">Số điện thoại không hợp lệ (VD: 0912345678)</span>
-        <span class="success-text" id="phoneSuccess">✓ Mã OTP đã được gửi!</span>
-        <p class="info-text">Mã OTP sẽ được gửi qua tin nhắn SMS</p>
-      </div>
-
-      <div class="verification-section" id="otpSection">
-        <div class="form-group">
-          <label for="otpCode">Nhập Mã OTP (6 chữ số) *</label>
-          <input type="text" id="otpCode" maxlength="6" placeholder="Nhập 6 chữ số từ SMS" class="verification-code">
-          <span class="error" id="otpError">Mã OTP không đúng</span>
-          <span class="success-text" id="otpSuccess">✓ Xác thực OTP thành công!</span>
-        </div>
+        <p class="info-text">Dùng để liên hệ khi cần thiết</p>
       </div>
 
       <div class="captcha-container">
@@ -473,7 +464,7 @@
       </div>
 
       <button type="submit" id="submitBtn" disabled>Đăng ký tài khoản</button>
-      <p class="info-text" style="margin-top: 10px;">* Nút đăng ký sẽ được kích hoạt khi bạn xác thực đầy đủ: Email + OTP + CAPTCHA</p>
+      <p class="info-text" style="margin-top: 10px;">* Nút đăng ký sẽ được kích hoạt khi bạn xác thực đầy đủ: Email + CAPTCHA</p>
     </form>
   </div>
 
@@ -574,23 +565,24 @@
       <p>Chúc mừng bạn đã hoàn tất đăng ký ứng tuyển</p>
       <p>Vui lòng chú ý điện thoại và email để nhận thông báo từ HR</p>
       <p>Chúng tôi sẽ liên hệ với bạn trong vòng 3-5 ngày làm việc</p>
-      <button type="button" onclick="location.reload()">Về trang chủ</button>
+      <button type="button" onclick="window.location.href='/'">Về trang chủ</button>
     </div>
   </div>
 
   <script>
     // URL Google Apps Script Web App
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyZoPtQxxZGUAJGOPrtuZu19l5wH64oiKQ7QFdhRhXtsNwygQ3kjmVoz-CpcpHBEN28GA/exec";
+    const SEND_OTP_URL = "{{ route('register.sendOtp') }}";
+    const VERIFY_OTP_URL = "{{ route('register.verifyOtp') }}";
+    const APPLY_REGISTER_URL = "{{ route('apply.register') }}";
+    const csrfToken = '{{ csrf_token() }}';
 
     // Biến toàn cục
     let generatedCaptcha = "";
-    let generatedOtp = "";
-    let generatedEmailCode = "";
-    let otpVerified = false;
     let emailCodeVerified = false;
     let captchaVerified = false;
     let emailCooldown = false;
-    let phoneCooldown = false;
+    let emailCountdown = null;
     let selectedFile = null;
 
     // Lưu thông tin bước 1
@@ -716,8 +708,45 @@
       document.getElementById("captchaSuccess").style.display = "none";
     });
 
-    // Gửi mã xác thực Email
-    document.getElementById("sendEmailCodeBtn").addEventListener("click", function(e) {
+    function startEmailCountdown() {
+      const sendBtn = document.getElementById("sendEmailCodeBtn");
+      const emailTimer = document.getElementById("emailTimer");
+      let timeLeft = 60;
+      emailTimer.textContent = `Gửi lại sau ${timeLeft}s`;
+
+      if (emailCountdown) {
+        clearInterval(emailCountdown);
+      }
+
+      emailCountdown = setInterval(() => {
+        timeLeft--;
+        emailTimer.textContent = timeLeft > 0 ? `Gửi lại sau ${timeLeft}s` : "";
+        if (timeLeft <= 0) {
+          clearInterval(emailCountdown);
+          sendBtn.disabled = false;
+          emailCooldown = false;
+        }
+      }, 1000);
+    }
+
+    function resetEmailVerification() {
+      emailCodeVerified = false;
+      emailCooldown = false;
+      if (emailCountdown) {
+        clearInterval(emailCountdown);
+        emailCountdown = null;
+      }
+      document.getElementById("emailCodeError").style.display = "none";
+      document.getElementById("emailCodeSuccess").style.display = "none";
+      document.getElementById("emailSuccess").style.display = "none";
+      document.getElementById("emailCodeSection").style.display = "none";
+      document.getElementById("emailCode").value = "";
+      document.getElementById("emailCode").disabled = false;
+      document.getElementById("sendEmailCodeBtn").disabled = false;
+      document.getElementById("emailTimer").textContent = "";
+    }
+
+    document.getElementById("sendEmailCodeBtn").addEventListener("click", async function(e) {
       e.preventDefault();
       e.stopPropagation();
       
@@ -737,127 +766,91 @@
         return;
       }
       
-      generatedEmailCode = Math.floor(100000 + Math.random() * 900000).toString();
-      console.log("📧 Email Code Generated:", generatedEmailCode);
-      
-      alert("📧 Mã xác thực email của bạn là: " + generatedEmailCode + "\n\n(Trong môi trường thực tế, mã này sẽ được gửi đến email: " + email + ")");
-      
-      document.getElementById("emailCodeSection").style.display = "block";
-      document.getElementById("emailSuccess").style.display = "block";
-      
+      const sendBtn = this;
+      sendBtn.disabled = true;
       emailCooldown = true;
-      this.disabled = true;
-      let timeLeft = 60;
-      this.textContent = `Đã gửi (${timeLeft}s)`;
-      
-      const countdown = setInterval(() => {
-        timeLeft--;
-        this.textContent = `Đã gửi (${timeLeft}s)`;
-        
-        if (timeLeft <= 0) {
-          clearInterval(countdown);
-          this.textContent = "Gửi Lại Mã";
-          this.disabled = false;
-          emailCooldown = false;
+
+      try {
+        const response = await fetch(SEND_OTP_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": csrfToken,
+            "Accept": "application/json"
+          },
+          body: JSON.stringify({ email })
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const errors = data.errors || {};
+          const firstError = Object.values(errors)[0]?.[0] ?? data.message ?? "Không gửi được OTP. Vui lòng thử lại.";
+          throw new Error(firstError);
         }
-      }, 1000);
+
+        document.getElementById("emailCodeSection").style.display = "block";
+        document.getElementById("emailSuccess").style.display = "block";
+        startEmailCountdown();
+        alert("Mã OTP đã được gửi đến email của bạn!");
+      } catch (error) {
+        alert(error.message || "Không gửi được OTP. Vui lòng thử lại.");
+        sendBtn.disabled = false;
+        emailCooldown = false;
+      }
       
+      checkFormComplete();
+    });
+
+    document.getElementById("verifyEmailCodeBtn").addEventListener("click", async function(e) {
+      e.preventDefault();
+      
+      const email = document.getElementById("email").value.trim();
+      const otp = document.getElementById("emailCode").value.trim();
+      const emailCodeError = document.getElementById("emailCodeError");
+      const emailCodeSuccess = document.getElementById("emailCodeSuccess");
+
+      if (!email || !otp) {
+        alert("Vui lòng nhập email và mã OTP.");
+        return;
+      }
+
+      try {
+        const response = await fetch(VERIFY_OTP_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": csrfToken,
+            "Accept": "application/json"
+          },
+          body: JSON.stringify({ email, otp })
+        });
+
+        const data = await response.json();
+        if (!response.ok || !data.valid) {
+          throw new Error(data.message || "OTP không hợp lệ");
+        }
+
+        emailCodeVerified = true;
+        emailCodeSuccess.style.display = "block";
+        emailCodeError.style.display = "none";
+        document.getElementById("emailCode").disabled = true;
+        document.getElementById("sendEmailCodeBtn").disabled = true;
+      } catch (error) {
+        emailCodeVerified = false;
+        emailCodeError.textContent = error.message || "Mã OTP không đúng hoặc đã hết hạn!";
+        emailCodeError.style.display = "block";
+        emailCodeSuccess.style.display = "none";
+      }
+
       checkFormComplete();
     });
 
     document.getElementById("emailCode").addEventListener("input", function() {
-      const emailCodeInput = this.value.trim();
-      
-      if (emailCodeInput.length === 6) {
-        if (emailCodeInput === generatedEmailCode) {
-          emailCodeVerified = true;
-          document.getElementById("emailCodeError").style.display = "none";
-          document.getElementById("emailCodeSuccess").style.display = "block";
-          checkFormComplete();
-        } else {
-          emailCodeVerified = false;
-          document.getElementById("emailCodeError").style.display = "block";
-          document.getElementById("emailCodeSuccess").style.display = "none";
-          checkFormComplete();
-        }
-      } else {
-        emailCodeVerified = false;
-        document.getElementById("emailCodeError").style.display = "none";
-        document.getElementById("emailCodeSuccess").style.display = "none";
-        checkFormComplete();
-      }
-    });
-
-    // Gửi OTP
-    document.getElementById("sendOtpBtn").addEventListener("click", function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      const phone = document.getElementById("phone").value.trim();
-      const phoneRegex = /^(0|\+84)[3|5|7|8|9][0-9]{8}$/;
-      
-      if (!phoneRegex.test(phone)) {
-        document.getElementById("phoneError").style.display = "block";
-        document.getElementById("phoneSuccess").style.display = "none";
-        return;
-      }
-      
-      document.getElementById("phoneError").style.display = "none";
-      
-      if (phoneCooldown) {
-        alert("⏰ Vui lòng đợi 60 giây trước khi gửi lại OTP!");
-        return;
-      }
-      
-      generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-      console.log("📱 OTP Generated:", generatedOtp);
-      
-      alert("📱 Mã OTP của bạn là: " + generatedOtp + "\n\n(Trong môi trường thực tế, mã này sẽ được gửi qua SMS đến số: " + phone + ")");
-      
-      document.getElementById("otpSection").style.display = "block";
-      document.getElementById("phoneSuccess").style.display = "block";
-      
-      phoneCooldown = true;
-      this.disabled = true;
-      let timeLeft = 60;
-      this.textContent = `Đã gửi (${timeLeft}s)`;
-      
-      const countdown = setInterval(() => {
-        timeLeft--;
-        this.textContent = `Đã gửi (${timeLeft}s)`;
-        
-        if (timeLeft <= 0) {
-          clearInterval(countdown);
-          this.textContent = "Gửi Lại OTP";
-          this.disabled = false;
-          phoneCooldown = false;
-        }
-      }, 1000);
-      
+      // Clear success state when editing code again
+      emailCodeVerified = false;
+      document.getElementById("emailCodeError").style.display = "none";
+      document.getElementById("emailCodeSuccess").style.display = "none";
       checkFormComplete();
-    });
-
-    document.getElementById("otpCode").addEventListener("input", function() {
-      const otpInput = this.value.trim();
-      
-      if (otpInput.length === 6) {
-        if (otpInput === generatedOtp) {
-          otpVerified = true;
-          document.getElementById("otpError").style.display = "none";
-          document.getElementById("otpSuccess").style.display = "block";
-          checkFormComplete();
-        } else {
-          otpVerified = false;
-          document.getElementById("otpError").style.display = "block";
-          document.getElementById("otpSuccess").style.display = "none";
-          checkFormComplete();
-        }
-      } else {
-        otpVerified = false;
-        document.getElementById("otpError").style.display = "none";
-        document.getElementById("otpSuccess").style.display = "none";
-        checkFormComplete();
-      }
     });
 
     document.getElementById("captchaInput").addEventListener("input", function() {
@@ -908,11 +901,15 @@
       } else {
         document.getElementById("emailError").style.display = "none";
       }
+      resetEmailVerification();
       checkFormComplete();
     });
 
     function checkFormComplete() {
       const fullname = document.getElementById("fullname").value.trim();
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value;
+      const confirmPassword = document.getElementById("confirmPassword").value;
       const dob = document.getElementById("dob").value;
       const gender = document.getElementById("gender").value;
       const experience = document.getElementById("experience").value;
@@ -938,10 +935,19 @@
       
       const phoneRegex = /^(0|\+84)[3|5|7|8|9][0-9]{8}$/;
       const isPhoneValid = phoneRegex.test(phone);
+
+      if (phone && !isPhoneValid) {
+        document.getElementById("phoneError").style.display = "block";
+      } else {
+        document.getElementById("phoneError").style.display = "none";
+      }
       
-      const isFormValid = fullname && dob && gender && experience && phone && email && 
+      const passwordsMatch = password && confirmPassword && password === confirmPassword;
+      
+      const isFormValid = fullname && username && password && confirmPassword && passwordsMatch &&
+                          dob && gender && experience && phone && email && 
                           isAdult && isPhoneValid && isEmailValid &&
-                          emailCodeVerified && otpVerified && captchaVerified;
+                          emailCodeVerified && captchaVerified;
       
       document.getElementById("submitBtn").disabled = !isFormValid;
     }
@@ -954,13 +960,11 @@
     document.getElementById("registerForm").addEventListener("submit", function(e) {
       e.preventDefault();
       
+      const password = document.getElementById("password").value;
+      const confirmPassword = document.getElementById("confirmPassword").value;
+
       if (!emailCodeVerified) {
         alert("⚠️ Vui lòng xác thực mã email trước!");
-        return;
-      }
-      
-      if (!otpVerified) {
-        alert("⚠️ Vui lòng xác thực OTP trước!");
         return;
       }
       
@@ -968,9 +972,16 @@
         alert("⚠️ Vui lòng nhập đúng mã CAPTCHA!");
         return;
       }
+
+      if (!password || !confirmPassword || password !== confirmPassword) {
+        alert("⚠️ Mật khẩu và xác nhận mật khẩu phải trùng khớp!");
+        return;
+      }
       
       // Lưu dữ liệu bước 1
       step1Data = {
+        username: document.getElementById("username").value.trim(),
+        password: password,
         fullname: document.getElementById("fullname").value.trim(),
         phone: document.getElementById("phone").value.trim(),
         email: document.getElementById("email").value.trim(),
@@ -979,7 +990,7 @@
         experience: document.getElementById("experience").value
       };
       
-      alert("✅ Đăng ký tài khoản thành công!\n\n🔐 Bạn đã hoàn thành xác thực 2 lớp:\n✓ Email Code\n✓ SMS OTP\n✓ CAPTCHA\n\n📋 Tiếp theo, vui lòng điền đầy đủ thông tin chi tiết.");
+      alert("✅ Đăng ký tài khoản thành công!\n\n🔐 Bạn đã hoàn thành xác thực:\n✓ Email Code\n✓ CAPTCHA\n\n📋 Tiếp theo, vui lòng điền đầy đủ thông tin chi tiết.");
       
       document.getElementById("step1").classList.remove("active");
       document.getElementById("step2").classList.add("active");
@@ -1025,6 +1036,36 @@ document.getElementById("detailForm").addEventListener("submit", async function(
   document.getElementById("submitDetailBtn").disabled = true;
   
   try {
+    // Gửi tạo tài khoản staff (TrangThai inactive)
+    const accountPayload = {
+      username: step1Data.username,
+      password: step1Data.password,
+      full_name: step1Data.fullname,
+      email: step1Data.email,
+      phone: step1Data.phone,
+      gender: step1Data.gender,
+      dob: step1Data.dob,
+      khu_vuc: step1Data.experience
+    };
+
+    const accountResp = await fetch(APPLY_REGISTER_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': csrfToken,
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(accountPayload)
+    });
+
+    if (!accountResp.ok) {
+      const errData = await accountResp.json().catch(() => ({}));
+      const firstError = errData.message
+        || Object.values(errData.errors || {})?.[0]?.[0]
+        || 'Không thể tạo tài khoản, vui lòng thử lại.';
+      throw new Error(firstError);
+    }
+
     console.log("🔄 Bắt đầu chuyển đổi file...");
     
     // Chuyển file sang base64
@@ -1040,7 +1081,7 @@ document.getElementById("detailForm").addEventListener("submit", async function(
     const finalData = {
       // Bước 1
       fullname: step1Data.fullname,
-      phone: step1Data.phone,
+      phone: `'${step1Data.phone}`, // giữ nguyên số 0 khi lưu Google Sheet
       email: step1Data.email,
       gender: step1Data.gender,
       dob: step1Data.dob,

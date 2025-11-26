@@ -4,19 +4,11 @@
 
 @push('styles')
 <style>
-    main { margin-top: 1.4rem; }
     .container { grid-template-columns: 14rem auto; }
     @media (max-width: 1200px) { .container { grid-template-columns: 7rem auto; } }
     @media (max-width: 768px) { .container { grid-template-columns: 1fr; } }
 
     aside { transition: all 300ms ease; position: sticky; top: 0; height: 100vh; }
-    .logo-collapsed { display: none; }
-    aside.collapsed { width: 5rem; }
-    aside.collapsed .logo-full { display: none; }
-    aside.collapsed .logo-collapsed { display: block; }
-    aside.collapsed .sidebar h3 { display: none; }
-    aside.collapsed .sidebar a { justify-content: center; }
-    aside.collapsed .close { display: none; }
     body.sidebar-collapsed .container { grid-template-columns: 5rem auto; }
 
     .page-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
@@ -270,16 +262,7 @@
 
         resetButtons.forEach((btn) => btn.addEventListener('click', switchToCreate));
 
-        // Sidebar toggle
-        const logoToggle = document.getElementById('logo-toggle');
-        const aside = document.querySelector('aside');
-        const body = document.body;
-        if (logoToggle && aside) {
-            logoToggle.addEventListener('click', () => {
-                aside.classList.toggle('collapsed');
-                body.classList.toggle('sidebar-collapsed');
-            });
-        }
+
     });
 </script>
 @endpush

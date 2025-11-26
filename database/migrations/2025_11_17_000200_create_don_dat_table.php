@@ -22,7 +22,7 @@ return new class extends Migration
             $table->string('ID_Goi', 50)->nullable();
             $table->date('NgayBatDauGoi')->nullable();
             $table->date('NgayKetThucGoi')->nullable();
-            $table->enum('TrangThaiDon', ['finding_staff', 'assigned', 'completed', 'cancelled','rejected']);
+            $table->enum('TrangThaiDon', ['finding_staff', 'assigned', 'confirmed', 'cancelled','rejected','completed']);
             $table->decimal('TongTien', 12, 2)->nullable();
             $table->decimal('TongTienSauGiam', 12, 2)->nullable();
             $table->string('ID_NV', 50)->nullable();

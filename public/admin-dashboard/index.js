@@ -1,17 +1,22 @@
 // Executes when document is loaded
 document.addEventListener("DOMContentLoaded", (ev) => {
   // Recent Orders Data
-  document.getElementById("recent-orders--table").appendChild(buildTableBody());
+  const recentOrdersTable = document.getElementById("recent-orders--table");
+  if (recentOrdersTable) {
+    recentOrdersTable.appendChild(buildTableBody());
+  }
 
   // Updates Data
-  document
-    .getElementsByClassName("recent-updates")
-    .item(0)
-    .appendChild(buildUpdatesList());
+  const recentUpdates = document.getElementsByClassName("recent-updates");
+  if (recentUpdates.length > 0) {
+    recentUpdates.item(0).appendChild(buildUpdatesList());
+  }
 
   // Sales Analytics
   const salesAnalytics = document.getElementById("analytics");
-  buildSalesAnalytics(salesAnalytics);
+  if (salesAnalytics) {
+    buildSalesAnalytics(salesAnalytics);
+  }
 });
 
 // Document Builder
@@ -99,19 +104,25 @@ const closeBtn = document.querySelector("#close-btn");
 const themeToggler = document.querySelector(".theme-toggler");
 
 // Show Sidebar
-menuBtn.addEventListener("click", () => {
-  sideMenu.style.display = "block";
-});
+if (menuBtn && sideMenu) {
+  menuBtn.addEventListener("click", () => {
+    sideMenu.style.display = "block";
+  });
+}
 
 // Hide Sidebar
-closeBtn.addEventListener("click", () => {
-  sideMenu.style.display = "none";
-});
+if (closeBtn && sideMenu) {
+  closeBtn.addEventListener("click", () => {
+    sideMenu.style.display = "none";
+  });
+}
 
 // Change Theme
-themeToggler.addEventListener("click", () => {
-  document.body.classList.toggle("dark-theme-variables");
+if (themeToggler) {
+  themeToggler.addEventListener("click", () => {
+    document.body.classList.toggle("dark-theme-variables");
 
-  themeToggler.querySelector("span:nth-child(1)").classList.toggle("active");
-  themeToggler.querySelector("span:nth-child(2)").classList.toggle("active");
-});
+    themeToggler.querySelector("span:nth-child(1)").classList.toggle("active");
+    themeToggler.querySelector("span:nth-child(2)").classList.toggle("active");
+  });
+}

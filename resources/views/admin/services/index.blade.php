@@ -4,10 +4,6 @@
 
 @push('styles')
 <style>
-    main {
-        margin-top: 1.4rem;
-    }
-
     .container {
         grid-template-columns: 14rem auto;
     }
@@ -17,34 +13,6 @@
         position: sticky;
         top: 0;
         height: 100vh;
-    }
-
-    .logo-collapsed {
-        display: none;
-    }
-
-    aside.collapsed {
-        width: 5rem;
-    }
-
-    aside.collapsed .logo-full {
-        display: none;
-    }
-
-    aside.collapsed .logo-collapsed {
-        display: block;
-    }
-
-    aside.collapsed .sidebar h3 {
-        display: none;
-    }
-
-    aside.collapsed .sidebar a {
-        justify-content: center;
-    }
-
-    aside.collapsed .close {
-        display: none;
     }
 
     body.sidebar-collapsed .container {
@@ -586,16 +554,7 @@
             sortSelect.addEventListener('change', () => filterForm.submit());
         }
 
-        // Sidebar collapse toggle
-        const logoToggle = document.getElementById('logo-toggle');
-        const aside = document.querySelector('aside');
-        const body = document.body;
-        if (logoToggle && aside) {
-            logoToggle.addEventListener('click', () => {
-                aside.classList.toggle('collapsed');
-                body.classList.toggle('sidebar-collapsed');
-            });
-        }
+
     });
 </script>
 @endpush
