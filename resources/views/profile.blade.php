@@ -1,10 +1,10 @@
 @extends('layouts.base')
 
-@section('title', 'Thong tin ca nhan')
+@section('title', 'Thông tin cá nhân')
 
 @section('content')
 <section class="profile-container">
-    <h1 class="profile-title">Thong tin ca nhan</h1>
+    <h1 class="profile-title">Thông tin cá nhân</h1>
 
     @if (session('status'))
         <div class="alert alert-success">
@@ -27,7 +27,7 @@
 
         <div class="profile-grid">
             <div class="form-group">
-                <label>Ho va ten</label>
+                <label>Họ và tên</label>
                 <input
                     type="text"
                     name="Ten_KH"
@@ -39,7 +39,7 @@
             </div>
 
             <div class="form-group">
-                <label>So dien thoai</label>
+                <label>Số điện thoại</label>
                 <input
                     type="text"
                     name="SDT"
@@ -61,7 +61,7 @@
             </div>
 
             <div class="form-group">
-                <label>Ten dang nhap</label>
+                <label>Tên đăng nhập</label>
                 <input
                     type="text"
                     value="{{ $account->TenDN }}"
@@ -72,8 +72,8 @@
         </div>
 
         <div class="address-section">
-            <h2 class="section-title">Dia chi</h2>
-            <p class="section-subtitle">Ban co the luu toi da 3 dia chi.</p>
+            <h2 class="section-title">Địa chỉ</h2>
+            <p class="section-subtitle">Bạn có thể lưu tối đa 3 địa chỉ.</p>
 
             @php
                 $oldAddresses = old('addresses', []);
@@ -89,7 +89,7 @@
                     $district = $oldItem['district'] ?? '';
                 @endphp
                 <div class="form-group address-group">
-                    <label>Dia chi {{ $i + 1 }}</label>
+                    <label>Địa chỉ {{ $i + 1 }}</label>
                     <input type="hidden" name="addresses[{{ $i }}][id]" value="{{ $id }}">
                     <input type="hidden" name="addresses[{{ $i }}][district]" value="{{ $district }}">
                     <input
@@ -116,7 +116,7 @@
                         class="delete-address"
                         data-index="{{ $i }}"
                     >
-                        Xoa dia chi nay
+                        Xoá địa chỉ này
                     </button>
                 </div>
             @endfor
@@ -128,7 +128,7 @@
                 id="editProfileButton"
                 class="btn btn-outline"
             >
-                Sua thong tin
+                Sửa thông tin
             </button>
             <button
                 type="submit"
@@ -136,7 +136,7 @@
                 class="btn btn-primary"
                 style="display:none;"
             >
-                Luu thay doi
+                Lưu thay đổi
             </button>
         </div>
     </form>
