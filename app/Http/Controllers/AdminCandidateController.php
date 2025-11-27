@@ -43,7 +43,7 @@ class AdminCandidateController extends Controller
         $genderHeader = $this->findHeader($headers, ['gender', 'gioi_tinh']);
         $dobHeader = $this->findHeader($headers, ['dob', 'ngay_sinh']);
         $addressHeader = $this->findHeader($headers, ['address', 'dia_chi']);
-        $experienceHeader = $this->findHeader($headers, ['experience', 'kinh_nghiem']);
+        $workAreaHeader = $this->findHeader($headers, ['khu_vuc_lam_viec', 'khu_vuc', 'khu vực làm việc', 'experience', 'kinh_nghiem']);
 
         // Dedupe by phone + email to tránh hiển thị trùng
         $rows = $rows->unique(function (array $row) use ($phoneHeader, $emailHeader) {
@@ -126,7 +126,7 @@ class AdminCandidateController extends Controller
             'genderHeader' => $genderHeader,
             'dobHeader' => $dobHeader,
             'addressHeader' => $addressHeader,
-            'experienceHeader' => $experienceHeader,
+            'workAreaHeader' => $workAreaHeader,
             'approvedEmails' => $approvedEmails,
             'approvalFilter' => $approvalFilter,
         ]);
@@ -234,7 +234,7 @@ class AdminCandidateController extends Controller
             'phone' => ['required', 'string', 'max:20'],
             'gender' => ['nullable', 'string', 'max:50'],
             'dob' => ['nullable', 'string', 'max:50'],
-            'experience' => ['nullable', 'string', 'max:255'],
+            'work_area' => ['nullable', 'string', 'max:255'],
             'address' => ['nullable', 'string', 'max:255'],
             'position' => ['nullable', 'string', 'max:255'],
         ], [], [
@@ -295,7 +295,7 @@ class AdminCandidateController extends Controller
                     'Email' => $data['email'],
                     'GioiTinh' => $genderDb,
                     'NgaySinh' => $dob,
-                    'KhuVucLamViec' => $data['address'] ?? null,
+                    'KhuVucLamViec' => $data['work_area'] ?? ($data['address'] ?? null),
                     'TrangThai' => 'active',
                     'SoDu' => 0,
                 ];

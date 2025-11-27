@@ -120,9 +120,17 @@ class RegisterController extends Controller
                 'Ten_KH' => ['required', 'string', 'max:255'],
                 'email' => ['required', 'email', 'max:255', 'unique:KhachHang,Email'],
                 'SDT' => ['required', 'string', 'max:15', 'unique:KhachHang,SDT'],
-                'password' => ['required', 'string', 'min:6', 'confirmed'],
+                'password' => [
+                    'required',
+                    'string',
+                    'min:8',
+                    'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*[^a-zA-Z0-9]).{8,}$/',
+                    'confirmed',
+                ],
             ],
-            [],
+            [
+                'password.regex' => 'Mật khẩu phải có ít nhất 8 ký tự, gồm chữ hoa, chữ thường và ký tự đặc biệt.',
+            ],
             [
                 'TenDN' => 'Tên đăng nhập',
                 'Ten_KH' => 'Họ và tên',
@@ -152,7 +160,7 @@ class RegisterController extends Controller
             'TenDN' => $validated['TenDN'],
             'MatKhau' => $validated['password'],
             'ID_LoaiTK' => 'customer',
-            'TrangThaiTK' => 'inactive',
+            'TrangThaiTK' => 'active',
         ]);
 
         KhachHang::create([

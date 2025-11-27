@@ -376,7 +376,7 @@
                     $genderVal = $genderHeader ? ($row[$genderHeader] ?? '') : '';
                     $dobVal = $dobHeader ? ($row[$dobHeader] ?? '') : '';
                     $addressVal = $addressHeader ? ($row[$addressHeader] ?? '') : '';
-                    $expVal = $experienceHeader ? ($row[$experienceHeader] ?? '') : '';
+                    $workAreaVal = $workAreaHeader ? ($row[$workAreaHeader] ?? '') : '';
                     $isApproved = in_array(mb_strtolower(trim($email)), $approvedEmails ?? []);
                 @endphp
                 <tr>
@@ -431,7 +431,7 @@
                             <input type="hidden" name="gender" value="{{ $genderVal }}">
                             <input type="hidden" name="dob" value="{{ $dobVal }}">
                             <input type="hidden" name="address" value="{{ $addressVal }}">
-                            <input type="hidden" name="experience" value="{{ $expVal }}">
+                            <input type="hidden" name="work_area" value="{{ $workAreaVal }}">
                             <button type="submit" class="btn-primary" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
                                 Duyệt hồ sơ
                             </button>
