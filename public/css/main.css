@@ -786,13 +786,11 @@ header {
 .myhome-hub-new-container {
     display: flex;
     align-items: center;
-    gap: 4rem;
     max-width: 1400px;
     margin: 0 auto;
 }
 
 .myhome-hub-new-left {
-    flex: 1;
     min-width: 0;
 }
 
