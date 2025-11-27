@@ -70,10 +70,6 @@
                     </span>
                 </button>
                 <div class="account-dropdown" id="accountMenuDropdown">
-                    <a href="{{ url('/') }}" class="account-dropdown-item">
-                        <i class="fa-solid fa-house"></i>
-                        <span>Trang chủ</span>
-                    </a>
                     <a href="{{ route('bookings.history') }}" class="account-dropdown-item">
                         <i class="fa-solid fa-calendar"></i>
                         <span>Lịch hẹn</span>

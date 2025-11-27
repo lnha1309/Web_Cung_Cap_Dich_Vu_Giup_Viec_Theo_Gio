@@ -27,6 +27,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ApiBookingController extends Controller
 {
@@ -114,6 +115,7 @@ class ApiBookingController extends Controller
         $paymentRecord = LichSuThanhToan::where('ID_DD', $id)
             ->orderByDesc('ThoiGian')
             ->first();
+        $rating = DanhGiaNhanVien::where('ID_DD', $id)->first();
         $paymentStatus = 'unknown';
         $paymentDeadline = null;
         if ($paymentRecord && $paymentRecord->PhuongThucThanhToan === 'VNPay') {
@@ -217,6 +219,14 @@ class ApiBookingController extends Controller
                 }),
                 'sessions' => $sessionData,
                 'session_counts' => $sessionCounts,
+                'rating' => $rating ? [
+                    'id' => $rating->ID_DG,
+                    'score' => (int) $rating->Diem,
+                    'comment' => $rating->NhanXet,
+                    'created_at' => $rating->ThoiGian,
+                ] : null,
+                'can_rate' => in_array($booking->TrangThaiDon, ['completed', 'done'], true)
+                    && !$rating,
             ]
         ]);
     }
@@ -528,6 +538,14 @@ class ApiBookingController extends Controller
             'ID_DD' => $idDon,
         ]);
 
+        // Notify customer about new booking
+        try {
+            $notificationService = app(NotificationService::class);
+            $notificationService->notifyOrderCreated($booking);
+        } catch (\Exception $e) {
+            // ignore notification errors
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Tao don dat thanh cong.',
@@ -540,6 +558,90 @@ class ApiBookingController extends Controller
                     : null,
             ]
         ], 201);
+    }
+
+    /**
+     * Customer rates a completed booking
+     * POST /api/bookings/{id}/rate
+     */
+    public function rate(Request $request, string $id, NotificationService $notificationService)
+    {
+        $user = $request->user();
+        $khachHang = $user->khachHang;
+        if (!$khachHang) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Khong tim thay thong tin khach hang.'
+            ], 403);
+        }
+
+        $booking = DonDat::where('ID_DD', $id)
+            ->where('ID_KH', $khachHang->ID_KH)
+            ->first();
+
+        if (!$booking) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Khong tim thay don dat.'
+            ], 404);
+        }
+
+        if (!in_array($booking->TrangThaiDon, ['completed', 'done'], true)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Chi danh gia khi don da hoan tat.'
+            ], 422);
+        }
+
+        if (DanhGiaNhanVien::where('ID_DD', $booking->ID_DD)->exists()) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Ban da danh gia don nay.'
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'rating' => ['required', 'integer', 'min:1', 'max:5'],
+            'comment' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        DanhGiaNhanVien::create([
+            'ID_DG' => IdGenerator::next('DanhGiaNhanVien', 'ID_DG', 'DG_'),
+            'ID_DD' => $booking->ID_DD,
+            'ID_NV' => $booking->ID_NV,
+            'ID_KH' => $khachHang->ID_KH,
+            'Diem' => $validated['rating'],
+            'NhanXet' => $validated['comment'] ?? null,
+            'ThoiGian' => now(),
+        ]);
+
+        // Move booking to done so it sits in history and notify customer of status change
+        if ($booking->TrangThaiDon === 'completed') {
+            $oldStatus = $booking->TrangThaiDon;
+            $booking->TrangThaiDon = 'done';
+            $booking->save();
+            try {
+                $notificationService->notifyOrderStatusChanged($booking, $oldStatus, 'done');
+            } catch (\Exception $e) {
+                Log::error('Failed to send status change notification after rating (API)', [
+                    'booking_id' => $booking->ID_DD,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Da luu danh gia.',
+            'data' => [
+                'rating' => [
+                    'score' => (int) $validated['rating'],
+                    'comment' => $validated['comment'] ?? null,
+                    'created_at' => now()->toDateTimeString(),
+                ],
+                'status' => $booking->TrangThaiDon,
+            ],
+        ]);
     }
 
     /**
@@ -566,7 +668,7 @@ class ApiBookingController extends Controller
         $gioBatDau = $request->start_time;
         $thoiLuong = (int) $request->duration_hours;
 
-        $start = Carbon::createFromFormat('H:i', $gioBatDau);
+        $start = Carbon::parse("$ngayLam $gioBatDau");
         $gioKetThuc = $start->copy()->addHours($thoiLuong)->format('H:i:s');
         $gioBatDauSql = $start->format('H:i:s');
 
@@ -588,6 +690,39 @@ class ApiBookingController extends Controller
         foreach ($lich as $item) {
             $nv = $item->nhanVien;
             if (!$nv) {
+                continue;
+            }
+
+            // Skip staff who is busy (assigned/confirmed) with overlapping or tight-gap bookings
+            $candidateStart = Carbon::parse("$ngayLam $gioBatDau");
+            $candidateEnd = $candidateStart->copy()->addHours($thoiLuong);
+            $busyBookings = DonDat::where('ID_NV', $nv->ID_NV)
+                ->whereIn('TrangThaiDon', ['assigned', 'confirmed'])
+                ->whereDate('NgayLam', $ngayLam)
+                ->get();
+
+            $conflict = false;
+            foreach ($busyBookings as $busy) {
+                if (!$busy->GioBatDau || !$busy->ThoiLuongGio) {
+                    continue;
+                }
+                $busyStart = Carbon::parse($busy->NgayLam . ' ' . $busy->GioBatDau);
+                $busyEnd = $busyStart->copy()->addHours((float) $busy->ThoiLuongGio);
+
+                // Overlap
+                if ($candidateStart->lt($busyEnd) && $candidateEnd->gt($busyStart)) {
+                    $conflict = true;
+                    break;
+                }
+
+                // Gap <= 1 hour after busy booking ends
+                if ($candidateStart->lt($busyEnd->copy()->addHour())) {
+                    $conflict = true;
+                    break;
+                }
+            }
+
+            if ($conflict) {
                 continue;
             }
 

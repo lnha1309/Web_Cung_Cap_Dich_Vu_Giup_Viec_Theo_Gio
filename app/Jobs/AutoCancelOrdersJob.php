@@ -59,7 +59,7 @@ class AutoCancelOrdersJob implements ShouldQueue
     $count = 0;
 
     $orders = DonDat::where('LoaiDon', 'hour')
-        ->whereIn('TrangThaiDon', ['assigned', 'finding_staff'])
+        ->whereIn('TrangThaiDon', ['assigned', 'finding_staff', 'rejected'])
         ->whereNotNull('NgayLam')
         ->whereNotNull('GioBatDau')
         ->get();
@@ -70,15 +70,18 @@ class AutoCancelOrdersJob implements ShouldQueue
             $cancelCheckTime = $startTime->copy()->subHours(2);
             $now = now();
 
+            $shouldCancel = $now->gte($cancelCheckTime);
+
             \Log::info('DEBUG AUTO-CANCEL CHECK', [
                 'order_id'        => $order->ID_DD,
                 'start_time'      => $startTime->toDateTimeString(),
                 'cancel_check'    => $cancelCheckTime->toDateTimeString(),
                 'now'             => $now->toDateTimeString(),
-                'in_window'       => $now->gte($cancelCheckTime) && $now->lt($startTime),
+                'should_cancel'   => $shouldCancel,
             ]);
 
-            if ($now->gte($cancelCheckTime) && $now->lt($startTime)) {
+            // Cancel if we reached/passed the -2h mark, even if the window was missed earlier
+            if ($shouldCancel) {
                 $this->cancelOrder($order, 'auto_cancel_2h');
                 $count++;
             }
@@ -103,7 +106,7 @@ class AutoCancelOrdersJob implements ShouldQueue
 
         // Find monthly orders with scheduled sessions
         $orders = DonDat::where('LoaiDon', 'month')
-            ->whereIn('TrangThaiDon', ['assigned', 'finding_staff'])
+            ->whereIn('TrangThaiDon', ['assigned', 'finding_staff', 'rejected'])
             ->whereHas('lichBuoiThang', function ($query) {
                 $query->whereIn('TrangThaiBuoi', ['scheduled', 'finding_staff']);
             })
@@ -124,8 +127,10 @@ class AutoCancelOrdersJob implements ShouldQueue
                     $cancelCheckTime = $startTime->copy()->subHours(2);
                     $now = now();
 
-                    // Check if we're in the 2-hour window before first session
-                    if ($now->gte($cancelCheckTime) && $now->lt($startTime)) {
+                    $shouldCancel = $now->gte($cancelCheckTime);
+
+                    // Cancel even if we are past start time (missed window earlier)
+                    if ($shouldCancel) {
                         $this->cancelOrder($order, 'auto_cancel_2h');
                         $count++;
                     }

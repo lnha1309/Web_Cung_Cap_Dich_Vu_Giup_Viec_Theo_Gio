@@ -474,9 +474,11 @@ document.addEventListener('DOMContentLoaded', function() {
 <section class="hourly-section hourly-hero-section hourly-container">
     <div class="hourly-hero-content">
         <h1>Dịch vụ Giúp việc theo giờ</h1>
-        <p class="tagline">Linh hoạt, tin cậy, cho không gian sống luôn sạch tinh tươm. Bạn chọn giờ, chúng tôi lo việc nhà.</p>
+        <p class="tagline">Linh hoạt, tin cậy, cho không gian sống luôn sạch tinh tươm. Bạn chọn giờ, chúng tôi lo việc nhà.
+Đội ngũ chuyên nghiệp, được đào tạo bài bản, đảm bảo công việc được thực hiện nhanh chóng và chuẩn xác.
+Giải pháp lý tưởng cho những gia đình bận rộn cần sự hỗ trợ định kỳ hoặc đột xuất.</p>
         <div class="hourly-hero-buttons">
-            <a href="{{ url('select-address') }}" class="hourly-btn hourly-btn-primary">Đặt lịch ngay</a>
+            <a href="{{ url('select-address') }}" class="hourly-btn hourly-btn-secondary">Đặt lịch ngay</a>
             <a href="#pricing" class="hourly-btn hourly-btn-secondary">Xem bảng giá</a>
         </div>
     </div>
@@ -553,7 +555,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     <div class="hourly-not-included">
         <h4>Lưu ý: Dịch vụ KHÔNG bao gồm:</h4>
-        <p>Giặt ủi, phơi, gấp quần áo; Nấu ăn; Vệ sinh bên trong các thiết bị (tủ lạnh, lò nướng); Lau kính trên cao; Di chuyển đồ đạc nặng; Vệ sinh sau xây dựng.</p>
+        <p>Giặt ủi, phơi, gấp quần áo; Nấu ăn; Vệ sinh bên trong các thiết bị (tủ lạnh...); Lau kính trên cao; Di chuyển đồ đạc nặng; Vệ sinh sau xây dựng.</p>
     </div>
 </section>
 

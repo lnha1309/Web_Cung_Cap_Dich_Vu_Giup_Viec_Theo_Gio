@@ -174,11 +174,13 @@
                         @php
                             $apartment = $item->CanHo;
                             $full = $item->DiaChiDayDu;
+                            $label = $item->Nhan;
                         @endphp
                         <li
                             class="saved-address-item"
                             data-apartment="{{ $apartment }}"
                             data-full="{{ $full }}"
+                            data-label="{{ $label }}"
                         >
                             <div class="saved-address-main">
                                 @if($apartment)
@@ -186,7 +188,9 @@
                                 @endif
                                 <div class="saved-address-full">{{ $full }}</div>
                             </div>
-                            <div class="saved-address-pill">Chọn</div>
+                            <div class="saved-address-pill">
+                                {{ $label ? $label : 'Chưa gán nhãn' }}
+                            </div>
                         </li>
                     @endforeach
                 </ul>

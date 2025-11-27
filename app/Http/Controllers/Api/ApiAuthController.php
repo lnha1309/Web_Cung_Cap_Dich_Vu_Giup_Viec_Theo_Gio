@@ -31,7 +31,7 @@ class ApiAuthController extends Controller
             'username' => ['required', 'string', 'max:255', 'unique:TaiKhoan,TenDN'],
             'password' => ['required', 'string', 'min:6'],
             'full_name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:KhachHang,Email'],
             'phone' => ['required', 'string', 'max:15', 'unique:KhachHang,SDT'],
             'otp' => ['required', 'string'],
         ]);
@@ -491,7 +491,7 @@ class ApiAuthController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'phone' => ['required', 'string', 'max:15'],
-            'email' => ['required', 'email'],
+            'email' => ['required', 'email', 'max:255'],
         ]);
 
         if ($validator->fails()) {
@@ -507,6 +507,15 @@ class ApiAuthController extends Controller
             return response()->json([
                 'success' => false,
                 'error' => 'So dien thoai da duoc su dung.'
+            ], 422);
+        }
+
+        // Check if email already exists
+        $existingEmail = KhachHang::where('Email', $request->email)->first();
+        if ($existingEmail) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Email da duoc su dung.'
             ], 422);
         }
 
@@ -618,6 +627,32 @@ class ApiAuthController extends Controller
             'success' => true,
             'available' => !$exists,
             'message' => $exists ? 'So dien thoai da duoc su dung.' : 'So dien thoai kha dung.'
+        ]);
+    }
+
+    /**
+     * Check if email is available
+     * POST /api/auth/check-email
+     */
+    public function checkEmail(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => ['required', 'email', 'max:255'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $exists = KhachHang::where('Email', $request->email)->exists();
+
+        return response()->json([
+            'success' => true,
+            'available' => !$exists,
+            'message' => $exists ? 'Email da duoc su dung.' : 'Email kha dung.'
         ]);
     }
 

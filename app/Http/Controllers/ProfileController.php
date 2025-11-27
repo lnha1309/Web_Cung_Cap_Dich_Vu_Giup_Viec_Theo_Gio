@@ -50,6 +50,7 @@ class ProfileController extends Controller
                 'addresses.*.DiaChiDayDu' => ['nullable', 'string', 'max:1000'],
                 'addresses.*.district'    => ['nullable', 'string', 'max:255'],
                 'addresses.*.CanHo'       => ['nullable', 'string', 'max:255'],
+                'addresses.*.Nhan'        => ['nullable', 'string', 'max:100'],
             ],
             [],
             [
@@ -79,6 +80,7 @@ class ProfileController extends Controller
             $id           = $item['id'] ?? null;
             $districtName = trim($item['district'] ?? '');
             $apartment    = trim($item['CanHo'] ?? '');
+            $label        = trim($item['Nhan'] ?? '');
 
             $idQuan = null;
             if ($districtName !== '') {
@@ -103,6 +105,7 @@ class ProfileController extends Controller
                 } else {
                     $existing[$id]->DiaChiDayDu = $text;
                     $existing[$id]->CanHo       = $apartment !== '' ? $apartment : null;
+                    $existing[$id]->Nhan        = $label !== '' ? $label : null;
                     if ($idQuan !== null) {
                         $existing[$id]->ID_Quan = $idQuan;
                     }
@@ -116,6 +119,7 @@ class ProfileController extends Controller
                     'ID_KH'       => $customer->ID_KH,
                     'ID_Quan'     => $idQuan,
                     'CanHo'       => $apartment !== '' ? $apartment : null,
+                    'Nhan'        => $label !== '' ? $label : null,
                     'DiaChiDayDu' => $text,
                     'is_Deleted'  => false,
                 ]);

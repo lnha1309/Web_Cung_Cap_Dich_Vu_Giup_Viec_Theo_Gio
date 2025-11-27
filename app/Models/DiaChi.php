@@ -18,6 +18,7 @@ class DiaChi extends Model
         'ID_Quan',
         'CanHo',
         'DiaChiDayDu',
+        'Nhan',
         'is_Deleted',
     ];
 

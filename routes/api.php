@@ -30,6 +30,7 @@ Route::prefix('auth')->group(function () {
     Route::post('/verify-otp', [ApiAuthController::class, 'verifyOtp']);
     Route::post('/check-username', [ApiAuthController::class, 'checkUsername']);
     Route::post('/check-phone', [ApiAuthController::class, 'checkPhone']);
+    Route::post('/check-email', [ApiAuthController::class, 'checkEmail']);
 });
 
 // Public service routes
@@ -70,6 +71,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/find-staff', [ApiBookingController::class, 'findStaff']);
         Route::post('/quote', [ApiBookingController::class, 'calculateQuote']);
         Route::put('/{id}/cancel', [ApiBookingController::class, 'cancel']);
+        Route::post('/{id}/rate', [ApiBookingController::class, 'rate']);
     });
 
     // Voucher routes

@@ -38,6 +38,7 @@ class ApiAddressController extends Controller
                 return [
                     'id' => $address->ID_DC,
                     'unit' => $address->CanHo,
+                    'label' => $address->Nhan,
                     'full_address' => $address->DiaChiDayDu,
                     'district_id' => $address->ID_Quan,
                     'district_name' => $quan ? $quan->TenQuan : null,
@@ -55,6 +56,7 @@ class ApiAddressController extends Controller
         $validator = \Validator::make($request->all(), [
             'unit' => ['nullable', 'string', 'max:255'],
             'full_address' => ['required', 'string', 'max:500'],
+            'label' => ['nullable', 'string', 'max:100'],
         ]);
 
         if ($validator->fails()) {
@@ -84,6 +86,7 @@ class ApiAddressController extends Controller
             'ID_KH' => $khachHang->ID_KH,
             'ID_Quan' => $quan?->ID_Quan,
             'CanHo' => $request->unit,
+            'Nhan' => $request->label,
             'DiaChiDayDu' => $request->full_address,
             'is_Deleted' => false,
         ]);
@@ -94,6 +97,7 @@ class ApiAddressController extends Controller
             'data' => [
                 'id' => $address->ID_DC,
                 'unit' => $address->CanHo,
+                'label' => $address->Nhan,
                 'full_address' => $address->DiaChiDayDu,
                 'district_id' => $address->ID_Quan,
                 'district_name' => $quan ? $quan->TenQuan : null,
@@ -136,6 +140,7 @@ class ApiAddressController extends Controller
             'data' => [
                 'id' => $address->ID_DC,
                 'unit' => $address->CanHo,
+                'label' => $address->Nhan,
                 'full_address' => $address->DiaChiDayDu,
                 'district_id' => $address->ID_Quan,
                 'district_name' => $quan ? $quan->TenQuan : null,
@@ -152,6 +157,7 @@ class ApiAddressController extends Controller
         $validator = \Validator::make($request->all(), [
             'unit' => ['nullable', 'string', 'max:255'],
             'full_address' => ['required', 'string', 'max:500'],
+            'label' => ['nullable', 'string', 'max:100'],
         ]);
 
         if ($validator->fails()) {
@@ -187,6 +193,7 @@ class ApiAddressController extends Controller
         $quan = $this->guessQuanFromAddress($request->full_address);
 
         $address->CanHo = $request->unit;
+        $address->Nhan = $request->label;
         $address->DiaChiDayDu = $request->full_address;
         $address->ID_Quan = $quan?->ID_Quan;
         $address->save();
@@ -197,6 +204,7 @@ class ApiAddressController extends Controller
             'data' => [
                 'id' => $address->ID_DC,
                 'unit' => $address->CanHo,
+                'label' => $address->Nhan,
                 'full_address' => $address->DiaChiDayDu,
                 'district_id' => $address->ID_Quan,
                 'district_name' => $quan ? $quan->TenQuan : null,

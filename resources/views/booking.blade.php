@@ -2701,6 +2701,10 @@
             padding: 16px 12px;
             border: 2px solid #e0e0e0;
             border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
             text-align: center;
             cursor: pointer;
             transition: all 0.2s;
@@ -2717,6 +2721,25 @@
             background-color: #DCEDEA;
             border-color: #004d2e;
             color: #004d2e;
+        }
+
+        .month-duration {
+            font-size: 16px;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .month-discount {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: #e9f4ef;
+            color: #1e5a40;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.1px;
         }
 
         .btn-view-calendar {
@@ -3136,10 +3159,22 @@
 
                     <h4>Thời gian lặp lại</h4>
                     <div class="month-package-selector">
-                        <div class="month-option" data-months="1" data-days="30">1 tháng</div>
-                        <div class="month-option" data-months="2" data-days="60">2 tháng</div>
-                        <div class="month-option" data-months="3" data-days="90">3 tháng</div>
-                        <div class="month-option" data-months="6" data-days="180">6 tháng</div>
+                        <div class="month-option" data-months="1" data-days="30" data-discount="5">
+                            <div class="month-duration">1 tháng</div>
+                            <div class="month-discount">Giảm 5%</div>
+                        </div>
+                        <div class="month-option" data-months="2" data-days="60" data-discount="10">
+                            <div class="month-duration">2 tháng</div>
+                            <div class="month-discount">Giảm 10%</div>
+                        </div>
+                        <div class="month-option" data-months="3" data-days="90" data-discount="15">
+                            <div class="month-duration">3 tháng</div>
+                            <div class="month-discount">Giảm 15%</div>
+                        </div>
+                        <div class="month-option" data-months="6" data-days="180" data-discount="20">
+                            <div class="month-duration">6 tháng</div>
+                            <div class="month-discount">Giảm 20%</div>
+                        </div>
                     </div>
 
                     <!-- Nút xem lịch chi tiết -->
@@ -3896,6 +3931,29 @@
 
         const monthOptions = document.querySelectorAll('.month-option');
 
+        function renderMonthOptionDiscounts() {
+            monthOptions.forEach(option => {
+                const months = parseInt(option.getAttribute('data-months'), 10);
+                const discountPercent = getPackageDiscount(months);
+
+                if (!Number.isNaN(discountPercent)) {
+                    option.setAttribute('data-discount', discountPercent);
+                }
+
+                const discountLabel = option.querySelector('.month-discount');
+                if (discountLabel) {
+                    const discountText = discountPercent > 0
+                        ? `Giảm ${discountPercent}%`
+                        : 'Không giảm';
+                    discountLabel.textContent = discountText;
+                }
+            });
+        }
+
+        renderMonthOptionDiscounts();
+
+
+
         // Chọn gói tháng
         monthOptions.forEach(option => {
             option.addEventListener('click', function() {
@@ -4438,6 +4496,11 @@
         }
 
         function getPackageDiscount(months) {
+            const optionEl = document.querySelector(`.month-option[data-months="${months}"]`);
+            const domValue = optionEl ? Number(optionEl.getAttribute('data-discount')) : NaN;
+            if (!Number.isNaN(domValue)) {
+                return domValue;
+            }
             const map = { 1: 5, 2: 10, 3: 15, 6: 20 };
             return map[months] || 0;
         }

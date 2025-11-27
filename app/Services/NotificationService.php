@@ -2,11 +2,14 @@
 
 namespace App\Services;
 
+use App\Models\KhachHang;
+use App\Models\TaiKhoan;
 use App\Models\ThongBao;
 use App\Models\DonDat;
 use App\Mail\OrderStatusMail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Http;
 
 class NotificationService
 {
@@ -40,6 +43,11 @@ class NotificationService
         ]);
 
         $this->sendOrderEmail($booking, 'created');
+        $this->pushToCustomer(
+            $booking,
+            'Đặt đơn thành công',
+            'Đơn ' . $booking->ID_DD . ' đã được tạo, vui lòng chờ cập nhật tiếp theo.'
+        );
 
         return $notification;
     }
@@ -95,6 +103,11 @@ class NotificationService
             'refund_amount' => $refundAmount,
             'payment_method' => $paymentMethod,
         ]);
+        $this->pushToCustomer(
+            $booking,
+            'Đơn đã bị hủy',
+            "Đơn {$booking->ID_DD} đã bị hủy. Lý do: {$reason}."
+        );
 
         return $notification;
     }
@@ -132,6 +145,14 @@ class NotificationService
             'old_status' => $oldStatus,
             'new_status' => $newStatus,
         ]);
+
+        if ($statusMessage) {
+          $this->pushToCustomer(
+              $booking,
+              'Cập nhật đơn hàng',
+              "Đơn {$booking->ID_DD} {$statusMessage}"
+          );
+        }
 
         return $notification;
     }
@@ -294,6 +315,44 @@ class NotificationService
             Log::error('Failed to send order email', [
                 'booking_id' => $booking->ID_DD ?? null,
                 'type' => $type,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function pushToCustomer($booking, string $title, string $body): void
+    {
+        try {
+            $kh = $booking->khachHang ?? KhachHang::find($booking->ID_KH);
+            if (!$kh || !$kh->ID_TK) {
+                return;
+            }
+            $account = TaiKhoan::find($kh->ID_TK);
+            $playerId = $account?->onesignal_player_id;
+            $appId = config('services.onesignal.app_id');
+            $apiKey = config('services.onesignal.api_key');
+            if (!$playerId || !$appId || !$apiKey) {
+                return;
+            }
+
+            $payload = [
+                'app_id' => $appId,
+                'include_player_ids' => [$playerId],
+                'headings' => ['en' => $title],
+                'contents' => ['en' => $body],
+                'data' => [
+                    'booking_id' => $booking->ID_DD,
+                    'target_role' => 'customer',
+                ],
+            ];
+
+            Http::withHeaders([
+                'Authorization' => 'Basic ' . $apiKey,
+                'Content-Type' => 'application/json',
+            ])->post('https://api.onesignal.com/notifications', $payload);
+        } catch (\Exception $e) {
+            Log::error('Failed to push OneSignal to customer', [
+                'booking_id' => $booking->ID_DD ?? null,
                 'error' => $e->getMessage(),
             ]);
         }

@@ -66,7 +66,7 @@ class ApiStaffBookingController extends Controller
         $nowPlus2h = Carbon::now()->addHours(2);
 
         $candidates = DonDat::whereIn('TrangThaiDon', ['finding_staff', 'rejected'])
-            ->with('khachHang')
+            ->with(['khachHang', 'diaChi'])
             ->orderBy('NgayLam')
             ->get()
             ->filter(function (DonDat $booking) use ($busy, $nowPlus2h) {
@@ -94,7 +94,11 @@ class ApiStaffBookingController extends Controller
                     if ($b['date'] !== $booking->NgayLam) {
                         continue;
                     }
+                    $bufferedEnd = $b['end']->copy()->addHour(); // Require at least 1h gap after accepted job
                     if ($this->overlaps($start, $end, $b['start'], $b['end'])) {
+                        return false;
+                    }
+                    if ($start->gte($b['start']) && $start->lt($bufferedEnd)) {
                         return false;
                     }
                 }
@@ -105,6 +109,7 @@ class ApiStaffBookingController extends Controller
                 $start = Carbon::createFromFormat('H:i:s', $booking->GioBatDau);
                 $end = $start->copy()->addHours((float) $booking->ThoiLuongGio);
                 $kh = $booking->khachHang;
+                $address = $booking->diaChi;
                 return [
                     'id' => $booking->ID_DD,
                     'service_id' => $booking->ID_DV,
@@ -116,6 +121,11 @@ class ApiStaffBookingController extends Controller
                     'note' => $booking->GhiChu,
                     'customer_name' => $kh?->Ten_KH,
                     'customer_phone' => $kh?->SDT,
+                    'address' => $address ? [
+                        'id' => $address->ID_DC,
+                        'unit' => $address->CanHo,
+                        'full_address' => $address->DiaChiDayDu,
+                    ] : null,
                 ];
             })
             ->values();
@@ -485,15 +495,63 @@ class ApiStaffBookingController extends Controller
             ], 422);
         }
 
+        if (!$booking->NgayLam || !$booking->GioBatDau || !$booking->ThoiLuongGio) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Don thieu thong tin thoi gian.',
+            ], 422);
+        }
+
+        $start = Carbon::createFromFormat('H:i:s', $booking->GioBatDau);
+        $end = $start->copy()->addHours((float) $booking->ThoiLuongGio);
+
+        $busy = DonDat::where('ID_NV', $nhanVien->ID_NV)
+            ->where('ID_DD', '!=', $id)
+            ->whereIn('TrangThaiDon', ['assigned', 'confirmed'])
+            ->get()
+            ->map(function (DonDat $b) {
+                if (!$b->NgayLam || !$b->GioBatDau || !$b->ThoiLuongGio) {
+                    return null;
+                }
+                $startBusy = Carbon::createFromFormat('H:i:s', $b->GioBatDau);
+                $endBusy = $startBusy->copy()->addHours((float) $b->ThoiLuongGio);
+                return [
+                    'date' => $b->NgayLam,
+                    'start' => $startBusy,
+                    'end' => $endBusy,
+                ];
+            })
+            ->filter()
+            ->values();
+
+        foreach ($busy as $b) {
+            if ($b['date'] !== $booking->NgayLam) {
+                continue;
+            }
+            $gapEnd = $b['end']->copy()->addHour();
+            if ($this->overlaps($start, $end, $b['start'], $b['end'])) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Thoi gian don nay trung voi don ban dang nhan.',
+                ], 422);
+            }
+            if ($start->gte($b['start']) && $start->lt($gapEnd)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Can cach it nhat 1 gio sau khi ket thuc don truoc.',
+                ], 422);
+            }
+        }
+
         $oldStatus = $booking->TrangThaiDon;
-        // Treat staff confirmation as job completion for customer feedback
-        $booking->TrangThaiDon = 'completed';
+        // Staff confirms they will do the job
+        $booking->TrangThaiDon = 'confirmed';
         $booking->save();
 
         // Send notification to customer
         try {
             $notificationService = app(NotificationService::class);
-            $notificationService->notifyOrderStatusChanged($booking, $oldStatus, 'completed');
+            $notificationService->notifyOrderStatusChanged($booking, $oldStatus, 'confirmed');
         } catch (\Exception $e) {
             Log::error('Failed to send status change notification', [
                 'booking_id' => $booking->ID_DD,
@@ -587,17 +645,27 @@ class ApiStaffBookingController extends Controller
                     'error' => 'Thoi gian don nay trung voi don ban dang nhan.',
                 ], 422);
             }
+
+            if ($b['date'] === $booking->NgayLam) {
+                $gapEnd = $b['end']->copy()->addHour();
+                if ($start->gte($b['start']) && $start->lt($gapEnd)) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Can cach it nhat 1 gio sau khi ket thuc don truoc.',
+                    ], 422);
+                }
+            }
         }
 
         $oldStatus = $booking->TrangThaiDon;
         $booking->ID_NV = $nhanVien->ID_NV;
-        $booking->TrangThaiDon = 'completed'; // nhan va xac nhan hoan thanh ngay
+        $booking->TrangThaiDon = 'confirmed'; // nhan va xac nhan lam viec
         $booking->save();
 
         // Send notification to customer
         try {
             $notificationService = app(NotificationService::class);
-            $notificationService->notifyOrderStatusChanged($booking, $oldStatus, 'completed');
+            $notificationService->notifyOrderStatusChanged($booking, $oldStatus, 'confirmed');
         } catch (\Exception $e) {
             Log::error('Failed to send status change notification', [
                 'booking_id' => $booking->ID_DD,

@@ -87,6 +87,7 @@
                     $id = $oldItem['id'] ?? ($existing->ID_DC ?? null);
                     $apartment = $oldItem['CanHo'] ?? ($existing->CanHo ?? '');
                     $district = $oldItem['district'] ?? '';
+                    $label = $oldItem['Nhan'] ?? ($existing->Nhan ?? '');
                 @endphp
                 <div class="form-group address-group">
                     <label>Địa chỉ {{ $i + 1 }}</label>
@@ -110,6 +111,16 @@
                         readonly
                         class="form-control form-control-sm"
                         placeholder="Can ho (vi du: Can ho A2-12, Chung cu XYZ)"
+                    >
+                    <input
+                        type="text"
+                        name="addresses[{{ $i }}][Nhan]"
+                        value="{{ $label }}"
+                        data-editable="true"
+                        readonly
+                        class="form-control form-control-sm"
+                        placeholder="Nhãn (ví dụ: Nhà, Văn phòng)"
+                        style="margin-top: 6px;"
                     >
                     <button
                         type="button"
@@ -388,4 +399,3 @@
     });
 </script>
 @endsection
-
