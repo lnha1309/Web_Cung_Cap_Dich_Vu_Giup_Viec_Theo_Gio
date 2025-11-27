@@ -164,14 +164,6 @@
                     </div>
 
                 <div class="form-control">
-                    <label for="TrangThai">Trạng thái</label>
-                    <select id="TrangThai" name="TrangThai">
-                        <option value="activated" @selected(old('TrangThai') === 'activated')>Activated</option>
-                        <option value="deactivated" @selected(old('TrangThai') === 'deactivated')>Deactivated</option>
-                    </select>
-                </div>
-
-                <div class="form-control">
                     <label for="expiry_date">Ngày hết hạn</label>
                     <input type="date" id="expiry_date" name="expiry_date" value="{{ old('expiry_date') }}">
                 </div>
@@ -179,6 +171,26 @@
                 <div class="form-control" style="grid-column: 1 / -1;">
                     <label for="MoTa">Mô tả</label>
                     <textarea id="MoTa" name="MoTa" placeholder="Mô tả khuyến mãi">{{ old('MoTa') }}</textarea>
+                </div>
+
+                <div class="form-control" style="grid-column: 1 / -1; border-top: 1px solid var(--color-light); padding-top: 1rem; margin-top: 0.5rem;">
+                    <h3 style="font-size: 1rem; margin-bottom: 0.5rem;">Thông báo khách hàng</h3>
+                    <p class="hint" style="margin-bottom: 1rem;">Gửi email thông báo cho khách hàng khi tạo hoặc cập nhật.</p>
+                </div>
+
+                <div class="form-control">
+                    <label for="notification_target">Gửi tới</label>
+                    <select id="notification_target" name="notification_target">
+                        <option value="">-- Không gửi --</option>
+                        <option value="all">Tất cả khách hàng</option>
+                        <option value="loyal">Khách hàng thân thiết (> 1tr)</option>
+                        <option value="new">Khách hàng mới</option>
+                    </select>
+                </div>
+
+                <div class="form-control">
+                    <label for="notification_note">Nội dung ghi chú (Email)</label>
+                    <textarea id="notification_note" name="notification_note" placeholder="Nhập nội dung hiển thị trong email..." style="min-height: 80px;"></textarea>
                 </div>
 
                 <div class="form-actions">
@@ -201,6 +213,7 @@
                             <th>Tên</th>
                             <th>% giảm</th>
                             <th>Giảm tối đa</th>
+                            <th>Ngày hết hạn</th>
                             <th>Trạng thái</th>
                             <th>Thao tác</th>
                         </tr>
@@ -212,6 +225,7 @@
                                 <td>{{ $promotion->Ten_KM }}</td>
                                 <td>{{ rtrim(rtrim(number_format($promotion->PhanTramGiam, 2, '.', ''), '0'), '.') }}%</td>
                                 <td>{{ number_format($promotion->GiamToiDa, 0, ',', '.') }} đ</td>
+                                <td>{{ $promotion->NgayHetHan ? \Carbon\Carbon::parse($promotion->NgayHetHan)->format('d/m/Y') : '-' }}</td>
                                 <td>
                                     <span class="badge-status {{ $promotion->TrangThai === 'activated' ? 'badge-activated' : 'badge-deactivated' }}">
                                         {{ $promotion->TrangThai === 'activated' ? 'Activated' : 'Deactivated' }}
@@ -227,25 +241,11 @@
                                             data-percent="{{ $promotion->PhanTramGiam }}"
                                             data-max="{{ $promotion->GiamToiDa }}"
                                             data-status="{{ $promotion->TrangThai }}"
+                                            data-expiry="{{ $promotion->NgayHetHan }}"
                                             data-description="{{ $promotion->MoTa }}"
                                         >
                                             Sửa
                                         </button>
-                                        @if($promotion->TrangThai === 'activated')
-                                            <form action="{{ route('admin.promotions.toggle', $promotion->ID_KM) }}" method="POST">
-                                                @csrf
-                                                @method('PATCH')
-                                                <input type="hidden" name="force_status" value="deactivated">
-                                                <button type="submit" class="btn danger">Tắt</button>
-                                            </form>
-                                        @else
-                                            <form action="{{ route('admin.promotions.toggle', $promotion->ID_KM) }}" method="POST">
-                                                @csrf
-                                                @method('PATCH')
-                                                <input type="hidden" name="force_status" value="activated">
-                                                <button type="submit" class="btn primary-btn">Bật</button>
-                                            </form>
-                                        @endif
                                         <form action="{{ route('admin.promotions.destroy', $promotion->ID_KM) }}" method="POST" onsubmit="return confirm('Xoá khuyến mãi {{ $promotion->Ten_KM }}?');">
                                             @csrf
                                             @method('DELETE')
@@ -283,11 +283,11 @@
         const storeRoute = @json(route('admin.promotions.store'));
 
         const clearFormValues = () => {
-            ['Ten_KM', 'PhanTramGiam', 'GiamToiDa', 'MoTa', 'expiry_date'].forEach((id) => {
+            ['Ten_KM', 'PhanTramGiam', 'GiamToiDa', 'MoTa', 'expiry_date', 'notification_note'].forEach((id) => {
                 const el = document.getElementById(id);
                 if (el) { el.value = ''; }
             });
-            document.getElementById('TrangThai').value = 'activated';
+            document.getElementById('notification_target').value = '';
         };
 
         const switchToCreate = () => {
@@ -309,8 +309,13 @@
             document.getElementById('PhanTramGiam').value = payload.percent || '';
             document.getElementById('GiamToiDa').value = payload.max || '';
             document.getElementById('MoTa').value = payload.description || '';
-            document.getElementById('TrangThai').value = payload.status || 'activated';
-            document.getElementById('expiry_date').value = ''; // not stored
+            // Status is auto-determined by expiry date
+            document.getElementById('expiry_date').value = payload.expiry || '';
+            
+            // Reset notification fields when editing
+            document.getElementById('notification_target').value = '';
+            document.getElementById('notification_note').value = '';
+            
             window.scrollTo({ top: 0, behavior: 'smooth' });
         };
 
@@ -322,6 +327,7 @@
                     percent: button.dataset.percent,
                     max: button.dataset.max,
                     status: button.dataset.status,
+                    expiry: button.dataset.expiry,
                     description: button.dataset.description,
                 };
                 switchToUpdate(payload);
@@ -335,8 +341,6 @@
         if (statusSelect && filterForm) {
             statusSelect.addEventListener('change', () => filterForm.submit());
         }
-
-
     });
 </script>
 @endpush

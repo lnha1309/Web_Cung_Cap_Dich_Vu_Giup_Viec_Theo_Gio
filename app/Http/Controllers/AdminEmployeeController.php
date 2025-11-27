@@ -20,8 +20,30 @@ class AdminEmployeeController extends Controller
             });
         }
 
-        $employees = $query->paginate(10);
+        $employees = $query->with('taiKhoan')->paginate(10);
 
         return view('admin.employees.index', compact('employees'));
+    }
+    public function updateStatus(NhanVien $employee)
+    {
+        $taiKhoan = $employee->taiKhoan;
+        
+        if ($taiKhoan) {
+            $currentStatus = $taiKhoan->TrangThaiTK;
+            
+            if ($currentStatus === 'active') {
+                $taiKhoan->TrangThaiTK = 'banned';
+                $message = 'Đã khóa tài khoản thành công.';
+            } else {
+                // inactive or banned -> active
+                $taiKhoan->TrangThaiTK = 'active';
+                $message = 'Đã kích hoạt tài khoản thành công.';
+            }
+            
+            $taiKhoan->save();
+            return back()->with('success', $message);
+        }
+        
+        return back()->with('error', 'Không tìm thấy tài khoản liên kết.');
     }
 }

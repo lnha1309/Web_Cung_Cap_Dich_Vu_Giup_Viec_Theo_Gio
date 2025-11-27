@@ -110,7 +110,6 @@ Route::middleware('auth')->group(function () {
         Route::resource('packages', AdminPackageController::class)->except(['create', 'edit', 'show']);
         Route::resource('surcharges', AdminSurchargeController::class)->except(['create', 'edit', 'show']);
         Route::resource('promotions', AdminPromotionController::class)->except(['create', 'edit', 'show']);
-        Route::patch('promotions/{promotion}/toggle', [AdminPromotionController::class, 'toggle'])->name('promotions.toggle');
         Route::get('/orders', [App\Http\Controllers\AdminOrderController::class, 'index'])->name('orders.index');
         Route::get('/orders/{order}', [App\Http\Controllers\AdminOrderController::class, 'show'])->name('orders.show');
         
@@ -123,7 +122,11 @@ Route::middleware('auth')->group(function () {
         Route::resource('employees', App\Http\Controllers\AdminEmployeeController::class)->only(['index']);
 
         // Customer Management
+        Route::get('customers/export', [App\Http\Controllers\AdminCustomerController::class, 'export'])->name('customers.export');
         Route::resource('customers', App\Http\Controllers\AdminCustomerController::class)->only(['index']);
+        Route::patch('customers/{customer}/status', [App\Http\Controllers\AdminCustomerController::class, 'updateStatus'])->name('customers.updateStatus');
+
+        Route::patch('employees/{employee}/status', [App\Http\Controllers\AdminEmployeeController::class, 'updateStatus'])->name('employees.updateStatus');
     });
 
     Route::get('/my-bookings', [BookingController::class, 'history'])->name('bookings.history');

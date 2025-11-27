@@ -24,4 +24,14 @@ class KhachHang extends Model
     {
         return $this->hasMany(DiaChi::class, 'ID_KH', 'ID_KH');
     }
+
+    public function taiKhoan()
+    {
+        return $this->belongsTo(TaiKhoan::class, 'ID_TK', 'ID_TK');
+    }
+
+    public function donDats()
+    {
+        return $this->hasMany(DonDat::class, 'ID_KH', 'ID_KH');
+    }
 }
