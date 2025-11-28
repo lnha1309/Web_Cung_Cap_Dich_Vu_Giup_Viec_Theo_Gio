@@ -105,11 +105,13 @@ Route::middleware('auth')->group(function () {
     Route::post('/booking/confirm', [BookingController::class, 'confirm'])->name('booking.confirm');
 
     Route::prefix('admin')->name('admin.')->group(function () {
+        Route::get('/revenue/export', [AdminController::class, 'exportRevenue'])->name('revenue.export');
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
         Route::resource('services', AdminServiceController::class)->except(['create', 'edit', 'show']);
         Route::resource('packages', AdminPackageController::class)->except(['create', 'edit', 'show']);
         Route::resource('surcharges', AdminSurchargeController::class)->except(['create', 'edit', 'show']);
         Route::resource('promotions', AdminPromotionController::class)->except(['create', 'edit', 'show']);
+        Route::get('orders/export', [App\Http\Controllers\AdminOrderController::class, 'export'])->name('orders.export');
         Route::get('/orders', [App\Http\Controllers\AdminOrderController::class, 'index'])->name('orders.index');
         Route::get('/orders/{order}', [App\Http\Controllers\AdminOrderController::class, 'show'])->name('orders.show');
         
@@ -118,6 +120,14 @@ Route::middleware('auth')->group(function () {
         Route::post('candidates/approve', [AdminCandidateController::class, 'approve'])->name('candidates.approve');
         Route::resource('candidates', AdminCandidateController::class)->only(['index']);
         
+        // Order Staff Assignment
+        Route::get('orders/staff-available/{sessionId}', [App\Http\Controllers\AdminOrderController::class, 'getAvailableStaff'])->name('orders.available-staff');
+        Route::post('orders/assign-staff', [App\Http\Controllers\AdminOrderController::class, 'assignStaff'])->name('orders.assign-staff');
+        
+        // Hourly Order Staff Assignment
+        Route::get('orders/staff-available-order/{order}', [App\Http\Controllers\AdminOrderController::class, 'getAvailableStaffForOrder'])->name('orders.available-staff-order');
+        Route::post('orders/assign-staff-order', [App\Http\Controllers\AdminOrderController::class, 'assignStaffToOrder'])->name('orders.assign-staff-order');
+
         // Employee Management
         Route::resource('employees', App\Http\Controllers\AdminEmployeeController::class)->only(['index']);
 
@@ -127,6 +137,11 @@ Route::middleware('auth')->group(function () {
         Route::patch('customers/{customer}/status', [App\Http\Controllers\AdminCustomerController::class, 'updateStatus'])->name('customers.updateStatus');
 
         Route::patch('employees/{employee}/status', [App\Http\Controllers\AdminEmployeeController::class, 'updateStatus'])->name('employees.updateStatus');
+        Route::get('employees/export-revenue', [App\Http\Controllers\AdminEmployeeController::class, 'exportRevenue'])->name('employees.export-revenue');
+
+        // Admin Profile
+        Route::get('/profile', [App\Http\Controllers\AdminProfileController::class, 'show'])->name('profile.show');
+        Route::post('/profile', [App\Http\Controllers\AdminProfileController::class, 'update'])->name('profile.update');
     });
 
     Route::get('/my-bookings', [BookingController::class, 'history'])->name('bookings.history');
@@ -210,6 +225,10 @@ Route::get('/giupviectheothang', function () {
 // Debug routes
 if (file_exists(__DIR__ . '/web_test_debug.php')) {
     require __DIR__ . '/web_test_debug.php';
+}
+
+if (file_exists(__DIR__ . '/web_check_coordinates.php')) {
+    require __DIR__ . '/web_check_coordinates.php';
 }
 
 // Temporary debug route for notifications

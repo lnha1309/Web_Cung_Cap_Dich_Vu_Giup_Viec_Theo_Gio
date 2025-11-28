@@ -63,7 +63,7 @@ class DonDat extends Model
     public function lichBuoiThang()
     {
         return $this->hasMany(LichBuoiThang::class, 'ID_DD', 'ID_DD');
-    }
+    }   
 
     /**
      * Relationship: danh sách khuyến mãi áp dụng

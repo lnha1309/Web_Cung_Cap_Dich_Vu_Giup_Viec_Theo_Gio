@@ -307,9 +307,46 @@
                     <span class="material-icons-sharp search-icon">search</span>
                     <input type="text" name="q" placeholder="Tìm kiếm theo tên, SĐT, Email..." value="{{ request('q') }}">
                 </div>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <input type="date" name="start_date" id="start_date" value="{{ $startDate }}" class="filter-select" required>
+                    <span style="color: var(--color-text-gray);">-</span>
+                    <input type="date" name="end_date" id="end_date" value="{{ $endDate }}" class="filter-select" required>
+                </div>
                 <button type="submit" class="btn-primary">Lọc</button>
+                <a href="#" onclick="exportRevenue(event)" class="btn-primary" style="background: #10B981; text-decoration: none; display: flex; align-items: center; gap: 0.5rem;">
+                    <span class="material-icons-sharp">file_download</span>
+                    Xuất Excel
+                </a>
             </form>
         </div>
+
+        <script>
+            document.querySelector('.filter-form').addEventListener('submit', function(e) {
+                const startDate = new Date(document.getElementById('start_date').value);
+                const endDate = new Date(document.getElementById('end_date').value);
+
+                if (endDate < startDate) {
+                    e.preventDefault();
+                    alert('Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu!');
+                }
+            });
+
+            function exportRevenue(e) {
+                e.preventDefault();
+                const startDate = document.getElementById('start_date').value;
+                const endDate = document.getElementById('end_date').value;
+                const q = document.querySelector('input[name="q"]').value;
+                
+                // Validate dates before export
+                if (new Date(endDate) < new Date(startDate)) {
+                    alert('Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu!');
+                    return;
+                }
+
+                const url = `{{ route('admin.employees.export-revenue') }}?start_date=${startDate}&end_date=${endDate}&q=${q}`;
+                window.location.href = url;
+            }
+        </script>
 
         <div class="card-container">
             <div class="table-responsive">
@@ -321,6 +358,7 @@
                             <th>Email</th>
                             <th>Khu vực</th>
                             <th>Số dư</th>
+                            <th>Doanh thu ({{ \Carbon\Carbon::parse($startDate)->format('d/m') }} - {{ \Carbon\Carbon::parse($endDate)->format('d/m') }})</th>
                             <th>Trạng thái</th>
                         </tr>
                     </thead>
@@ -332,6 +370,9 @@
                             <td>{{ $employee->Email }}</td>
                             <td>{{ $employee->KhuVucLamViec }}</td>
                             <td>{{ number_format($employee->SoDu) }} đ</td>
+                            <td style="font-weight: bold; color: var(--color-primary-orange);">
+                                {{ number_format($employee->donDat->sum('TongTienSauGiam')) }} đ
+                            </td>
                             <td>
                                 @php
                                     $status = optional($employee->taiKhoan)->TrangThaiTK;

@@ -256,8 +256,46 @@
             <div class="form-actions">
                 <button type="submit" class="btn-primary">Lọc</button>
                 <a href="{{ route('admin.orders.index', ['type' => $currentType]) }}" class="btn-secondary">Đặt lại</a>
+                <a href="#" onclick="exportOrders(event)" class="btn-primary" style="background: #10B981; text-decoration: none; display: flex; align-items: center; gap: 0.5rem;">
+                    <span class="material-icons-sharp">file_download</span>
+                    Xuất Excel
+                </a>
             </div>
         </form>
+
+        <script>
+            document.querySelector('.filter-form').addEventListener('submit', function(e) {
+                const dateFromVal = document.querySelector('input[name="date_from"]').value;
+                const dateToVal = document.querySelector('input[name="date_to"]').value;
+
+                if (dateFromVal && dateToVal) {
+                    const start = new Date(dateFromVal);
+                    const end = new Date(dateToVal);
+
+                    if (end < start) {
+                        e.preventDefault();
+                        alert('Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu!');
+                    }
+                }
+            });
+
+            function exportOrders(e) {
+                e.preventDefault();
+                const type = '{{ $currentType }}';
+                const dateFrom = document.querySelector('input[name="date_from"]').value;
+                const dateTo = document.querySelector('input[name="date_to"]').value;
+                const status = document.querySelector('select[name="status"]').value;
+                const search = document.querySelector('input[name="search"]').value;
+
+                if (dateFrom && dateTo && new Date(dateTo) < new Date(dateFrom)) {
+                    alert('Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu!');
+                    return;
+                }
+
+                const url = `{{ route('admin.orders.export') }}?type=${type}&date_from=${dateFrom}&date_to=${dateTo}&status=${status}&search=${search}`;
+                window.location.href = url;
+            }
+        </script>
 
         <div class="recent-orders">
             <h2>Danh sách đơn hàng ({{ $currentType == 'hour' ? 'Theo giờ' : 'Theo tháng' }})</h2>

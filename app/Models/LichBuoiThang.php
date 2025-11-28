@@ -20,4 +20,13 @@ class LichBuoiThang extends Model
         'TrangThaiBuoi',
         'ID_NV',
     ];
+    public function nhanVien()
+    {
+        return $this->belongsTo(NhanVien::class, 'ID_NV', 'ID_NV');
+    }
+
+    public function donDat()
+    {
+        return $this->belongsTo(DonDat::class, 'ID_DD', 'ID_DD');
+    }
 }
