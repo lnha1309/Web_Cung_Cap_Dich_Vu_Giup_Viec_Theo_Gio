@@ -251,11 +251,14 @@ class AdminOrderController extends Controller
             'staff_id' => 'required'
         ]);
 
-        $order = DonDat::findOrFail($request->order_id);
+        $order = DonDat::with(['dichVu', 'khachHang', 'diaChi'])->findOrFail($request->order_id);
         
         if (in_array($order->TrangThaiDon, ['cancelled', 'rejected', 'completed', 'done'])) {
             return response()->json(['success' => false, 'message' => 'Không thể chỉnh sửa đơn hàng đã hủy hoặc hoàn thành.']);
         }
+
+        // Get employee information
+        $staff = \App\Models\NhanVien::findOrFail($request->staff_id);
 
         $order->ID_NV = $request->staff_id;
         
@@ -264,6 +267,44 @@ class AdminOrderController extends Controller
         }
         
         $order->save();
+
+        // Update employee's work schedule status to 'assigned'
+        $orderDate = $order->NgayLam;
+        $orderStartTime = $order->GioBatDau;
+        
+        // Calculate end time based on order duration
+        $startTime = \Carbon\Carbon::parse($orderStartTime);
+        $duration = $order->ThoiLuongGio ?? 4; // Default 4 hours if not specified
+        $endTime = $startTime->copy()->addHours($duration);
+        
+        // Update LichLamViec status to 'assigned' for matching schedule
+        \App\Models\LichLamViec::where('ID_NV', $request->staff_id)
+            ->where('NgayLam', $orderDate)
+            ->where('GioBatDau', '<=', $orderStartTime)
+            ->where('GioKetThuc', '>=', $endTime->format('H:i:s'))
+            ->where('TrangThai', 'ready')
+            ->update(['TrangThai' => 'assigned']);
+
+        // Prepare email data
+        $emailData = [
+            'staff_name' => $staff->Ten_NV,
+            'service_name' => $order->dichVu->TenDV ?? 'N/A',
+            'customer_name' => $order->khachHang->Ten_KH ?? 'N/A',
+            'customer_phone' => $order->khachHang->SDT ?? null,
+            'session_date' => \Carbon\Carbon::parse($orderDate)->format('d/m/Y'),
+            'session_time' => $startTime->format('H:i') . ' - ' . $endTime->format('H:i'),
+            'address' => $order->diaChi->DiaChiDayDu ?? 'N/A',
+            'order_id' => $order->ID_DD,
+            'session_id' => null, // Hourly orders don't have session_id
+        ];
+
+        // Send email notification
+        try {
+            \Mail::to($staff->Email)->send(new \App\Mail\StaffAssignmentMail($emailData));
+        } catch (\Exception $e) {
+            // Log error but don't fail the assignment
+            \Log::error('Failed to send staff assignment email: ' . $e->getMessage());
+        }
 
         return response()->json(['success' => true]);
     }
