@@ -113,10 +113,17 @@
     .pagination {
         display: flex;
         justify-content: center;
+        align-items: center; /* Align items vertically */
         margin-top: 2rem;
         gap: 0.5rem;
     }
     
+    .pagination .page-item {
+        display: flex; /* Ensure items are flex containers */
+        align-items: center;
+        margin: 0; /* Reset margins */
+    }
+
     .pagination .page-item .page-link {
         padding: 0.5rem 1rem;
         border-radius: 0.4rem;
@@ -124,11 +131,24 @@
         color: var(--color-dark);
         text-decoration: none;
         box-shadow: var(--box-shadow);
+        border: 1px solid transparent; /* Ensure consistent border */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%; /* consistent height */
+        min-width: 2.5rem; /* Minimum width for square-ish look */
     }
 
     .pagination .page-item.active .page-link {
         background: var(--color-primary);
         color: var(--color-white);
+        border-color: var(--color-primary);
+    }
+    
+    .pagination .page-item.disabled .page-link {
+        background: var(--color-light);
+        color: var(--color-dark-variant);
+        pointer-events: none;
     }
 
     /* Filter Form */
@@ -263,21 +283,78 @@
             </div>
         </form>
 
+        <div class="recent-orders">
+            @include('admin.orders.table')
+        </div>
+
         <script>
-            document.querySelector('.filter-form').addEventListener('submit', function(e) {
-                const dateFromVal = document.querySelector('input[name="date_from"]').value;
-                const dateToVal = document.querySelector('input[name="date_to"]').value;
-
-                if (dateFromVal && dateToVal) {
-                    const start = new Date(dateFromVal);
-                    const end = new Date(dateToVal);
-
-                    if (end < start) {
+            // AJAX Pagination and Filtering
+            document.addEventListener('DOMContentLoaded', function() {
+                // Handle Pagination Clicks
+                document.addEventListener('click', function(e) {
+                    if (e.target.closest('.pagination .page-link')) {
                         e.preventDefault();
-                        alert('Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu!');
+                        const url = e.target.closest('.page-link').getAttribute('href');
+                        if (url) {
+                            fetchOrders(url);
+                        }
                     }
+                });
+
+                // Handle Filter Form Submit
+                const filterForm = document.querySelector('.filter-form');
+                if (filterForm) {
+                    filterForm.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        
+                        // Validate dates
+                        const dateFromVal = document.querySelector('input[name="date_from"]').value;
+                        const dateToVal = document.querySelector('input[name="date_to"]').value;
+
+                        if (dateFromVal && dateToVal) {
+                            const start = new Date(dateFromVal);
+                            const end = new Date(dateToVal);
+
+                            if (end < start) {
+                                alert('Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu!');
+                                return;
+                            }
+                        }
+
+                        // Build URL with params
+                        const formData = new FormData(this);
+                        const params = new URLSearchParams(formData);
+                        const url = "{{ route('admin.orders.index') }}?" + params.toString();
+                        
+                        fetchOrders(url);
+                    });
                 }
             });
+
+            function fetchOrders(url) {
+                // Show loading state if desired (optional)
+                const container = document.querySelector('.recent-orders');
+                container.style.opacity = '0.5';
+
+                fetch(url, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.text())
+                .then(html => {
+                    container.innerHTML = html;
+                    container.style.opacity = '1';
+                    
+                    // Update URL in browser address bar without reload
+                    window.history.pushState({}, '', url);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    container.style.opacity = '1';
+                    alert('Có lỗi xảy ra khi tải dữ liệu.');
+                });
+            }
 
             function exportOrders(e) {
                 e.preventDefault();
@@ -296,80 +373,6 @@
                 window.location.href = url;
             }
         </script>
-
-        <div class="recent-orders">
-            <h2>Danh sách đơn hàng ({{ $currentType == 'hour' ? 'Theo giờ' : 'Theo tháng' }})</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Khách hàng</th>
-                        <th>Dịch vụ</th>
-                        <th>Nhân viên</th>
-                        <th>Tổng tiền</th>
-                        <th>Trạng thái</th>
-                        <th>Ngày tạo</th>
-                        <th>Hành động</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($orders as $order)
-                    @php
-                        $statusClass = 'primary';
-                        $statusLabel = $order->TrangThaiDon;
-                        
-                        // Map status to class and label
-                        switch($order->TrangThaiDon) {
-                            case 'waiting_confirmation':
-                                $statusClass = 'warning';
-                                $statusLabel = 'Chờ xác nhận';
-                                break;
-                            case 'finding_staff':
-                                $statusClass = 'info';
-                                $statusLabel = 'Đang tìm NV';
-                                break;
-                            case 'assigned':
-                                $statusClass = 'primary';
-                                $statusLabel = 'Đã có NV';
-                                break;
-                            case 'done':
-                                $statusClass = 'success';
-                                $statusLabel = 'Hoàn thành';
-                                break;
-                            case 'cancelled':
-                                $statusClass = 'danger';
-                                $statusLabel = 'Đã hủy';
-                                break;
-                        }
-                    @endphp
-                    <tr>
-                        <td>#{{ $order->ID_DD }}</td>
-                        <td>{{ $order->khachHang->Ten_KH ?? 'N/A' }}</td>
-                        <td>{{ $order->dichVu->TenDV ?? 'N/A' }}</td>
-                        <td>{{ $order->nhanVien->Ten_NV ?? 'Chưa có' }}</td>
-                        <td>{{ number_format($order->TongTienSauGiam) }} đ</td>
-                        <td>
-                            <span class="status-badge {{ $statusClass }}">
-                                {{ $statusLabel }}
-                            </span>
-                        </td>
-                        <td>{{ \Carbon\Carbon::parse($order->NgayTao)->format('d/m/Y H:i') }}</td>
-                        <td>
-                            <a href="{{ route('admin.orders.show', $order->ID_DD) }}" class="primary">Chi tiết</a>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="8">Không có đơn hàng nào.</td>
-                    </tr>
-                    @endforelse
-                </tbody>
-            </table>
-            
-            <div class="d-flex justify-content-center">
-                {{ $orders->links('pagination::bootstrap-4') }}
-            </div>
-        </div>
     </main>
 
     </main>

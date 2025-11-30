@@ -15,7 +15,7 @@ class AdminOrderController extends Controller
         $status = $request->query('status');
         $search = $request->query('search');
 
-        $query = DonDat::with(['khachHang', 'dichVu', 'nhanVien'])
+        $query = DonDat::with(['khachHang', 'dichVu', 'nhanVien', 'lichSuThanhToan'])
             ->orderBy('NgayTao', 'desc');
 
         if ($type === 'month') {
@@ -46,6 +46,13 @@ class AdminOrderController extends Controller
 
         $orders = $query->paginate(10)->appends($request->all());
 
+        if ($request->ajax()) {
+            return view('admin.orders.table', [
+                'orders' => $orders,
+                'currentType' => $type,
+            ])->render();
+        }
+
         return view('admin.orders.index', [
             'orders' => $orders,
             'currentType' => $type,
@@ -58,7 +65,7 @@ class AdminOrderController extends Controller
 
     public function show($id)
     {
-        $order = DonDat::with(['khachHang', 'dichVu', 'nhanVien', 'phuThu', 'lichBuoiThang'])->findOrFail($id);
+        $order = DonDat::with(['khachHang', 'dichVu', 'nhanVien', 'phuThu', 'lichBuoiThang', 'lichSuThanhToan'])->findOrFail($id);
         return view('admin.orders.show', compact('order'));
     }
 

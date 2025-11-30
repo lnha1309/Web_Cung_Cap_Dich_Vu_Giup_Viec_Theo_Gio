@@ -192,6 +192,17 @@
                             @endif
                         </div>
                     </div>
+                    @if($order->LoaiDon == 'hour' && $order->NgayLam)
+                    <div class="info-group">
+                        <span class="info-label">Ngày làm việc</span>
+                        <div class="info-value">
+                            {{ \Carbon\Carbon::parse($order->NgayLam)->format('d/m/Y') }} <br>
+                            <span style="font-size: 0.9em; color: var(--color-info-dark);">
+                                {{ \Carbon\Carbon::parse($order->GioBatDau)->format('H:i') }}
+                            </span>
+                        </div>
+                    </div>
+                    @endif
                     <div class="info-group">
                         <span class="info-label">Ngày tạo đơn</span>
                         <div class="info-value">{{ \Carbon\Carbon::parse($order->NgayTao)->format('d/m/Y H:i') }}</div>
@@ -226,8 +237,47 @@
                     </div>
                     <div class="info-group">
                         <span class="info-label">Phương thức thanh toán</span>
-                        <div class="info-value">{{ $order->PhuongThucThanhToan ?? 'Tiền mặt' }}</div>
+                        @php
+                            // Lấy phương thức thanh toán từ bảng LichSuThanhToan
+                            $paymentMethod = $order->lichSuThanhToan
+                                ->where('LoaiGiaoDich', 'payment')
+                                ->where('TrangThai', 'ThanhCong')
+                                ->first();
+                            $methodDisplay = $paymentMethod ? $paymentMethod->PhuongThucThanhToan : 'Tiền mặt';
+                            
+                            // Format display name
+                            if ($methodDisplay === 'vnpay') {
+                                $methodDisplay = 'VNPay';
+                            } elseif ($methodDisplay === 'cash') {
+                                $methodDisplay = 'Tiền mặt';
+                            }
+                        @endphp
+                        <div class="info-value">{{ $methodDisplay }}</div>
                     </div>
+                    @php
+                        // Lấy số tiền hoàn từ bảng ThongBao
+                        $refundNotification = \App\Models\ThongBao::where('ID_KH', $order->ID_KH)
+                            ->where('LoaiThongBao', 'order_cancelled')
+                            ->whereNotNull('DuLieuLienQuan')
+                            ->get()
+                            ->first(function($notification) use ($order) {
+                                $data = $notification->DuLieuLienQuan;
+                                return isset($data['ID_DD']) && $data['ID_DD'] === $order->ID_DD;
+                            });
+                        
+                        $refunded = 0;
+                        if ($refundNotification && isset($refundNotification->DuLieuLienQuan['refund_amount'])) {
+                            $refunded = $refundNotification->DuLieuLienQuan['refund_amount'];
+                        }
+                    @endphp
+                    @if($refunded > 0)
+                    <div class="info-group">
+                        <span class="info-label">Đã hoàn tiền</span>
+                        <div class="info-value" style="color: var(--color-danger); font-weight: bold;">
+                            {{ number_format($refunded) }} đ
+                        </div>
+                    </div>
+                    @endif
                 </div>
             </div>
         </div>
