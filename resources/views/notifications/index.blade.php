@@ -45,6 +45,12 @@
                                         @case('refund_completed')
                                             <i class="fa-solid fa-money-bill-wave"></i>
                                             @break
+                                        @case('finding_staff_delay')
+                                            <i class="fa-solid fa-clock-rotate-left"></i>
+                                            @break
+                                        @case('order_rescheduled')
+                                            <i class="fa-solid fa-calendar-check"></i>
+                                            @break
                                         @default
                                             <i class="fa-solid fa-bell"></i>
                                     @endswitch
@@ -192,6 +198,16 @@
 .notification-icon-wrapper.refund_completed {
     background: #fff3e0;
     color: #FF9800;
+}
+
+.notification-icon-wrapper.finding_staff_delay {
+    background: #fff3cd;
+    color: #d39e00;
+}
+
+.notification-icon-wrapper.order_rescheduled {
+    background: #e8f5e9;
+    color: #2e7d32;
 }
 
 .notification-icon-wrapper.other {

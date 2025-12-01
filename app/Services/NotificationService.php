@@ -10,6 +10,7 @@ use App\Mail\OrderStatusMail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Http;
+use Carbon\Carbon;
 
 class NotificationService
 {
@@ -47,6 +48,76 @@ class NotificationService
             $booking,
             'Đặt đơn thành công',
             'Đơn ' . $booking->ID_DD . ' đã được tạo, vui lòng chờ cập nhật tiếp theo.'
+        );
+
+        return $notification;
+    }
+
+    /**
+     * Notify customer that no staff has been found after the waiting threshold.
+     */
+    public function notifyFindingStaffDelay($booking, Carbon $triggerAt)
+    {
+        $startTime = $this->getFormattedStartTime($booking);
+        $waitMinutes = null;
+        try {
+            // Calculate how long we've been waiting (from order creation to now)
+            $createdAt = Carbon::parse($booking->NgayTao);
+            $waitMinutes = (int) $createdAt->diffInMinutes(Carbon::now());
+        } catch (\Exception $e) {
+            $waitMinutes = null;
+        }
+
+        $notification = ThongBao::create([
+            'ID_TB' => \App\Support\IdGenerator::next('ThongBao', 'ID_TB', 'TB_'),
+            'ID_KH' => $booking->ID_KH,
+            'TieuDe' => 'Chua tim duoc nhan vien',
+            'NoiDung' => "Don #{$booking->ID_DD} chua tim duoc nhan vien sau " . ($waitMinutes !== null ? "{$waitMinutes} phut" : 'mot thoi gian') . ". Hay chon doi gio, huy don hoac tiep tuc cho.",
+            'LoaiThongBao' => 'finding_staff_delay',
+            'DaDoc' => false,
+            'DuLieuLienQuan' => [
+                'ID_DD' => $booking->ID_DD,
+                'start_time' => $startTime,
+                'detail_url' => route('bookings.detail', $booking->ID_DD),
+                'action' => 'finding_staff_delay',
+            ],
+        ]);
+
+        $this->pushToCustomer(
+            $booking,
+            'Chon cach xu ly don ' . $booking->ID_DD,
+            'Don chua co nhan vien, vui long chon doi gio/huy/tiep tuc cho.'
+        );
+
+        return $notification;
+    }
+
+    /**
+     * Notify customer after a booking is rescheduled.
+     */
+    public function notifyOrderRescheduled($booking)
+    {
+        $startTime = $this->getFormattedStartTime($booking);
+        $amount = number_format($booking->TongTienSauGiam ?? $booking->TongTien ?? 0, 0, ',', '.');
+
+        $notification = ThongBao::create([
+            'ID_TB' => \App\Support\IdGenerator::next('ThongBao', 'ID_TB', 'TB_'),
+            'ID_KH' => $booking->ID_KH,
+            'TieuDe' => 'Doi gio bat dau thanh cong',
+            'NoiDung' => "Don #{$booking->ID_DD} da doi sang {$startTime}. Tong tien moi: {$amount} d.",
+            'LoaiThongBao' => 'order_rescheduled',
+            'DaDoc' => false,
+            'DuLieuLienQuan' => [
+                'ID_DD' => $booking->ID_DD,
+                'start_time' => $startTime,
+                'amount' => $amount,
+            ],
+        ]);
+
+        $this->pushToCustomer(
+            $booking,
+            'Doi gio don ' . $booking->ID_DD,
+            "Don da doi sang {$startTime}. Tong tien moi: {$amount} d."
         );
 
         return $notification;

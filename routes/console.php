@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 use App\Jobs\AutoCancelOrdersJob;
 use App\Jobs\AutoCompleteOrdersJob;
+use App\Jobs\NotifyFindingStaffDelayJob;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -14,6 +15,7 @@ Artisan::command('inspire', function () {
 Schedule::call(function () {
     AutoCancelOrdersJob::dispatchSync();
     AutoCompleteOrdersJob::dispatchSync();
+    NotifyFindingStaffDelayJob::dispatchSync();
 })->everyMinute();
 
 // Sau này nếu muốn 5 phút 1 lần thì đổi thành:

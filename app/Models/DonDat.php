@@ -31,6 +31,12 @@ class DonDat extends Model
         'TongTienSauGiam',
         'ID_NV',
         'ID_KM',
+        'FindingStaffPromptSentAt',
+        'FindingStaffResponse',
+    ];
+
+    protected $casts = [
+        'FindingStaffPromptSentAt' => 'datetime',
     ];
 
     /**

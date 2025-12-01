@@ -54,9 +54,9 @@
                             <i class="fa-solid fa-spinner fa-spin"></i> Đang tải...
                         </div>
                     </div>
-                    <div class="notification-footer">
+                    {{-- <div class="notification-footer">
                         <a href="{{ route('notifications.index') }}">Xem tất cả</a>
-                    </div>
+                    </div> --}}
                 </div>
             </div>
 

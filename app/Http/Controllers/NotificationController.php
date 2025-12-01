@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Controller;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -12,7 +13,6 @@ class NotificationController extends Controller
 
     public function __construct(NotificationService $notificationService)
     {
-        $this->middleware('auth');
         $this->notificationService = $notificationService;
     }
 

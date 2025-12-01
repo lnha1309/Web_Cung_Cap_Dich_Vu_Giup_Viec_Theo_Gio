@@ -815,11 +815,24 @@ class BookingController extends Controller
                         $payment->save();
                     }
                 } else {
-                    $walletTx = app(StaffWalletService::class)
-                        ->finalizeTopup($txnRef, true, $transactionNo, $responseCode);
-                    if ($walletTx) {
-                        $handledWallet = true;
-                        $message = 'Nap tien thanh cong.';
+                    $paymentRecord = LichSuThanhToan::find($txnRef);
+                    if ($paymentRecord && $paymentRecord->ID_DD) {
+                    $handledOrder = true;
+                    $paymentRecord->TrangThai = 'ThanhCong';
+                    $paymentRecord->MaGiaoDichVNPAY = $transactionNo;
+                    $paymentRecord->save();
+                    $message = 'Thanh toan phu thu thanh cong.';
+                    
+                    // Redirect to booking detail page after surcharge payment
+                    return redirect()->route('bookings.detail', $paymentRecord->ID_DD)
+                        ->with('success', 'Đã thanh toán phụ thu thành công. Đơn hàng đã được cập nhật.');
+                } else {
+                        $walletTx = app(StaffWalletService::class)
+                            ->finalizeTopup($txnRef, true, $transactionNo, $responseCode);
+                        if ($walletTx) {
+                            $handledWallet = true;
+                            $message = 'Nap tien thanh cong.';
+                        }
                     }
                 }
             }
@@ -838,16 +851,44 @@ class BookingController extends Controller
                     $payment->save();
                 }
                 $message = 'Thanh toan khong thanh cong. Ma: ' . $responseCode;
+            } else {
+                $paymentRecord = LichSuThanhToan::find($txnRef);
+                if ($paymentRecord && $paymentRecord->ID_DD) {
+                    $handledOrder = true;
+                    $paymentRecord->TrangThai = 'ThatBai';
+                    $paymentRecord->MaGiaoDichVNPAY = $transactionNo;
+                    $paymentRecord->save();
+                    $message = 'Thanh toan phu thu khong thanh cong. Ma: ' . $responseCode;
+                }
             }
         }
 
         if ($txnRef && !$handledOrder && (!$isValidSignature || $responseCode !== '00')) {
-            $walletTx = app(StaffWalletService::class)
-                ->finalizeTopup($txnRef, false, $transactionNo, $responseCode);
-            if ($walletTx) {
-                $handledWallet = true;
-                if ($message === 'Thanh toan that bai.') {
-                    $message = 'Nap tien that bai.';
+            $order = DonDat::find($txnRef);
+            if ($order) {
+                $handledOrder = true;
+                $payment = LichSuThanhToan::where('ID_DD', $order->ID_DD)
+                    ->where('PhuongThucThanhToan', 'VNPay')
+                    ->orderByDesc('ThoiGian')
+                    ->first();
+                if ($payment) {
+                    $payment->TrangThai = 'ThatBai';
+                    $payment->MaGiaoDichVNPAY = $transactionNo;
+                    $payment->save();
+                }
+            } elseif (($paymentRecord = LichSuThanhToan::find($txnRef)) && $paymentRecord->ID_DD) {
+                $handledOrder = true;
+                $paymentRecord->TrangThai = 'ThatBai';
+                $paymentRecord->MaGiaoDichVNPAY = $transactionNo;
+                $paymentRecord->save();
+            } else {
+                $walletTx = app(StaffWalletService::class)
+                    ->finalizeTopup($txnRef, false, $transactionNo, $responseCode);
+                if ($walletTx) {
+                    $handledWallet = true;
+                    if ($message === 'Thanh toan that bai.') {
+                        $message = 'Nap tien that bai.';
+                    }
                 }
             }
         }
@@ -1163,8 +1204,66 @@ HTML;
         }
         
         $existingRating = \App\Models\DanhGiaNhanVien::where('ID_DD', $id)->first();
+        $suggestedTime = $this->suggestNearestAvailableTime($booking);
         
-        return view('account.detail', compact('booking', 'sessions', 'existingRating'));
+        // Get staff suggestions if in finding_staff state and prompt has been sent
+        $staffSuggestions = [];
+        if ($booking->TrangThaiDon === 'finding_staff' && $booking->FindingStaffPromptSentAt) {
+            $staffSuggestions = $this->getSuggestedStaffAndTime($booking);
+        }
+        
+        return view('account.detail', compact('booking', 'sessions', 'existingRating', 'suggestedTime', 'staffSuggestions'));
+    }
+
+    /**
+     * Suggest nearest available start time (07-17) that has at least one ready staff.
+     */
+    private function suggestNearestAvailableTime(DonDat $booking): ?string
+    {
+        if ($booking->LoaiDon !== 'hour' || !$booking->NgayLam || !$booking->GioBatDau) {
+            return null;
+        }
+
+        $base = null;
+        try {
+            $base = Carbon::parse($booking->GioBatDau);
+        } catch (\Exception) {
+            return null;
+        }
+
+        $duration = $booking->ThoiLuongGio
+            ?? ($booking->dichVu->ThoiLuong ?? 2);
+
+        $hours = range(7, 17);
+        $candidates = [];
+        foreach ($hours as $h) {
+            $diff = abs($base->hour - $h);
+            $candidates[] = ['hour' => $h, 'diff' => $diff];
+        }
+
+        usort($candidates, function ($a, $b) {
+            if ($a['diff'] === $b['diff']) {
+                return $a['hour'] <=> $b['hour'];
+            }
+            return $a['diff'] <=> $b['diff'];
+        });
+
+        foreach ($candidates as $cand) {
+            $start = Carbon::parse($booking->NgayLam . ' ' . sprintf('%02d:00:00', $cand['hour']));
+            $end = $start->copy()->addHours((float) $duration);
+
+            $hasStaff = LichLamViec::where('NgayLam', $booking->NgayLam)
+                ->where('TrangThai', 'ready')
+                ->where('GioBatDau', '<=', $start->format('H:i:s'))
+                ->where('GioKetThuc', '>=', $end->format('H:i:s'))
+                ->exists();
+
+            if ($hasStaff) {
+                return $start->format('H:i');
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -1229,6 +1328,153 @@ HTML;
 
         return redirect()->route('bookings.detail', $booking->ID_DD)
             ->with('success', 'Cảm ơn bạn đã đánh giá. Đánh giá của bạn đã được lưu.');
+    }
+
+    /**
+     * Handle customer choice when the system cannot find staff in time.
+     */
+    public function handleFindingStaffAction(
+        Request $request,
+        string $id,
+        VNPayService $vnPay,
+        NotificationService $notificationService
+    ) {
+        if (!Auth::check()) {
+            return redirect()->route('login');
+        }
+
+        $customer = Auth::user()->khachHang;
+        if (!$customer) {
+            return back()->with('error', 'Khong tim thay thong tin khach hang.');
+        }
+
+        $booking = DonDat::with('lichSuThanhToan')
+            ->where('ID_DD', $id)
+            ->where('ID_KH', $customer->ID_KH)
+            ->first();
+
+        if (!$booking) {
+            return back()->with('error', 'Khong tim thay don dat.');
+        }
+
+        if ($booking->TrangThaiDon !== 'finding_staff' || $booking->LoaiDon !== 'hour') {
+            return back()->with('error', 'Chi ho tro don theo gio dang tim nhan vien.');
+        }
+
+        // Check reschedule limit (max 1 time)
+        if (($booking->RescheduleCount ?? 0) >= 1) {
+            return back()->with('error', 'Bạn chỉ được thay đổi thời gian đơn hàng 1 lần duy nhất.');
+        }
+
+        $validated = $request->validate([
+            'action' => ['required', 'in:wait,reschedule'],
+            'new_date' => ['required_if:action,reschedule', 'date'],
+            'new_time' => ['required_if:action,reschedule', 'date_format:H:i'],
+        ]);
+
+        if ($validated['action'] === 'wait') {
+            $booking->FindingStaffResponse = 'wait';
+            if (!$booking->FindingStaffPromptSentAt) {
+                $booking->FindingStaffPromptSentAt = now();
+            }
+            $booking->save();
+
+            return redirect()->route('bookings.detail', $booking->ID_DD)
+                ->with('success', 'Da ghi nhan ban tiep tuc cho nhan vien.');
+        }
+
+        $newDate = $validated['new_date'];
+        $newTime = $validated['new_time'];
+        $newStart = Carbon::parse($newDate . ' ' . $newTime);
+
+        if ($newStart->hour < 7 || $newStart->hour > 17) {
+            return back()->with('error', 'Chi cho phep doi trong khung 07:00 - 17:00.')->withInput();
+        }
+
+        if ($newStart->lessThanOrEqualTo(Carbon::now())) {
+            return back()->with('error', 'Thoi gian moi phai lon hon hien tai.')->withInput();
+        }
+
+        $oldHour = $booking->GioBatDau ? Carbon::parse($booking->GioBatDau)->hour : null;
+        $newHour = $newStart->hour;
+
+        $booking->NgayLam = $newDate;
+        $booking->GioBatDau = $newStart->format('H:i:s');
+        $booking->FindingStaffResponse = 'reschedule';
+        $booking->RescheduleCount = ($booking->RescheduleCount ?? 0) + 1;
+
+        $surchargeAmount = 30000;
+        $hasPt001 = \App\Models\ChiTietPhuThu::where('ID_DD', $booking->ID_DD)
+            ->where('ID_PT', 'PT001')
+            ->exists();
+
+        $needsSurcharge = ($newHour < 8 || $newHour == 17)
+        && ($oldHour === null || !($oldHour < 8 || $oldHour == 17))
+        && !$hasPt001;
+
+        $paymentUrl = null;
+
+        if ($needsSurcharge) {
+            \App\Models\ChiTietPhuThu::create([
+                'ID_PT' => 'PT001',
+                'ID_DD' => $booking->ID_DD,
+                'Ghichu' => 'Phu thu doi gio 7h/17h',
+            ]);
+
+            $booking->TongTien = ($booking->TongTien ?? 0) + $surchargeAmount;
+            $booking->TongTienSauGiam = ($booking->TongTienSauGiam ?? $booking->TongTien ?? 0) + $surchargeAmount;
+
+            $payment = $booking->lichSuThanhToan->first();
+            $paymentMethod = $payment?->PhuongThucThanhToan ?? 'TienMat';
+
+            if ($paymentMethod === 'VNPay') {
+                $paymentId = IdGenerator::next('LichSuThanhToan', 'ID_LSTT', 'LSTT_');
+
+                LichSuThanhToan::create([
+                    'ID_LSTT' => $paymentId,
+                    'PhuongThucThanhToan' => 'VNPay',
+                    'TrangThai' => 'ChoXuLy',
+                    'SoTienThanhToan' => $surchargeAmount,
+                    'ID_DD' => $booking->ID_DD,
+                    'LoaiGiaoDich' => 'payment',
+                    'GhiChu' => 'Phụ thu đổi giờ cao điểm (trước 8h hoặc 17h)',
+                ]);
+
+                $paymentUrl = $vnPay->createPaymentUrl([
+                    'txn_ref' => $paymentId,
+                    'amount' => $surchargeAmount,
+                    'order_info' => 'Phu thu doi gio don ' . $booking->ID_DD,
+                ]);
+            } else {
+                LichSuThanhToan::create([
+                    'ID_LSTT' => IdGenerator::next('LichSuThanhToan', 'ID_LSTT', 'LSTT_'),
+                    'PhuongThucThanhToan' => 'TienMat',
+                    'TrangThai' => 'ChoXuLy',
+                    'SoTienThanhToan' => $surchargeAmount,
+                    'ID_DD' => $booking->ID_DD,
+                    'LoaiGiaoDich' => 'payment',
+                    'GhiChu' => 'Phụ thu đổi giờ cao điểm (trước 8h hoặc 17h)',
+                ]);
+            }
+        }
+
+        $booking->save();
+
+        try {
+            $notificationService->notifyOrderRescheduled($booking);
+        } catch (\Exception $e) {
+            Log::error('Failed to send reschedule notification', [
+                'booking_id' => $booking->ID_DD,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        if ($paymentUrl) {
+            return redirect()->away($paymentUrl);
+        }
+
+        return redirect()->route('bookings.detail', $booking->ID_DD)
+            ->with('success', 'Da cap nhat thoi gian bat dau don.');
     }
 
     /**
@@ -1411,6 +1657,353 @@ HTML;
             'message' => $body['vnp_Message'] ?? 'Lỗi không xác định',
         ];
     }
+
+    /**
+     * Get top 3 suggested staff members with their nearest available time slots
+     */
+    private function getSuggestedStaffAndTime(DonDat $booking): array
+    {
+        if ($booking->LoaiDon !== 'hour' || !$booking->NgayLam || !$booking->GioBatDau) {
+            return [];
+        }
+
+        $duration = $booking->ThoiLuongGio ?? ($booking->dichVu->ThoiLuong ?? 2);
+        $originalDate = Carbon::parse($booking->NgayLam);
+        $originalStart = Carbon::parse($booking->GioBatDau);
+        
+        // Get customer address for proximity calculation
+        $customerQuan = null;
+        if ($booking->diaChi) {
+            $diaChiText = $booking->diaChi->DiaChiDayDu ?? '';
+            if ($diaChiText !== '') {
+                $customerQuan = $this->guessQuanFromAddress($diaChiText);
+            }
+        }
+
+        $suggestions = [];
+        
+        // Search in original date and ±3 days nearby
+        $datesToSearch = [];
+        for ($i = 0; $i <= 3; $i++) {
+            if ($i == 0) {
+                $datesToSearch[] = $originalDate->copy();
+            } else {
+                $datesToSearch[] = $originalDate->copy()->addDays($i);
+                $datesToSearch[] = $originalDate->copy()->subDays($i);
+            }
+        }
+
+        foreach ($datesToSearch as $searchDate) {
+            // Skip past dates
+            if ($searchDate->isPast()) {
+                continue;
+            }
+            
+            $ngayLam = $searchDate->format('Y-m-d');
+            
+            // Find all staff schedules for this date
+            $lichLamViec = LichLamViec::with('nhanVien')
+                ->where('NgayLam', $ngayLam)
+                ->where('TrangThai', 'ready')
+                ->get();
+
+            foreach ($lichLamViec as $lich) {
+                $nv = $lich->nhanVien;
+                if (!$nv) {
+                    continue;
+                }
+
+                // Calculate rating score
+                $avgScore = DanhGiaNhanVien::where('ID_NV', $nv->ID_NV)->avg('Diem');
+                $ratingPercent = $avgScore ? round(((float) $avgScore) / 5 * 100) : 30;
+
+                // Calculate proximity score
+                $proximityPercent = 50;
+                if ($customerQuan) {
+                    if ($nv->ID_Quan === $customerQuan->ID_Quan) {
+                        $proximityPercent = 100;
+                    } elseif (
+                        $nv->KhuVucLamViec &&
+                        mb_stripos($nv->KhuVucLamViec, $customerQuan->TenQuan) !== false
+                    ) {
+                        $proximityPercent = 80;
+                    } else {
+                        $nvQuan = $nv->ID_Quan ? Quan::find($nv->ID_Quan) : null;
+                        if (
+                            $nvQuan &&
+                            $nvQuan->ViDo !== null &&
+                            $nvQuan->KinhDo !== null &&
+                            $customerQuan->ViDo !== null &&
+                            $customerQuan->KinhDo !== null
+                        ) {
+                            $distKm = $this->distanceKm(
+                                (float) $nvQuan->ViDo,
+                                (float) $nvQuan->KinhDo,
+                                (float) $customerQuan->ViDo,
+                                (float) $customerQuan->KinhDo
+                            );
+                            $proximityPercent = max(0, 100 - (int) round($distKm * 10));
+                        }
+                    }
+                }
+
+                // Find nearest available time slot for this staff
+                $scheduleStart = Carbon::parse($lich->GioBatDau);
+                $scheduleEnd = Carbon::parse($lich->GioKetThuc);
+                
+                // Find the nearest time slot that fits within the schedule
+                $bestTime = null;
+                $minDiff = PHP_INT_MAX;
+                
+                // Try different start times within the schedule
+                $currentTime = $scheduleStart->copy();
+                while ($currentTime->copy()->addHours($duration)->lessThanOrEqualTo($scheduleEnd)) {
+                    $potentialEnd = $currentTime->copy()->addHours($duration);
+                    
+                    // Check if this time slot has no conflicts
+                    $hasConflict = $this->hasTimeConflict(
+                        $nv->ID_NV,
+                        $ngayLam,
+                        $currentTime->format('H:i:s'),
+                        $potentialEnd->format('H:i:s')
+                    );
+                    
+                    if (!$hasConflict) {
+                        // Calculate time difference from original booking datetime
+                        $proposedDateTime = Carbon::parse($ngayLam . ' ' . $currentTime->format('H:i:s'));
+                        $originalDateTime = Carbon::parse($booking->NgayLam . ' ' . $booking->GioBatDau);
+                        $diff = abs($proposedDateTime->diffInMinutes($originalDateTime));
+                        
+                        if ($diff < $minDiff) {
+                            $minDiff = $diff;
+                            $bestTime = $currentTime->copy();
+                        }
+                    }
+                    
+                    // Move to next 30-minute interval
+                    $currentTime->addMinutes(30);
+                }
+
+                if ($bestTime) {
+                    // Handle avatar
+                    $hinhAnh = $nv->HinhAnh;
+                    if (empty($hinhAnh)) {
+                        $hinhAnh = 'https://ui-avatars.com/api/?name=' . urlencode($nv->Ten_NV) . '&background=004d2e&color=fff&size=150';
+                    } elseif (!str_starts_with($hinhAnh, 'http')) {
+                        $hinhAnh = url('storage/' . ltrim($hinhAnh, '/'));
+                    }
+
+                    $jobsCompleted = DonDat::where('ID_NV', $nv->ID_NV)
+                        ->where('TrangThaiDon', 'done')
+                        ->count();
+
+                    $score = $ratingPercent * 0.3 + $proximityPercent * 0.7;
+                    
+                    // Penalty for different dates (prefer same date)
+                    $daysDiff = abs($searchDate->diffInDays($originalDate));
+                    $datePenalty = $daysDiff * 10; // 10 points penalty per day difference
+                    $adjustedScore = max(0, $score - $datePenalty);
+
+                    $suggestions[] = [
+                        'id_nv' => $nv->ID_NV,
+                        'ten_nv' => $nv->Ten_NV,
+                        'hinh_anh' => $hinhAnh,
+                        'sdt' => $nv->SDT,
+                        'rating_percent' => $ratingPercent,
+                        'avg_rating' => $avgScore ? round($avgScore, 1) : 0,
+                        'proximity_percent' => $proximityPercent,
+                        'score' => (float) $adjustedScore,
+                        'jobs_completed' => $jobsCompleted,
+                        'suggested_date' => $searchDate->format('Y-m-d'),
+                        'suggested_time' => $bestTime->format('H:i'),
+                        'time_diff_minutes' => $minDiff,
+                        'days_diff' => $daysDiff,
+                    ];
+                }
+            }
+            
+            // If we have enough suggestions, stop searching further dates
+            if (count($suggestions) >= 10) {
+                break;
+            }
+        }
+
+        // Sort by score (highest first)
+        usort($suggestions, static function (array $a, array $b): int {
+            return $b['score'] <=> $a['score'];
+        });
+
+        // Return top 3
+        return array_slice($suggestions, 0, 3);
+    }
+
+    /**
+     * Apply a staff suggestion when user clicks on it
+     */
+    public function applyStaffSuggestion(Request $request, string $id, VNPayService $vnPay)
+    {
+        if (!Auth::check()) {
+            return response()->json(['error' => 'Chưa đăng nhập'], 401);
+        }
+
+        $customer = Auth::user()->khachHang;
+        if (!$customer) {
+            return response()->json(['error' => 'Không tìm thấy thông tin khách hàng'], 403);
+        }
+
+        $booking = DonDat::with(['dichVu', 'lichSuThanhToan'])
+            ->where('ID_DD', $id)
+            ->where('ID_KH', $customer->ID_KH)
+            ->first();
+
+        if (!$booking) {
+            return response()->json(['error' => 'Không tìm thấy đơn đặt'], 404);
+        }
+
+        if ($booking->TrangThaiDon !== 'finding_staff' || $booking->LoaiDon !== 'hour') {
+            return response()->json(['error' => 'Chỉ hỗ trợ đơn theo giờ đang tìm nhân viên'], 422);
+        }
+
+        // Check reschedule limit (max 1 time)
+        if (($booking->RescheduleCount ?? 0) >= 1) {
+            return response()->json(['error' => 'Bạn chỉ được thay đổi thời gian đơn hàng 1 lần duy nhất'], 422);
+        }
+
+        $validated = $request->validate([
+            'id_nv' => ['required', 'string', 'exists:NhanVien,ID_NV'],
+            'suggested_date' => ['required', 'date'],
+            'suggested_time' => ['required', 'date_format:H:i'],
+        ]);
+
+        $newDate = $validated['suggested_date'];
+        $newTime = $validated['suggested_time'];
+        $newStaffId = $validated['id_nv'];
+        
+        // Verify the datetime is valid
+        $newStart = Carbon::parse($newDate . ' ' . $newTime);
+        if ($newStart->hour < 7 || $newStart->hour > 17) {
+            return response()->json(['error' => 'Giờ bắt đầu phải trong khung 07:00 - 17:00'], 422);
+        }
+
+        if ($newStart->lessThanOrEqualTo(Carbon::now())) {
+            return response()->json(['error' => 'Thời gian phải lớn hơn hiện tại'], 422);
+        }
+
+        // Check for surcharge requirement
+        $oldHour = $booking->GioBatDau ? Carbon::parse($booking->GioBatDau)->hour : null;
+        $newHour = $newStart->hour;
+
+        $surchargeAmount = 30000;
+        $hasPt001 = \App\Models\ChiTietPhuThu::where('ID_DD', $booking->ID_DD)
+            ->where('ID_PT', 'PT001')
+            ->exists();
+
+        $needsSurcharge = ($newHour < 8 || $newHour == 17)
+            && ($oldHour === null || !($oldHour < 8 || $oldHour == 17))
+            && !$hasPt001;
+
+        $paymentUrl = null;
+
+        // Update booking
+        $booking->NgayLam = $newDate;
+        $booking->GioBatDau = $newStart->format('H:i:s');
+        $booking->ID_NV = $newStaffId;
+        $booking->TrangThaiDon = 'assigned';
+        $booking->FindingStaffResponse = 'reschedule';
+        $booking->RescheduleCount = ($booking->RescheduleCount ?? 0) + 1;
+
+        // Handle surcharge if needed
+        if ($needsSurcharge) {
+            \App\Models\ChiTietPhuThu::create([
+                'ID_PT' => 'PT001',
+                'ID_DD' => $booking->ID_DD,
+                'Ghichu' => 'Phụ thu đổi giờ 7h/17h',
+            ]);
+
+            $booking->TongTien = ($booking->TongTien ?? 0) + $surchargeAmount;
+            $booking->TongTienSauGiam = ($booking->TongTienSauGiam ?? $booking->TongTien ?? 0) + $surchargeAmount;
+
+            $payment = $booking->lichSuThanhToan->first();
+            $paymentMethod = $payment?->PhuongThucThanhToan ?? 'TienMat';
+
+            if ($paymentMethod === 'VNPay') {
+                $paymentId = IdGenerator::next('LichSuThanhToan', 'ID_LSTT', 'LSTT_');
+
+                LichSuThanhToan::create([
+                    'ID_LSTT' => $paymentId,
+                    'PhuongThucThanhToan' => 'VNPay',
+                    'TrangThai' => 'ChoXuLy',
+                    'SoTienThanhToan' => $surchargeAmount,
+                    'ID_DD' => $booking->ID_DD,
+                    'LoaiGiaoDich' => 'payment',
+                    'GhiChu' => 'Phụ thu đổi giờ cao điểm (trước 8h hoặc 17h)',
+                ]);
+
+                $paymentUrl = $vnPay->createPaymentUrl([
+                    'txn_ref' => $paymentId,
+                    'amount' => $surchargeAmount,
+                    'order_info' => 'Phụ thu đổi giờ đơn ' . $booking->ID_DD,
+                ]);
+            } else {
+                // For cash payment, just create a record but don't require VNPay payment
+                LichSuThanhToan::create([
+                    'ID_LSTT' => IdGenerator::next('LichSuThanhToan', 'ID_LSTT', 'LSTT_'),
+                    'PhuongThucThanhToan' => 'TienMat',
+                    'TrangThai' => 'ChoXuLy',
+                    'SoTienThanhToan' => $surchargeAmount,
+                    'ID_DD' => $booking->ID_DD,
+                    'LoaiGiaoDich' => 'payment',
+                    'GhiChu' => 'Phụ thu đổi giờ cao điểm (trước 8h hoặc 17h)',
+                ]);
+            }
+        }
+
+        $booking->save();
+
+        // Notify staff
+        try {
+            $this->notifyStaffAssigned($booking);
+        } catch (\Exception $e) {
+            Log::error('Failed to notify staff after suggestion applied', [
+                'booking_id' => $booking->ID_DD,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        // Send notification about reschedule
+        try {
+            $notificationService = app(NotificationService::class);
+            $notificationService->notifyOrderRescheduled($booking);
+        } catch (\Exception $e) {
+            Log::error('Failed to send reschedule notification', [
+                'booking_id' => $booking->ID_DD,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        // If there's a payment URL, return it for redirect
+        if ($paymentUrl) {
+            return response()->json([
+                'success' => true,
+                'requires_payment' => true,
+                'payment_url' => $paymentUrl,
+                'message' => 'Cần thanh toán phụ thu 30,000đ cho giờ cao điểm',
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'requires_payment' => false,
+            'message' => $needsSurcharge 
+                ? 'Đã cập nhật đơn đặt và thêm phụ thu 30,000đ (thanh toán tiền mặt)'
+                : 'Đã cập nhật đơn đặt với nhân viên và thời gian gợi ý',
+            'data' => [
+                'new_date' => $newStart->format('d/m/Y'),
+                'new_time' => $newStart->format('H:i'),
+                'staff_name' => NhanVien::find($newStaffId)->Ten_NV ?? '',
+                'surcharge_added' => $needsSurcharge,
+                'surcharge_amount' => $needsSurcharge ? $surchargeAmount : 0,
+            ],
+        ]);
+    }
 }
-
-

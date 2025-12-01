@@ -21,5 +21,8 @@ class LichSuThanhToan extends Model
         'MaGiaoDichVNPAY',
         'ID_DD',
         'LoaiGiaoDich',
+        'LyDoHoanTien',
+        'MaGiaoDichGoc',
+        'GhiChu', // REQUIRED: Without this, GhiChu will NOT be saved!
     ];
 }

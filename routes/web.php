@@ -146,11 +146,13 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/my-bookings', [BookingController::class, 'history'])->name('bookings.history');
     Route::get('/my-bookings/{id}', [BookingController::class, 'detail'])->name('bookings.detail');
+    Route::post('/my-bookings/{id}/finding-staff-action', [BookingController::class, 'handleFindingStaffAction'])->name('bookings.findingStaffAction');
+    Route::post('/my-bookings/{id}/apply-suggestion', [BookingController::class, 'applyStaffSuggestion'])->name('bookings.applySuggestion');
     Route::post('/my-bookings/{id}/cancel', [BookingController::class, 'cancelBooking'])->name('bookings.cancel');
     Route::post('/my-bookings/{id}/rating', [BookingController::class, 'submitRating'])->name('bookings.rating');
 
     // Notification routes
-    Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
+    // Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
 
     // Notification API for web session (avoid Sanctum token requirement)
     Route::prefix('web-api/notifications')->group(function () {

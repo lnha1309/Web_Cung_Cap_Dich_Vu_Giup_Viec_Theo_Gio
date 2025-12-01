@@ -871,6 +871,15 @@ class ApiBookingController extends Controller
             $booking->TrangThaiDon = 'cancelled';
             $booking->save();
 
+            if ($booking->LoaiDon === 'month') {
+                LichBuoiThang::where('ID_DD', $booking->ID_DD)
+                    ->whereIn('TrangThaiBuoi', ['finding_staff', 'assigned'])
+                    ->update([
+                        'TrangThaiBuoi' => 'cancelled',
+                        'ID_NV' => null,
+                    ]);
+            }
+
             $refundResult = $refundService->refundOrder($booking, 'user_cancel');
             $notificationService->notifyOrderCancelled($booking, 'user_cancel', $refundResult);
 
