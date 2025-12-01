@@ -116,6 +116,8 @@
         <div class="col-md-4">
             <label class="form-label small text-muted">Ngay bat dau moi</label>
             <input type="date" name="new_date" class="form-control"
+                min="{{ \Carbon\Carbon::now()->format('Y-m-d') }}"
+                max="{{ \Carbon\Carbon::now()->addDays(7)->format('Y-m-d') }}"
                 value="{{ $booking->NgayLam ? \Carbon\Carbon::parse($booking->NgayLam)->format('Y-m-d') : \Carbon\Carbon::now()->addDay()->format('Y-m-d') }}">
         </div>
         <div class="col-md-4">

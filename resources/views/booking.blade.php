@@ -3767,12 +3767,12 @@
                 // Set min date to tomorrow
                 const tomorrow = new Date();
                 tomorrow.setDate(tomorrow.getDate() + 1);
-                const tomorrowStr = tomorrow.toISOString().split('T')[0];
+                const tomorrowStr = formatDateISO(tomorrow);
                 
                 // Calculate max date (7 days from tomorrow)
                 const maxDate = new Date();
                 maxDate.setDate(maxDate.getDate() + 8);
-                const maxDateStr = maxDate.toISOString().split('T')[0];
+                const maxDateStr = formatDateISO(maxDate);
 
                 // Booking form date
                 const dateInput = document.getElementById('startDate');

@@ -54,7 +54,7 @@ class ApiAddressController extends Controller
     public function store(Request $request)
     {
         $validator = \Validator::make($request->all(), [
-            'unit' => ['nullable', 'string', 'max:255'],
+            'unit' => ['nullable', 'string', 'max:20'],
             'full_address' => ['required', 'string', 'max:500'],
             'label' => ['nullable', 'string', 'max:100'],
         ]);
@@ -155,7 +155,7 @@ class ApiAddressController extends Controller
     public function update(Request $request, $id)
     {
         $validator = \Validator::make($request->all(), [
-            'unit' => ['nullable', 'string', 'max:255'],
+            'unit' => ['nullable', 'string', 'max:20'],
             'full_address' => ['required', 'string', 'max:500'],
             'label' => ['nullable', 'string', 'max:100'],
         ]);

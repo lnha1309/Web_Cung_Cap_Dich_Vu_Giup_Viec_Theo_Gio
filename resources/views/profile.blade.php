@@ -110,7 +110,8 @@
                         data-editable="true"
                         readonly
                         class="form-control form-control-sm"
-                        placeholder="Can ho (vi du: Can ho A2-12, Chung cu XYZ)"
+                        placeholder="Can ho (vi du: Can ho A2-12, Chung cu XYZ) - toi da 20 ky tu"
+                        maxlength="20"
                     >
                     <input
                         type="text"
@@ -119,7 +120,8 @@
                         data-editable="true"
                         readonly
                         class="form-control form-control-sm"
-                        placeholder="Nhãn (ví dụ: Nhà, Văn phòng)"
+                        placeholder="Nhãn (ví dụ: Nhà, Văn phòng) - tối đa 50 ký tự"
+                        maxlength="50"
                         style="margin-top: 6px;"
                     >
                     <button
@@ -315,6 +317,18 @@
         var saveButton = document.getElementById('saveProfileButton');
         var editableFields = document.querySelectorAll('[data-editable="true"]');
         var deleteButtons = document.querySelectorAll('.delete-address');
+        var addressInputs = document.querySelectorAll('.address-input');
+
+        var updateSaveState = function () {
+            if (!saveButton) return;
+            var invalidCity = Array.from(addressInputs).some(function (inp) {
+                return inp.dataset.cityValid === 'false';
+            });
+            var hasAddress = Array.from(addressInputs).some(function (inp) {
+                return (inp.value || '').trim().length > 0;
+            });
+            saveButton.disabled = invalidCity || !hasAddress;
+        };
 
         if (editButton) {
             editButton.addEventListener('click', function () {
@@ -360,8 +374,11 @@
 
         // Google Places autocomplete cho cac o dia chi
         if (typeof google !== 'undefined' && google.maps && google.maps.places) {
-            document.querySelectorAll('.address-input').forEach(function (input) {
+            addressInputs.forEach(function (input) {
                 var index = input.getAttribute('data-index');
+                // assume valid until user chọn lại
+                input.dataset.cityValid = input.dataset.cityValid || 'true';
+
                 var autocomplete = new google.maps.places.Autocomplete(input, {
                     componentRestrictions: { country: 'vn' },
                     fields: ['formatted_address', 'address_components'],
@@ -378,12 +395,19 @@
                     }
 
                     var districtName = '';
+                    var cityName = '';
                     place.address_components.forEach(function (component) {
                         if (
                             component.types.indexOf('administrative_area_level_2') !== -1 ||
                             component.types.indexOf('sublocality_level_1') !== -1
                         ) {
                             districtName = component.long_name;
+                        }
+                        if (
+                            component.types.indexOf('administrative_area_level_1') !== -1 ||
+                            component.types.indexOf('locality') !== -1
+                        ) {
+                            cityName = component.long_name || component.short_name || '';
                         }
                     });
 
@@ -393,9 +417,67 @@
                     if (districtField) {
                         districtField.value = districtName;
                     }
+
+                    var normalize = function (str) {
+                        return (str || '').toLowerCase();
+                    };
+                    var cityNormalized = normalize(cityName);
+                    var isHcmc = /ho\s*chi\s*minh/.test(cityNormalized) || /^tp\.\s*hcm/.test(cityNormalized) || /^hcm/.test(cityNormalized);
+
+                    var markInvalid = function () {
+                        input.dataset.cityValid = 'false';
+                        input.classList.add('is-invalid');
+                        if (districtField) {
+                            districtField.value = '';
+                        }
+                        alert('Hiện chỉ hỗ trợ lưu địa chỉ tại TP.HCM. Vui lòng chọn lại.');
+                        input.value = '';
+                        updateSaveState();
+                    };
+
+                    var clearInvalid = function () {
+                        input.dataset.cityValid = 'true';
+                        input.classList.remove('is-invalid');
+                        updateSaveState();
+                    };
+
+                    if (!isHcmc) {
+                        markInvalid();
+                        return;
+                    }
+
+                    clearInvalid();
+                    updateSaveState();
                 });
             });
         }
+
+        var formEl = document.querySelector('form');
+        if (formEl) {
+            formEl.addEventListener('submit', function (e) {
+                var invalidCity = Array.from(addressInputs).some(function (inp) {
+                    return inp.dataset.cityValid === 'false';
+                });
+                var hasAddress = Array.from(addressInputs).some(function (inp) {
+                    return (inp.value || '').trim().length > 0;
+                });
+                if (!hasAddress) {
+                    e.preventDefault();
+                    alert('Vui lòng nhập ít nhất một địa chỉ trước khi lưu.');
+                    updateSaveState();
+                    return;
+                }
+                if (invalidCity) {
+                    e.preventDefault();
+                    alert('Vui lòng chọn lại địa chỉ trong TP.HCM trước khi lưu.');
+                }
+            });
+        }
+
+        addressInputs.forEach(function (input) {
+            input.addEventListener('input', updateSaveState);
+        });
+        updateSaveState();
     });
 </script>
 @endsection

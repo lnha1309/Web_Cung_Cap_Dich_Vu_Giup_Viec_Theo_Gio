@@ -49,8 +49,8 @@ class ProfileController extends Controller
                 'addresses.*.id'          => ['nullable', 'string'],
                 'addresses.*.DiaChiDayDu' => ['nullable', 'string', 'max:1000'],
                 'addresses.*.district'    => ['nullable', 'string', 'max:255'],
-                'addresses.*.CanHo'       => ['nullable', 'string', 'max:255'],
-                'addresses.*.Nhan'        => ['nullable', 'string', 'max:100'],
+                'addresses.*.CanHo'       => ['nullable', 'string', 'max:20'],
+                'addresses.*.Nhan'        => ['nullable', 'string', 'max:50'],
             ],
             [],
             [

@@ -210,7 +210,7 @@
             <label class="form-label">Số tòa nhà/ Căn hộ <span class="optional-label">(Tùy chọn)</span></label>
             <div class="input-wrapper">
                 <span class="input-icon">🏠</span>
-                <input type="text" id="unit-address" placeholder="VD. Căn hộ số 30/ Tòa nhà số 7" autocomplete="off">
+                <input type="text" id="unit-address" placeholder="VD. Căn hộ số 30/ Tòa nhà số 7 (tối đa 20 ký tự)" autocomplete="off" maxlength="20">
                 <button class="clear-btn" onclick="clearInput('unit-address')">×</button>
             </div>
         </div>
@@ -407,6 +407,11 @@
 
             const street = streetAddress.trim();
             const unit = unitAddress.trim();
+
+            if (unit && unit.length > 20) {
+                alert('Số tòa nhà/ căn hộ không được vượt quá 20 ký tự.');
+                return;
+            }
 
             const inServiceArea = evaluateServiceArea({ formatted_address: street });
             if (!inServiceArea) {

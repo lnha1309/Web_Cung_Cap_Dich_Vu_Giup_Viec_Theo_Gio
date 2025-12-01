@@ -842,6 +842,19 @@ class BookingController extends Controller
                     $paymentRecord->save();
                     $message = 'Thanh toan phu thu thanh cong.';
                     
+                    $booking = DonDat::find($paymentRecord->ID_DD);
+                    if ($booking) {
+                        try {
+                            $notificationService = app(NotificationService::class);
+                            $notificationService->notifyOrderRescheduled($booking);
+                        } catch (\Exception $e) {
+                            Log::error('Failed to send reschedule notification after surcharge success', [
+                                'booking_id' => $booking->ID_DD,
+                                'error' => $e->getMessage(),
+                            ]);
+                        }
+                    }
+                    
                     // Redirect to booking detail page after surcharge payment
                     return redirect()->route('bookings.detail', $paymentRecord->ID_DD)
                         ->with('success', 'Đã thanh toán phụ thu thành công. Đơn hàng đã được cập nhật.');
@@ -908,7 +921,24 @@ class BookingController extends Controller
                     $paymentRecord->TrangThai = 'ThatBai';
                     $paymentRecord->MaGiaoDichVNPAY = $transactionNo;
                     $paymentRecord->save();
-                    $message = 'Thanh toan phu thu khong thanh cong. Ma: ' . $responseCode;
+                    $message = 'Thanh toan phu phi that bai, don chua duoc cap nhat';
+
+                    $booking = DonDat::find($paymentRecord->ID_DD);
+                    $meta = json_decode($paymentRecord->GhiChu ?? '', true);
+                    if ($booking && is_array($meta) && ($meta['type'] ?? null) === 'reschedule_surcharge') {
+                        $booking->NgayLam = $meta['old_date'] ?? $booking->NgayLam;
+                        $booking->GioBatDau = $meta['old_time'] ?? $booking->GioBatDau;
+                        $booking->RescheduleCount = max(0, ($booking->RescheduleCount ?? 1) - 1);
+                        $booking->FindingStaffResponse = null;
+                        $booking->save();
+
+                        ChiTietPhuThu::where('ID_DD', $booking->ID_DD)
+                            ->whereIn('ID_PT', ['PT001', 'PT003'])
+                            ->delete();
+                    }
+
+                    return redirect()->route('bookings.detail', $paymentRecord->ID_DD)
+                        ->with('error', $message);
                 }
             }
         }
@@ -931,6 +961,24 @@ class BookingController extends Controller
                 $paymentRecord->TrangThai = 'ThatBai';
                 $paymentRecord->MaGiaoDichVNPAY = $transactionNo;
                 $paymentRecord->save();
+                $message = 'Thanh toan phu phi that bai, don chua duoc cap nhat';
+
+                $booking = DonDat::find($paymentRecord->ID_DD);
+                $meta = json_decode($paymentRecord->GhiChu ?? '', true);
+                if ($booking && is_array($meta) && ($meta['type'] ?? null) === 'reschedule_surcharge') {
+                    $booking->NgayLam = $meta['old_date'] ?? $booking->NgayLam;
+                    $booking->GioBatDau = $meta['old_time'] ?? $booking->GioBatDau;
+                    $booking->RescheduleCount = max(0, ($booking->RescheduleCount ?? 1) - 1);
+                    $booking->FindingStaffResponse = null;
+                    $booking->save();
+
+                    ChiTietPhuThu::where('ID_DD', $booking->ID_DD)
+                        ->whereIn('ID_PT', ['PT001', 'PT003'])
+                        ->delete();
+                }
+
+                return redirect()->route('bookings.detail', $paymentRecord->ID_DD)
+                    ->with('error', $message);
             } else {
                 $walletTx = app(StaffWalletService::class)
                     ->finalizeTopup($txnRef, false, $transactionNo, $responseCode);
@@ -1215,18 +1263,38 @@ HTML;
             return redirect('/')->with('error', 'Tài khoản chưa cập nhật thông tin khách hàng.');
         }
 
-        // 1. Sửa created_at -> NgayTao
-        $currentBookings = DonDat::with(['nhanVien', 'lichSuThanhToan'])->where('ID_KH', $customer->ID_KH)
-                            ->whereIn('TrangThaiDon', ['finding_staff', 'assigned', 'confirmed', 'rejected', 'completed', 'working']) 
-                            ->orderBy('NgayTao', 'desc') // <--- CHỖ NÀY
-                            ->get();
-        // 2. Sửa created_at -> NgayTao
-        $historyBookings = DonDat::with(['nhanVien', 'lichSuThanhToan'])->where('ID_KH', $customer->ID_KH)
-                            ->whereIn('TrangThaiDon', ['completed', 'cancelled', 'failed'])
-                            ->orderBy('NgayTao', 'desc') // <--- VÀ CHỖ NÀY
+        $activeStatuses = ['finding_staff', 'assigned', 'confirmed', 'rejected', 'completed', 'working'];
+        $historyStatuses = ['completed', 'cancelled', 'failed'];
+
+        $hourCurrent = DonDat::with(['nhanVien', 'lichSuThanhToan'])
+                            ->where('ID_KH', $customer->ID_KH)
+                            ->where('LoaiDon', 'hour')
+                            ->whereIn('TrangThaiDon', $activeStatuses) 
+                            ->orderBy('NgayTao', 'desc')
                             ->get();
 
-        return view('account.history', compact('currentBookings', 'historyBookings'));
+        $hourHistory = DonDat::with(['nhanVien', 'lichSuThanhToan'])
+                            ->where('ID_KH', $customer->ID_KH)
+                            ->where('LoaiDon', 'hour')
+                            ->whereIn('TrangThaiDon', $historyStatuses)
+                            ->orderBy('NgayTao', 'desc')
+                            ->get();
+
+        $monthCurrent = DonDat::with(['nhanVien', 'lichSuThanhToan', 'lichBuoiThang.nhanVien', 'dichVu'])
+                            ->where('ID_KH', $customer->ID_KH)
+                            ->where('LoaiDon', 'month')
+                            ->whereIn('TrangThaiDon', $activeStatuses)
+                            ->orderBy('NgayTao', 'desc')
+                            ->get();
+
+        $monthHistory = DonDat::with(['nhanVien', 'lichSuThanhToan', 'lichBuoiThang.nhanVien', 'dichVu'])
+                            ->where('ID_KH', $customer->ID_KH)
+                            ->where('LoaiDon', 'month')
+                            ->whereIn('TrangThaiDon', $historyStatuses)
+                            ->orderBy('NgayTao', 'desc')
+                            ->get();
+
+        return view('account.history', compact('hourCurrent', 'hourHistory', 'monthCurrent', 'monthHistory'));
     }
 
     public function detail($id)
@@ -1445,8 +1513,16 @@ HTML;
             return back()->with('error', 'Thoi gian moi phai lon hon hien tai.')->withInput();
         }
 
+        $limitDate = Carbon::now()->addDays(7)->endOfDay();
+        if ($newStart->greaterThan($limitDate)) {
+            return back()->with('error', 'Chi cho phep doi trong 7 ngay ke tu hom nay.')->withInput();
+        }
+
         $oldHour = $booking->GioBatDau ? Carbon::parse($booking->GioBatDau)->hour : null;
         $newHour = $newStart->hour;
+
+        $oldDate = $booking->NgayLam;
+        $oldTime = $booking->GioBatDau;
 
         $booking->NgayLam = $newDate;
         $booking->GioBatDau = $newStart->format('H:i:s');
@@ -1454,25 +1530,53 @@ HTML;
         $booking->RescheduleCount = ($booking->RescheduleCount ?? 0) + 1;
 
         $surchargeAmount = 30000;
+        $weekendSurchargeAmount = optional(\App\Models\PhuThu::find('PT003'))->GiaCuoc ?? 30000;
+        $additionalSurcharges = [];
+
         $hasPt001 = \App\Models\ChiTietPhuThu::where('ID_DD', $booking->ID_DD)
             ->where('ID_PT', 'PT001')
+            ->exists();
+        $hasPt003 = \App\Models\ChiTietPhuThu::where('ID_DD', $booking->ID_DD)
+            ->where('ID_PT', 'PT003')
             ->exists();
 
         $needsSurcharge = ($newHour < 8 || $newHour == 17)
         && ($oldHour === null || !($oldHour < 8 || $oldHour == 17))
         && !$hasPt001;
 
-        $paymentUrl = null;
+        $isWeekend = in_array($newStart->dayOfWeek, [0, 6], true);
+        $needsWeekendSurcharge = $isWeekend && !$hasPt003;
 
+        $totalSurcharge = 0;
         if ($needsSurcharge) {
-            \App\Models\ChiTietPhuThu::create([
-                'ID_PT' => 'PT001',
-                'ID_DD' => $booking->ID_DD,
-                'Ghichu' => 'Phu thu doi gio 7h/17h',
-            ]);
+            $additionalSurcharges[] = ['id' => 'PT001', 'amount' => $surchargeAmount, 'note' => 'Phu thu doi gio 7h/17h'];
+            $totalSurcharge += $surchargeAmount;
+        }
+        if ($needsWeekendSurcharge) {
+            $additionalSurcharges[] = ['id' => 'PT003', 'amount' => $weekendSurchargeAmount, 'note' => 'Phu thu cuoi tuan'];
+            $totalSurcharge += $weekendSurchargeAmount;
+        }
 
-            $booking->TongTien = ($booking->TongTien ?? 0) + $surchargeAmount;
-            $booking->TongTienSauGiam = ($booking->TongTienSauGiam ?? $booking->TongTien ?? 0) + $surchargeAmount;
+        $paymentUrl = null;
+        $rescheduleMeta = [
+            'type'      => 'reschedule_surcharge',
+            'old_date'  => $oldDate,
+            'old_time'  => $oldTime,
+            'new_date'  => $newDate,
+            'new_time'  => $newStart->format('H:i:s'),
+        ];
+
+        if ($totalSurcharge > 0) {
+            foreach ($additionalSurcharges as $item) {
+                \App\Models\ChiTietPhuThu::create([
+                    'ID_PT' => $item['id'],
+                    'ID_DD' => $booking->ID_DD,
+                    'Ghichu' => $item['note'],
+                ]);
+            }
+
+            $booking->TongTien = ($booking->TongTien ?? 0) + $totalSurcharge;
+            $booking->TongTienSauGiam = ($booking->TongTienSauGiam ?? $booking->TongTien ?? 0) + $totalSurcharge;
 
             $payment = $booking->lichSuThanhToan->first();
             $paymentMethod = $payment?->PhuongThucThanhToan ?? 'TienMat';
@@ -1484,15 +1588,15 @@ HTML;
                     'ID_LSTT' => $paymentId,
                     'PhuongThucThanhToan' => 'VNPay',
                     'TrangThai' => 'ChoXuLy',
-                    'SoTienThanhToan' => $surchargeAmount,
+                    'SoTienThanhToan' => $totalSurcharge,
                     'ID_DD' => $booking->ID_DD,
                     'LoaiGiaoDich' => 'payment',
-                    'GhiChu' => 'Phụ thu đổi giờ cao điểm (trước 8h hoặc 17h)',
+                    'GhiChu' => json_encode($rescheduleMeta),
                 ]);
 
                 $paymentUrl = $vnPay->createPaymentUrl([
                     'txn_ref' => $paymentId,
-                    'amount' => $surchargeAmount,
+                    'amount' => $totalSurcharge,
                     'order_info' => 'Phu thu doi gio don ' . $booking->ID_DD,
                 ]);
             } else {
@@ -1500,15 +1604,18 @@ HTML;
                     'ID_LSTT' => IdGenerator::next('LichSuThanhToan', 'ID_LSTT', 'LSTT_'),
                     'PhuongThucThanhToan' => 'TienMat',
                     'TrangThai' => 'ChoXuLy',
-                    'SoTienThanhToan' => $surchargeAmount,
+                    'SoTienThanhToan' => $totalSurcharge,
                     'ID_DD' => $booking->ID_DD,
                     'LoaiGiaoDich' => 'payment',
-                    'GhiChu' => 'Phụ thu đổi giờ cao điểm (trước 8h hoặc 17h)',
+                    'GhiChu' => json_encode($rescheduleMeta),
                 ]);
             }
         }
-
         $booking->save();
+
+        if ($paymentUrl) {
+            return redirect()->away($paymentUrl);
+        }
 
         try {
             $notificationService->notifyOrderRescheduled($booking);
@@ -1517,10 +1624,6 @@ HTML;
                 'booking_id' => $booking->ID_DD,
                 'error' => $e->getMessage(),
             ]);
-        }
-
-        if ($paymentUrl) {
-            return redirect()->away($paymentUrl);
         }
 
         return redirect()->route('bookings.detail', $booking->ID_DD)

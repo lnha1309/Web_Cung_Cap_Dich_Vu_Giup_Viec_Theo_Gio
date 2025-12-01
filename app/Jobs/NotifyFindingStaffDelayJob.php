@@ -40,11 +40,14 @@ class NotifyFindingStaffDelayJob implements ShouldQueue
                     continue;
                 }
 
-                // Calculate threshold: notify when 1/3 of time has passed
-                // Example: Created at 14:52, Start at 20:52 (6 hours)
-                // Threshold = 14:52 + (6h / 3) = 14:52 + 2h = 16:52
+                // Calculate threshold: notify when 1/3 of time has passed (min 60s to avoid 0p)
+                // Example: Created at 14:52, Start at 20:52 (6 hours) -> threshold = 16:52
                 $diffSeconds = $startAt->diffInSeconds($createdAt);
-                $thresholdAt = $createdAt->copy()->addSeconds((int) ceil($diffSeconds / 3));
+                if ($diffSeconds <= 0) {
+                    continue;
+                }
+                $thresholdSeconds = max(60, (int) ceil($diffSeconds / 3));
+                $thresholdAt = $createdAt->copy()->addSeconds($thresholdSeconds);
 
                 // Only notify if current time has reached the threshold
                 if ($now->lessThan($thresholdAt)) {

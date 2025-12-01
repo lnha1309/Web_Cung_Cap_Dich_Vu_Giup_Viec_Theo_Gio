@@ -63,7 +63,7 @@ class NotificationService
         try {
             // Calculate how long we've been waiting (from order creation to now)
             $createdAt = Carbon::parse($booking->NgayTao);
-            $waitMinutes = (int) $createdAt->diffInMinutes(Carbon::now());
+            $waitMinutes = (int) ceil($createdAt->diffInSeconds(Carbon::now()) / 60);
         } catch (\Exception $e) {
             $waitMinutes = null;
         }
