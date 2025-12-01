@@ -33,10 +33,12 @@ class DonDat extends Model
         'ID_KM',
         'FindingStaffPromptSentAt',
         'FindingStaffResponse',
+        'RescheduleCount',
     ];
 
     protected $casts = [
         'FindingStaffPromptSentAt' => 'datetime',
+        'RescheduleCount' => 'integer',
     ];
 
     /**

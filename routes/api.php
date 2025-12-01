@@ -75,6 +75,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/quote', [ApiBookingController::class, 'calculateQuote']);
         Route::put('/{id}/cancel', [ApiBookingController::class, 'cancel']);
         Route::post('/{id}/rate', [ApiBookingController::class, 'rate']);
+        Route::post('/{id}/finding-staff-action', [ApiBookingController::class, 'findingStaffAction']);
+        Route::get('/{id}/suggestions', [ApiBookingController::class, 'suggestions']);
+        Route::post('/{id}/apply-suggestion', [ApiBookingController::class, 'applySuggestion']);
     });
 
     // Voucher routes
