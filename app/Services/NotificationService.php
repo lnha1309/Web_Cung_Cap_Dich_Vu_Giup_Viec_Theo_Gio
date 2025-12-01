@@ -272,7 +272,7 @@ class NotificationService
         $key = $oldStatus . '_' . $newStatus;
         
         // Only notify for significant status changes
-        $importantChanges = ['assigned', 'confirmed', 'rejected', 'completed', 'done', 'finding_staff'];
+        $importantChanges = ['assigned', 'confirmed', 'rejected', 'completed', 'finding_staff'];
         
         if (isset($messages[$key])) {
             return $messages[$key];
@@ -302,9 +302,15 @@ class NotificationService
                 'type' => $type,
                 'customer_name' => $customer->Ten_KH ?? 'Quý khách',
                 'service_name' => $booking->dichVu->TenDV ?? 'Dịch vụ',
-                'start_time' => $this->getFormattedStartTime($booking),
+                'start_time' => ($type === 'session_cancelled' && isset($extra['session_date'], $extra['session_time'])) 
+                                ? $extra['session_time'] . ' ' . $extra['session_date'] 
+                                : $this->getFormattedStartTime($booking),
                 'address' => $booking->diaChi->DiaChiDayDu ?? null,
-                'amount' => $booking->TongTienSauGiam ?? $booking->TongTien ?? 0,
+                'amount' => ($type === 'session_cancelled' && isset($extra['session_value'])) 
+                            ? $extra['session_value'] 
+                            : (($type === 'cancelled' || $type === 'failed') && isset($extra['refund_amount']) && $extra['refund_amount'] > 0
+                                ? $extra['refund_amount']
+                                : ($booking->TongTienSauGiam ?? $booking->TongTien ?? 0)),
                 'reason' => $extra['reason'] ?? null,
                 'refund_amount' => $extra['refund_amount'] ?? 0,
                 'payment_method' => $extra['payment_method'] ?? null,
@@ -356,5 +362,89 @@ class NotificationService
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+    /**
+     * Notify customer about session cancellation
+     * 
+     * @param LichBuoiThang $session
+     * @param string $reason
+     * @param array|null $refundInfo
+     */
+    public function notifySessionCancelled($session, $reason = 'auto_cancel_session', $refundInfo = null)
+    {
+        $booking = $session->donDat;
+        if (!$booking) return null;
+
+        $paymentMethod = $refundInfo['payment_method'] ?? 'unknown';
+        $refundAmount = $refundInfo['amount'] ?? 0;
+        $sessionDate = \Carbon\Carbon::parse($session->NgayLam)->format('d/m/Y');
+        $sessionTime = \Carbon\Carbon::parse($session->GioBatDau)->format('H:i');
+        
+        // Generate message
+        if ($reason === 'auto_cancel_session') {
+            $message = "Buổi làm ngày {$sessionDate} lúc {$sessionTime} đã bị hủy do không tìm được nhân viên.";
+        } elseif ($reason === 'user_cancel_session') {
+            $message = "Buổi làm ngày {$sessionDate} lúc {$sessionTime} đã bị hủy theo yêu cầu của bạn.";
+        } else {
+            $message = "Buổi làm ngày {$sessionDate} lúc {$sessionTime} đã bị hủy. Lý do: {$reason}.";
+        }
+
+        if (strcasecmp($paymentMethod, 'VNPay') === 0 && $refundAmount > 0) {
+            $formattedAmount = number_format($refundAmount, 0, ',', '.');
+            $message .= " Số tiền {$formattedAmount} VNĐ đã được hoàn lại qua VNPay.";
+        } elseif ($paymentMethod === 'TienMat') {
+            $message .= " Thanh toán bằng tiền mặt nên không có hoàn tiền.";
+        }
+
+        $notification = ThongBao::create([
+            'ID_TB' => \App\Support\IdGenerator::next('ThongBao', 'ID_TB', 'TB_'),
+            'ID_KH' => $booking->ID_KH,
+            'TieuDe' => 'Hủy buổi làm việc',
+            'NoiDung' => $message,
+            'LoaiThongBao' => 'session_cancelled',
+            'DaDoc' => false,
+            'DuLieuLienQuan' => [
+                'ID_DD' => $booking->ID_DD,
+                'ID_Buoi' => $session->ID_Buoi,
+                'reason' => $reason,
+                'refund_amount' => $refundAmount,
+            ],
+        ]);
+
+        Log::info('Notification created: Session cancelled', [
+            'notification_id' => $notification->ID_TB,
+            'session_id' => $session->ID_Buoi,
+            'refund_amount' => $refundAmount,
+        ]);
+
+        // Calculate session value for email display
+        $totalSessions = $booking->lichBuoiThang->count();
+        $sessionValue = $totalSessions > 0 ? ($booking->TongTienSauGiam / $totalSessions) : 0;
+
+        // Determine friendly reason for email
+        $friendlyReason = $reason;
+        if ($reason === 'user_cancel_session') {
+            $friendlyReason = 'Khách hàng yêu cầu hủy';
+        } elseif ($reason === 'auto_cancel_session') {
+            $friendlyReason = 'Hệ thống hủy do không tìm được nhân viên';
+        }
+
+        // Send email
+        $this->sendOrderEmail($booking, 'session_cancelled', [
+            'reason' => $friendlyReason,
+            'refund_amount' => $refundAmount,
+            'payment_method' => $paymentMethod,
+            'session_date' => $sessionDate,
+            'session_time' => $sessionTime,
+            'session_value' => $sessionValue,
+        ]);
+        
+        $this->pushToCustomer(
+            $booking,
+            'Hủy buổi làm việc',
+            $message
+        );
+
+        return $notification;
     }
 }

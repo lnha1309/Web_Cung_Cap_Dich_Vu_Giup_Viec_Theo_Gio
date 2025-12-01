@@ -106,11 +106,10 @@ class AdminController extends Controller
         
         // Deliver Status Labels (Keep existing)
         $deliverStatusLabels = [
-            'waiting_confirmation' => 'Chờ xác nhận',
+            'finding_staff' => 'Tìm nhân viên',
             'confirmed' => 'Đã xác nhận',
-            'preparing' => 'Đang chuẩn bị',
-            'shipping' => 'Đang giao',
-            'delivered' => 'Đã giao',
+            'assigned' => 'Đã có nhân viên',
+            'rejected' => 'Nhân viên từ chối',
             'completed' => 'Hoàn thành',
             'cancelled' => 'Đã hủy',
         ];

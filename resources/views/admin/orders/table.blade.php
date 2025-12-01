@@ -21,9 +21,9 @@
                 
                 // Map status to class and label
                 switch($order->TrangThaiDon) {
-                    case 'waiting_confirmation':
+                    case 'rejected':
                         $statusClass = 'warning';
-                        $statusLabel = 'Chờ xác nhận';
+                        $statusLabel = 'Nhân viên từ chối';
                         break;
                     case 'finding_staff':
                         $statusClass = 'info';
@@ -33,13 +33,17 @@
                         $statusClass = 'primary';
                         $statusLabel = 'Đã có NV';
                         break;
-                    case 'done':
+                    case 'completed':
                         $statusClass = 'success';
                         $statusLabel = 'Hoàn thành';
                         break;
                     case 'cancelled':
                         $statusClass = 'danger';
                         $statusLabel = 'Đã hủy';
+                        break;
+                    case 'confirmed':
+                        $statusClass = 'info';
+                        $statusLabel = 'Nhân viên đã xác nhận';
                         break;
                 }
             @endphp

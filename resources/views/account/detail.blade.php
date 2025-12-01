@@ -218,6 +218,12 @@
                                                     @else
                                                         <span class="badge bg-secondary">{{ $session->TrangThaiBuoi }}</span>
                                                     @endif
+                                                    
+                                                    @if($session->TrangThaiBuoi != 'cancelled' && $session->TrangThaiBuoi != 'completed')
+                                                        <button class="btn btn-sm btn-outline-danger ms-2" onclick="cancelSession('{{ $session->ID_Buoi }}')" title="Hủy buổi này">
+                                                            <i class="bi bi-x-lg"></i>
+                                                        </button>
+                                                    @endif
                                                 </td>
                                             </tr>
                                             @endforeach
@@ -385,5 +391,31 @@
 
         setRating(parseInt(ratingValue.value || '5', 10));
     });
+
+    function cancelSession(sessionId) {
+        if (!confirm('Bạn có chắc chắn muốn hủy buổi làm này? Nếu đã thanh toán VNPay, tiền sẽ được hoàn lại.')) return;
+
+        fetch(`{{ route('bookings.cancel-session') }}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ session_id: sessionId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert(data.message || 'Có lỗi xảy ra.');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Lỗi kết nối.');
+        });
+    }
 </script>
 @endsection

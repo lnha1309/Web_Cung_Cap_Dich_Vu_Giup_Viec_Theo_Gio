@@ -77,7 +77,7 @@ class BookingController extends Controller
         };
 
         if ($idDv === null) {
-            return response()->json(['error' => 'Thoi luong khong hop le'], 422);
+            return response()->json(['error' => 'Thời lượng không hợp lệ'], 422);
         }
 
         $service = DichVu::findOrFail($idDv);
@@ -179,7 +179,7 @@ class BookingController extends Controller
             $score = $ratingPercent * 0.3 + $proximityPercent * 0.7;
 
             $jobsCompleted = DonDat::where('ID_NV', $nv->ID_NV)
-                ->where('TrangThaiDon', 'done')
+                ->where('TrangThaiDon', 'completed')
                 ->count();
 
             // Xử lý ảnh nhân viên: nếu null hoặc rỗng, dùng ảnh mặc định
@@ -700,18 +700,22 @@ class BookingController extends Controller
         }
 
         // Send notification to customer about order creation
-        try {
-            $notificationService = app(NotificationService::class);
-            // Reload booking with relationships for notification
-            $bookingForNotification = DonDat::with('dichVu')->find($idDon);
-            if ($bookingForNotification) {
-                $notificationService->notifyOrderCreated($bookingForNotification);
+        // CHỈ gửi thông báo cho đơn thanh toán tiền mặt ngay lập tức
+        // Với VNPay, sẽ gửi thông báo sau khi thanh toán thành công (trong vnpayReturn)
+        if ($paymentMethod !== 'vnpay') {
+            try {
+                $notificationService = app(NotificationService::class);
+                // Reload booking with relationships for notification
+                $bookingForNotification = DonDat::with('dichVu')->find($idDon);
+                if ($bookingForNotification) {
+                    $notificationService->notifyOrderCreated($bookingForNotification);
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to send order creation notification', [
+                    'booking_id' => $idDon,
+                    'error' => $e->getMessage(),
+                ]);
             }
-        } catch (\Exception $e) {
-            Log::error('Failed to send order creation notification', [
-                'booking_id' => $idDon,
-                'error' => $e->getMessage(),
-            ]);
         }
 
         $response = [
@@ -758,17 +762,17 @@ class BookingController extends Controller
         $transactionNo = $request->query('vnp_TransactionNo');
 
         $status  = 'failed';
-        $message = 'Thanh toan that bai.';
+        $message = 'Thanh toán thất bại.';
         $handledOrder = false;
         $handledWallet = false;
 
         if (!$isValidSignature) {
-            $message = 'Chu ky khong hop le.';
+            $message = 'Chữ ký không hợp lệ.';
         }
 
         if ($isValidSignature && $responseCode === '00') {
             $status  = 'success';
-            $message = 'Thanh toan thanh cong.';
+            $message = 'Thanh toán thành công.';
 
             if ($txnRef) {
                 $order = DonDat::find($txnRef);
@@ -787,6 +791,21 @@ class BookingController extends Controller
 
                     if ($order->TrangThaiDon === 'assigned' && $order->ID_NV) {
                         $this->notifyStaffAssigned($order);
+                    }
+
+                    // Send order creation notification to customer (cho đơn VNPay)
+                    try {
+                        $notificationService = app(NotificationService::class);
+                        // Reload booking with relationships for notification
+                        $bookingForNotification = DonDat::with('dichVu')->find($order->ID_DD);
+                        if ($bookingForNotification) {
+                            $notificationService->notifyOrderCreated($bookingForNotification);
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('Failed to send order creation notification after VNPay success', [
+                            'booking_id' => $order->ID_DD,
+                            'error' => $e->getMessage(),
+                        ]);
                     }
 
                     // Send status change notification to customer
@@ -819,7 +838,7 @@ class BookingController extends Controller
                         ->finalizeTopup($txnRef, true, $transactionNo, $responseCode);
                     if ($walletTx) {
                         $handledWallet = true;
-                        $message = 'Nap tien thanh cong.';
+                        $message = 'Nạp tiền thành công.';
                     }
                 }
             }
@@ -828,16 +847,46 @@ class BookingController extends Controller
             $order = DonDat::find($txnRef);
             if ($order) {
                 $handledOrder = true;
-                $payment = LichSuThanhToan::where('ID_DD', $order->ID_DD)
-                    ->where('PhuongThucThanhToan', 'VNPay')
-                    ->orderByDesc('ThoiGian')
-                    ->first();
-                if ($payment) {
-                    $payment->TrangThai = 'ThatBai';
-                    $payment->MaGiaoDichVNPAY = $transactionNo;
-                    $payment->save();
+                
+                // Nếu mã lỗi là 24 (khách hàng hủy thanh toán), XÓA đơn hàng luôn
+                if ($responseCode === '24') {
+                    // Xóa payment history
+                    LichSuThanhToan::where('ID_DD', $order->ID_DD)->delete();
+                    
+                    // Xóa voucher details
+                    ChiTietKhuyenMai::where('ID_DD', $order->ID_DD)->delete();
+                    
+                    // Xóa surcharges
+                    ChiTietPhuThu::where('ID_DD', $order->ID_DD)->delete();
+                    
+                    // Nếu là đơn tháng, xóa lịch theo tuần và lịch buổi tháng
+                    if ($order->LoaiDon === 'month') {
+                        LichTheoTuan::where('ID_DD', $order->ID_DD)->delete();
+                        LichBuoiThang::where('ID_DD', $order->ID_DD)->delete();
+                    }
+                    
+                    // Xóa đơn hàng
+                    $order->delete();
+                    
+                    $message = 'Đã huỷ thanh toán';
+                    
+                    Log::info('Order deleted due to payment cancellation', [
+                        'order_id' => $txnRef,
+                        'response_code' => $responseCode,
+                    ]);
+                } else {
+                    // Các mã lỗi khác thì chỉ đánh dấu payment là thất bại
+                    $payment = LichSuThanhToan::where('ID_DD', $order->ID_DD)
+                        ->where('PhuongThucThanhToan', 'VNPay')
+                        ->orderByDesc('ThoiGian')
+                        ->first();
+                    if ($payment) {
+                        $payment->TrangThai = 'ThatBai';
+                        $payment->MaGiaoDichVNPAY = $transactionNo;
+                        $payment->save();
+                    }
+                    $message = 'Thanh toan khong thanh cong. Ma: ' . $responseCode;
                 }
-                $message = 'Thanh toan khong thanh cong. Ma: ' . $responseCode;
             }
         }
 
@@ -1131,7 +1180,7 @@ HTML;
                             ->get();
         // 2. Sửa created_at -> NgayTao
         $historyBookings = DonDat::with(['nhanVien', 'lichSuThanhToan'])->where('ID_KH', $customer->ID_KH)
-                            ->whereIn('TrangThaiDon', ['done', 'cancelled', 'failed'])
+                            ->whereIn('TrangThaiDon', ['completed', 'cancelled', 'failed'])
                             ->orderBy('NgayTao', 'desc') // <--- VÀ CHỖ NÀY
                             ->get();
 
@@ -1186,7 +1235,7 @@ HTML;
             return redirect()->route('bookings.history')->with('error', 'Không tìm thấy đơn hàng.');
         }
 
-        if (!in_array($booking->TrangThaiDon, ['completed', 'done'], true)) {
+        if (!in_array($booking->TrangThaiDon, ['completed'], true)) {
             return back()->with('error', 'Bạn chỉ có thể đánh giá khi đơn đã hoàn thành.');
         }
 
@@ -1213,12 +1262,12 @@ HTML;
         // Move booking to done so nó nằm trong lịch sử
         if ($booking->TrangThaiDon === 'completed') {
             $oldStatus = $booking->TrangThaiDon;
-            $booking->TrangThaiDon = 'done';
+            $booking->TrangThaiDon = 'completed';
             $booking->save();
 
             try {
                 $notificationService = app(\App\Services\NotificationService::class);
-                $notificationService->notifyOrderStatusChanged($booking, $oldStatus, 'done');
+                $notificationService->notifyOrderStatusChanged($booking, $oldStatus, 'completed');
             } catch (\Exception $e) {
                 Log::error('Failed to send status change notification after rating', [
                     'booking_id' => $booking->ID_DD,
@@ -1253,7 +1302,7 @@ HTML;
         }
 
         // Check if already cancelled or done
-        if (in_array($booking->TrangThaiDon, ['cancelled', 'done', 'completed'])) {
+        if (in_array($booking->TrangThaiDon, ['cancelled', 'completed'])) {
             return back()->with('error', 'Không thể hủy đơn hàng này.');
         }
 
@@ -1410,6 +1459,108 @@ HTML;
             'success' => false,
             'message' => $body['vnp_Message'] ?? 'Lỗi không xác định',
         ];
+    }
+
+    public function cancelSession(Request $request)
+    {
+        if (!Auth::check()) {
+            return response()->json(['success' => false, 'message' => 'Vui lòng đăng nhập.']);
+        }
+
+        $request->validate([
+            'session_id' => 'required'
+        ]);
+
+        $customer = Auth::user()->khachHang;
+        if (!$customer) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy thông tin khách hàng.']);
+        }
+
+        $session = \App\Models\LichBuoiThang::with(['donDat', 'nhanVien'])->findOrFail($request->session_id);
+
+        // Check ownership
+        if ($session->donDat->ID_KH !== $customer->ID_KH) {
+             return response()->json(['success' => false, 'message' => 'Bạn không có quyền hủy buổi làm này.']);
+        }
+        
+        if ($session->TrangThaiBuoi === 'cancelled') {
+            return response()->json(['success' => false, 'message' => 'Buổi làm này đã bị hủy trước đó.']);
+        }
+
+        if ($session->TrangThaiBuoi === 'completed') {
+             return response()->json(['success' => false, 'message' => 'Không thể hủy buổi làm đã hoàn thành.']);
+        }
+
+        // Check 12-hour rule
+        $startTime = \Carbon\Carbon::parse($session->NgayLam . ' ' . $session->GioBatDau);
+        if (now()->diffInHours($startTime, false) < 12) {
+             return response()->json(['success' => false, 'message' => 'Không thể hủy buổi làm trong vòng 12 giờ trước giờ bắt đầu.']);
+        }
+
+        // 1. Refund logic
+        $refundService = app(RefundService::class);
+        $refundResult = $refundService->refundSession($session, 'user_cancel_session');
+
+        if (!$refundResult['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi hoàn tiền VNPay: ' . ($refundResult['message'] ?? 'Không xác định')
+            ]);
+        }
+        
+        // 2. Update Session Status
+        $session->TrangThaiBuoi = 'cancelled';
+        $session->save();
+
+        // 3. Notify Staff & Update Schedule
+        if ($session->ID_NV) {
+            $staff = $session->nhanVien;
+            
+            // Update LichLamViec status back to 'ready'
+            \App\Models\LichLamViec::where('ID_NV', $session->ID_NV)
+                ->where('NgayLam', $session->NgayLam)
+                ->where('GioBatDau', '<=', $session->GioBatDau)
+                ->where('TrangThai', 'assigned')
+                ->update(['TrangThai' => 'ready']);
+
+            // Send Email to Staff
+            try {
+                \Mail::to($staff->Email)->send(new \App\Mail\StaffSessionCancelledMail([
+                    'staff_name' => $staff->Ten_NV,
+                    'session_date' => \Carbon\Carbon::parse($session->NgayLam)->format('d/m/Y'),
+                    'session_time' => \Carbon\Carbon::parse($session->GioBatDau)->format('H:i'),
+                    'order_id' => $session->ID_DD,
+                    'reason' => 'Khách hàng yêu cầu hủy',
+                ]));
+            } catch (\Exception $e) {
+                \Log::error('Failed to send staff cancellation email: ' . $e->getMessage());
+            }
+        }
+
+        // 4. Notify Customer
+        $notificationService = app(NotificationService::class);
+        $notificationService->notifySessionCancelled($session, 'user_cancel_session', [
+            'amount' => $refundResult['amount'],
+            'payment_method' => $refundResult['payment_method']
+        ]);
+
+        // 5. Check if all sessions are cancelled -> Cancel Order
+        $booking = $session->donDat;
+        $allSessions = \App\Models\LichBuoiThang::where('ID_DD', $booking->ID_DD)->get();
+        $cancelledCount = $allSessions->where('TrangThaiBuoi', 'cancelled')->count();
+        
+        if ($cancelledCount === $allSessions->count()) {
+            $booking->TrangThaiDon = 'cancelled';
+            $booking->save();
+
+            // Notify order cancelled
+            $notificationService->notifyOrderCancelled($booking, 'user_cancel', [
+                'amount' => 0, // Already refunded per session
+                'payment_method' => $refundResult['payment_method']
+            ]);
+        }
+
+        return response()->json(['success' => true, 'message' => 'Hủy buổi làm thành công.']);
     }
 }
 

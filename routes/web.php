@@ -127,6 +127,7 @@ Route::middleware('auth')->group(function () {
         // Hourly Order Staff Assignment
         Route::get('orders/staff-available-order/{order}', [App\Http\Controllers\AdminOrderController::class, 'getAvailableStaffForOrder'])->name('orders.available-staff-order');
         Route::post('orders/assign-staff-order', [App\Http\Controllers\AdminOrderController::class, 'assignStaffToOrder'])->name('orders.assign-staff-order');
+        Route::post('orders/cancel-session', [App\Http\Controllers\AdminOrderController::class, 'cancelSession'])->name('orders.cancel-session');
 
         // Employee Management
         Route::resource('employees', App\Http\Controllers\AdminEmployeeController::class)->only(['index']);
@@ -138,6 +139,11 @@ Route::middleware('auth')->group(function () {
 
         Route::patch('employees/{employee}/status', [App\Http\Controllers\AdminEmployeeController::class, 'updateStatus'])->name('employees.updateStatus');
         Route::get('employees/export-revenue', [App\Http\Controllers\AdminEmployeeController::class, 'exportRevenue'])->name('employees.export-revenue');
+        
+        // Employee Salary Payment
+        Route::get('employees/salary', [App\Http\Controllers\AdminEmployeeController::class, 'getSalaryData'])->name('employees.salary');
+        Route::get('employees/salary/export', [App\Http\Controllers\AdminEmployeeController::class, 'exportSalary'])->name('employees.salary.export');
+        Route::post('employees/salary/process', [App\Http\Controllers\AdminEmployeeController::class, 'processSalaryPayment'])->name('employees.salary.process');
 
         // Admin Profile
         Route::get('/profile', [App\Http\Controllers\AdminProfileController::class, 'show'])->name('profile.show');
@@ -147,6 +153,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/my-bookings', [BookingController::class, 'history'])->name('bookings.history');
     Route::get('/my-bookings/{id}', [BookingController::class, 'detail'])->name('bookings.detail');
     Route::post('/my-bookings/{id}/cancel', [BookingController::class, 'cancelBooking'])->name('bookings.cancel');
+    Route::post('/my-bookings/cancel-session', [BookingController::class, 'cancelSession'])->name('bookings.cancel-session');
     Route::post('/my-bookings/{id}/rating', [BookingController::class, 'submitRating'])->name('bookings.rating');
 
     // Notification routes

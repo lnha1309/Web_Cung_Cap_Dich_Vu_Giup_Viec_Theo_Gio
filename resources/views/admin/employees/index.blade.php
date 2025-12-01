@@ -313,6 +313,10 @@
                     <input type="date" name="end_date" id="end_date" value="{{ $endDate }}" class="filter-select" required>
                 </div>
                 <button type="submit" class="btn-primary">Lọc</button>
+                <a href="{{ route('admin.employees.salary') }}" class="btn-primary" style="background: linear-gradient(135deg, #FF7B29 0%, #FF9F5A 100%); text-decoration: none; display: flex; align-items: center; gap: 0.5rem;">
+                    <span class="material-icons-sharp">payments</span>
+                    Thanh toán lương
+                </a>
                 <a href="#" onclick="exportRevenue(event)" class="btn-primary" style="background: #10B981; text-decoration: none; display: flex; align-items: center; gap: 0.5rem;">
                     <span class="material-icons-sharp">file_download</span>
                     Xuất Excel

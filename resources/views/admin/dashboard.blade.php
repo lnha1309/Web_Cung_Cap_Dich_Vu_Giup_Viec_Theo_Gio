@@ -583,9 +583,9 @@
                 @foreach($recentOrders as $order)
                 @php
                     $statusClass = 'primary';
-                    if($order->TrangThaiDon == 'waiting_confirmation') $statusClass = 'warning';
+                    if($order->TrangThaiDon == 'finding_staff') $statusClass = 'warning';
                     elseif($order->TrangThaiDon == 'cancelled') $statusClass = 'danger';
-                    elseif($order->TrangThaiDon == 'done') $statusClass = 'success';
+                    elseif($order->TrangThaiDon == 'completed') $statusClass = 'success';
                     elseif($order->TrangThaiDon == 'shipping') $statusClass = 'info';
                 @endphp
                 <tr>
