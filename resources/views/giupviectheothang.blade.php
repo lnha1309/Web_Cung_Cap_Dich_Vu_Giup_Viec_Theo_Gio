@@ -417,7 +417,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 Giải pháp chăm sóc gia đình toàn diện và tiết kiệm chi phí.
             </p>
             <div class="monthly-hero-buttons">
-                <a href="#pricing" class="monthly-btn monthly-btn-primary">Xem gói ưu đãi theo tháng</a>
+                <a href="#pricing" class="monthly-btn monthly-btn-secondary">Xem gói ưu đãi theo tháng</a>
                 <a href="/contact" class="monthly-btn monthly-btn-secondary">Đăng ký tư vấn</a>
             </div>
         </div>

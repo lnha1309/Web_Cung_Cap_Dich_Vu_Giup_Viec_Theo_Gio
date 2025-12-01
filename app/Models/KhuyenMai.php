@@ -19,5 +19,6 @@ class KhuyenMai extends Model
         'PhanTramGiam',
         'GiamToiDa',
         'TrangThai',
+        'NgayHetHan',
     ];
 }

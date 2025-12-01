@@ -6,6 +6,32 @@
 @push('styles')
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+    :root {
+        --font-family: 'Inter', sans-serif;
+        --color-bg-light: #F5F7FA;
+        --color-white: #FFFFFF;
+        --color-primary-orange: #FF7B29; /* bTaskee Orange approx */
+        --color-text-dark: #1F2937;
+        --color-text-gray: #6B7280;
+        --color-border: #E5E7EB;
+        --color-header-bg: #F9FAFB;
+        --shadow-card: 0 4px 20px rgba(0,0,0,0.06);
+        --radius-card: 16px;
+        --radius-input: 12px;
+        --radius-btn: 12px;
+    }
+
+    body {
+        font-family: var(--font-family);
+        background-color: var(--color-bg-light);
+        color: var(--color-text-dark);
+    }
+
+    main {
+        min-width: 0; /* Prevent grid blowout for scrolling */
+        width: 100%;
+    }
+
     /* Filter Bar */
     .filter-bar {
         background: var(--color-white);
@@ -23,6 +49,7 @@
             flex-direction: row;
             align-items: center;
             justify-content: space-between;
+            margin-top:1rem;
         }
     }
 
@@ -66,6 +93,16 @@
         font-size: 1.2rem;
     }
 
+    .filter-select {
+        padding: 0.75rem 1rem;
+        border-radius: var(--radius-input);
+        border: 1px solid var(--color-border);
+        background: var(--color-white);
+        color: var(--color-text-dark);
+        cursor: pointer;
+        min-width: 180px;
+    }
+
     .btn-primary {
         background: var(--color-primary-orange);
         color: var(--color-white);
@@ -83,6 +120,16 @@
 
     .btn-primary:hover {
         opacity: 0.9;
+    }
+
+    .btn-sync {
+        background: var(--color-white);
+        color: var(--color-text-dark);
+        border: 1px solid var(--color-border);
+    }
+    
+    .btn-sync:hover {
+        background: var(--color-bg-light);
     }
 
     /* Card Container */
@@ -106,7 +153,7 @@
         width: 100%;
         border-collapse: separate;
         border-spacing: 0;
-        min-width: 1000px;
+        min-width: 1200px; /* allow full width but prevent squish */
     }
 
     thead th {
@@ -119,7 +166,7 @@
         text-transform: uppercase;
         letter-spacing: 0.05em;
         border-bottom: 1px solid var(--color-border);
-        white-space: nowrap;
+        white-space: nowrap; /* Prevent header wrap */
     }
 
     thead th:first-child {
@@ -144,13 +191,40 @@
         color: var(--color-text-dark);
         vertical-align: middle;
         font-size: 0.95rem;
-        height: 48px;
-        white-space: nowrap;
+        height: 48px; /* Min height */
+        white-space: nowrap; /* Prevent cell wrap to force scroll */
     }
 
     tbody tr:last-child td {
         border-bottom: none;
     }
+
+    /* Column Specifics */
+    .col-bold {
+        font-weight: 600;
+        color: var(--color-text-dark);
+    }
+
+    .col-truncate {
+        max-width: 200px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        cursor: help;
+    }
+
+    /* Status Badges */
+    .status-badge {
+        padding: 0.35rem 0.75rem;
+        border-radius: 2rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        display: inline-block;
+    }
+    .status-badge.primary { background: #E0F2FE; color: #0369A1; } /* Blue */
+    .status-badge.success { background: #DCFCE7; color: #15803D; } /* Green */
+    .status-badge.danger { background: #FEE2E2; color: #B91C1C; } /* Red */
+    .status-badge.warning { background: #FEF3C7; color: #B45309; } /* Yellow */
 
     /* Pagination */
     .pagination-wrapper {
@@ -158,6 +232,48 @@
         display: flex;
         justify-content: center;
     }
+    
+    /* Tooltip container */
+    .tooltip-container {
+        position: relative;
+        display: inline-block;
+    }
+    
+    .tooltip-text {
+        visibility: hidden;
+        width: 250px;
+        background-color: #333;
+        color: #fff;
+        text-align: center;
+        border-radius: 6px;
+        padding: 5px;
+        position: absolute;
+        z-index: 1;
+        bottom: 125%;
+        left: 50%;
+        margin-left: -125px;
+        opacity: 0;
+        transition: opacity 0.3s;
+        font-size: 0.8rem;
+        font-weight: normal;
+        white-space: normal;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+    
+    .tooltip-container:hover .tooltip-text {
+        visibility: visible;
+        opacity: 1;
+    }
+
+    .alert {
+        padding: 1rem;
+        border-radius: var(--radius-btn);
+        margin-bottom: 1.5rem;
+        font-weight: 500;
+    }
+    .alert-success { background: #DCFCE7; color: #15803D; border: 1px solid #BBF7D0; }
+    .alert-error { background: #FEE2E2; color: #B91C1C; border: 1px solid #FECACA; }
+    .alert-warning { background: #FEF3C7; color: #B45309; border: 1px solid #FDE68A; }
 
     /* Override container for full width */
     .container {
@@ -191,9 +307,46 @@
                     <span class="material-icons-sharp search-icon">search</span>
                     <input type="text" name="q" placeholder="Tìm kiếm theo tên, SĐT, Email..." value="{{ request('q') }}">
                 </div>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <input type="date" name="start_date" id="start_date" value="{{ $startDate }}" class="filter-select" required>
+                    <span style="color: var(--color-text-gray);">-</span>
+                    <input type="date" name="end_date" id="end_date" value="{{ $endDate }}" class="filter-select" required>
+                </div>
                 <button type="submit" class="btn-primary">Lọc</button>
+                <a href="#" onclick="exportRevenue(event)" class="btn-primary" style="background: #10B981; text-decoration: none; display: flex; align-items: center; gap: 0.5rem;">
+                    <span class="material-icons-sharp">file_download</span>
+                    Xuất Excel
+                </a>
             </form>
         </div>
+
+        <script>
+            document.querySelector('.filter-form').addEventListener('submit', function(e) {
+                const startDate = new Date(document.getElementById('start_date').value);
+                const endDate = new Date(document.getElementById('end_date').value);
+
+                if (endDate < startDate) {
+                    e.preventDefault();
+                    alert('Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu!');
+                }
+            });
+
+            function exportRevenue(e) {
+                e.preventDefault();
+                const startDate = document.getElementById('start_date').value;
+                const endDate = document.getElementById('end_date').value;
+                const q = document.querySelector('input[name="q"]').value;
+                
+                // Validate dates before export
+                if (new Date(endDate) < new Date(startDate)) {
+                    alert('Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu!');
+                    return;
+                }
+
+                const url = `{{ route('admin.employees.export-revenue') }}?start_date=${startDate}&end_date=${endDate}&q=${q}`;
+                window.location.href = url;
+            }
+        </script>
 
         <div class="card-container">
             <div class="table-responsive">
@@ -205,27 +358,52 @@
                             <th>Email</th>
                             <th>Khu vực</th>
                             <th>Số dư</th>
+                            <th>Doanh thu ({{ \Carbon\Carbon::parse($startDate)->format('d/m') }} - {{ \Carbon\Carbon::parse($endDate)->format('d/m') }})</th>
                             <th>Trạng thái</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($employees as $employee)
                         <tr>
-                            <td style="font-weight: 600;">{{ $employee->Ten_NV }}</td>
+                            <td class="col-bold">{{ $employee->Ten_NV }}</td>
                             <td>{{ $employee->SDT }}</td>
                             <td>{{ $employee->Email }}</td>
                             <td>{{ $employee->KhuVucLamViec }}</td>
                             <td>{{ number_format($employee->SoDu) }} đ</td>
+                            <td style="font-weight: bold; color: var(--color-primary-orange);">
+                                {{ number_format($employee->donDat->sum('TongTienSauGiam')) }} đ
+                            </td>
                             <td>
                                 @php
-                                    $isActive = $employee->TrangThai === 'active';
-                                    $bg = $isActive ? '#DCFCE7' : '#FEE2E2';
-                                    $color = $isActive ? '#15803D' : '#B91C1C';
-                                    $statusText = $isActive ? 'Hoạt động' : 'Chưa kích hoạt';
+                                    $status = optional($employee->taiKhoan)->TrangThaiTK;
+                                    $badgeClass = match ($status) {
+                                        'active' => 'success',
+                                        'banned' => 'danger',
+                                        default => 'warning',
+                                    };
+                                    $statusText = match ($status) {
+                                        'active' => 'Hoạt động',
+                                        'banned' => 'Đã khóa',
+                                        default => 'Chưa kích hoạt',
+                                    };
+                                    
+                                    $btnIcon = $status === 'active' ? 'lock' : 'lock_open';
+                                    $btnTitle = $status === 'active' ? 'Khóa tài khoản' : 'Kích hoạt tài khoản';
                                 @endphp
-                                <span style="padding: 0.35rem 0.75rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 600; background: {{ $bg }}; color: {{ $color }};">
-                                    {{ $statusText }}
-                                </span>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <span class="status-badge {{ $badgeClass }}">
+                                        {{ $statusText }}
+                                    </span>
+                                    @if($employee->taiKhoan)
+                                    <form action="{{ route('admin.employees.updateStatus', $employee) }}" method="POST" style="display: inline;">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" style="background: none; border: none; cursor: pointer; padding: 0; color: var(--color-text-gray);" title="{{ $btnTitle }}">
+                                            <span class="material-icons-sharp" style="font-size: 1.2rem;">{{ $btnIcon }}</span>
+                                        </button>
+                                    </form>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                         @empty

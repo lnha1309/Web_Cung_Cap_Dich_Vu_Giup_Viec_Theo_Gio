@@ -183,8 +183,26 @@
                     </div>
                     <div class="info-group">
                         <span class="info-label">Nhân viên thực hiện</span>
-                        <div class="info-value">{{ $order->nhanVien->Ten_NV ?? 'Chưa có nhân viên' }}</div>
+                        <div class="info-value">
+                            {{ $order->nhanVien->Ten_NV ?? 'Chưa có nhân viên' }}
+                            @if($order->LoaiDon == 'hour' && $order->TrangThaiDon != 'cancelled' && $order->TrangThaiDon != 'completed' && $order->TrangThaiDon != 'rejected')
+                                <button onclick="openAssignOrderModal('{{ $order->ID_DD }}')" title="Đổi nhân viên" style="background: none; border: none; cursor: pointer; color: var(--color-primary); vertical-align: middle; margin-left: 0.5rem;">
+                                    <span class="material-icons-sharp" style="font-size: 1.2rem;">edit</span>
+                                </button>
+                            @endif
+                        </div>
                     </div>
+                    @if($order->LoaiDon == 'hour' && $order->NgayLam)
+                    <div class="info-group">
+                        <span class="info-label">Ngày làm việc</span>
+                        <div class="info-value">
+                            {{ \Carbon\Carbon::parse($order->NgayLam)->format('d/m/Y') }} <br>
+                            <span style="font-size: 0.9em; color: var(--color-info-dark);">
+                                {{ \Carbon\Carbon::parse($order->GioBatDau)->format('H:i') }}
+                            </span>
+                        </div>
+                    </div>
+                    @endif
                     <div class="info-group">
                         <span class="info-label">Ngày tạo đơn</span>
                         <div class="info-value">{{ \Carbon\Carbon::parse($order->NgayTao)->format('d/m/Y H:i') }}</div>
@@ -219,8 +237,47 @@
                     </div>
                     <div class="info-group">
                         <span class="info-label">Phương thức thanh toán</span>
-                        <div class="info-value">{{ $order->PhuongThucThanhToan ?? 'Tiền mặt' }}</div>
+                        @php
+                            // Lấy phương thức thanh toán từ bảng LichSuThanhToan
+                            $paymentMethod = $order->lichSuThanhToan
+                                ->where('LoaiGiaoDich', 'payment')
+                                ->where('TrangThai', 'ThanhCong')
+                                ->first();
+                            $methodDisplay = $paymentMethod ? $paymentMethod->PhuongThucThanhToan : 'Tiền mặt';
+                            
+                            // Format display name
+                            if ($methodDisplay === 'vnpay') {
+                                $methodDisplay = 'VNPay';
+                            } elseif ($methodDisplay === 'cash') {
+                                $methodDisplay = 'Tiền mặt';
+                            }
+                        @endphp
+                        <div class="info-value">{{ $methodDisplay }}</div>
                     </div>
+                    @php
+                        // Lấy số tiền hoàn từ bảng ThongBao
+                        $refundNotification = \App\Models\ThongBao::where('ID_KH', $order->ID_KH)
+                            ->where('LoaiThongBao', 'order_cancelled')
+                            ->whereNotNull('DuLieuLienQuan')
+                            ->get()
+                            ->first(function($notification) use ($order) {
+                                $data = $notification->DuLieuLienQuan;
+                                return isset($data['ID_DD']) && $data['ID_DD'] === $order->ID_DD;
+                            });
+                        
+                        $refunded = 0;
+                        if ($refundNotification && isset($refundNotification->DuLieuLienQuan['refund_amount'])) {
+                            $refunded = $refundNotification->DuLieuLienQuan['refund_amount'];
+                        }
+                    @endphp
+                    @if($refunded > 0)
+                    <div class="info-group">
+                        <span class="info-label">Đã hoàn tiền</span>
+                        <div class="info-value" style="color: var(--color-danger); font-weight: bold;">
+                            {{ number_format($refunded) }} đ
+                        </div>
+                    </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -262,6 +319,7 @@
                         <th>Ngày làm</th>
                         <th>Giờ bắt đầu</th>
                         <th>Giờ kết thúc</th>
+                        <th>Nhân viên</th>
                         <th>Trạng thái</th>
                     </tr>
                 </thead>
@@ -270,11 +328,34 @@
                     <tr>
                         <td>{{ \Carbon\Carbon::parse($schedule->NgayLam)->format('d/m/Y') }}</td>
                         <td>{{ \Carbon\Carbon::parse($schedule->GioBatDau)->format('H:i') }}</td>
-                        <td>{{ \Carbon\Carbon::parse($schedule->GioKetThuc)->format('H:i') }}</td>
                         <td>
-                            @if($schedule->TrangThai == 'completed')
+                            @if(isset($schedule->GioKetThuc))
+                                {{ \Carbon\Carbon::parse($schedule->GioKetThuc)->format('H:i') }}
+                            @else
+                                {{ \Carbon\Carbon::parse($schedule->GioBatDau)->addHours($order->ThoiLuongGio ?? 0)->format('H:i') }}
+                            @endif
+                        </td>
+                        <td>
+                            @if($schedule->ID_NV)
+                                @php
+                                    $staff = \App\Models\NhanVien::find($schedule->ID_NV);
+                                @endphp
+                                {{ $staff->Ten_NV ?? $schedule->ID_NV }}
+                                @if($schedule->TrangThaiBuoi != 'cancelled' && $schedule->TrangThaiBuoi != 'completed' && $order->TrangThaiDon != 'cancelled' && $order->TrangThaiDon != 'rejected')
+                                    <button onclick="openAssignModal('{{ $schedule->ID_Buoi }}')" title="Đổi nhân viên" style="background: none; border: none; cursor: pointer; color: var(--color-primary); vertical-align: middle;">
+                                        <span class="material-icons-sharp" style="font-size: 1.2rem;">edit</span>
+                                    </button>
+                                @endif
+                            @else
+                                @if($schedule->TrangThaiBuoi != 'cancelled' && $schedule->TrangThaiBuoi != 'completed' && $order->TrangThaiDon != 'cancelled' && $order->TrangThaiDon != 'rejected')
+                                    <button class="status-badge primary" onclick="openAssignModal('{{ $schedule->ID_Buoi }}')" style="border: none; cursor: pointer;">Chọn NV</button>
+                                @endif
+                            @endif
+                        </td>
+                        <td>
+                            @if($schedule->TrangThaiBuoi == 'completed')
                                 <span class="status-badge success">Hoàn thành</span>
-                            @elseif($schedule->TrangThai == 'cancelled')
+                            @elseif($schedule->TrangThaiBuoi == 'cancelled')
                                 <span class="status-badge danger">Đã hủy</span>
                             @else
                                 <span class="status-badge warning">Chưa làm</span>
@@ -288,4 +369,131 @@
         @endif
     </main>
 </div>
+
+<!-- Assign Staff Modal -->
+<div id="assignModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+    <div style="background: white; padding: 2rem; border-radius: var(--card-border-radius); width: 500px; max-width: 90%; max-height: 80vh; overflow-y: auto;">
+        <h2 style="margin-bottom: 1rem;">Chọn nhân viên</h2>
+        <div id="staffList" style="display: flex; flex-direction: column; gap: 1rem;">
+            Loading...
+        </div>
+        <button onclick="closeAssignModal()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: var(--color-light); border: none; border-radius: 0.5rem; cursor: pointer;">Đóng</button>
+    </div>
+</div>
+
+<script>
+    let currentSessionId = null;
+    let currentOrderId = null; // For hourly orders
+
+    function openAssignModal(sessionId) {
+        currentSessionId = sessionId;
+        currentOrderId = null;
+        document.getElementById('assignModal').style.display = 'flex';
+        document.getElementById('staffList').innerHTML = 'Đang tải danh sách nhân viên...';
+
+        fetch(`{{ url('admin/orders/staff-available') }}/${sessionId}`)
+            .then(response => response.json())
+            .then(data => renderStaffList(data))
+            .catch(err => handleError(err));
+    }
+
+    function openAssignOrderModal(orderId) {
+        currentOrderId = orderId;
+        currentSessionId = null;
+        document.getElementById('assignModal').style.display = 'flex';
+        document.getElementById('staffList').innerHTML = 'Đang tải danh sách nhân viên...';
+
+        fetch(`{{ url('admin/orders/staff-available-order') }}/${orderId}`)
+            .then(response => response.json())
+            .then(data => renderStaffList(data))
+            .catch(err => handleError(err));
+    }
+
+    function renderStaffList(data) {
+        const list = document.getElementById('staffList');
+        list.innerHTML = '';
+        
+        if (data.length === 0) {
+            list.innerHTML = '<p>Không tìm thấy nhân viên phù hợp (trống lịch).</p>';
+            return;
+        }
+
+        data.forEach(staff => {
+            const item = document.createElement('div');
+            item.style.padding = '1rem';
+            item.style.border = '1px solid var(--color-light)';
+            item.style.borderRadius = '0.5rem';
+            item.style.display = 'flex';
+            item.style.justifyContent = 'space-between';
+            item.style.alignItems = 'center';
+            
+            if (staff.is_close) {
+                item.style.borderColor = 'var(--color-primary)';
+                item.style.background = 'rgba(115, 128, 236, 0.1)';
+            }
+
+            const distanceText = staff.distance !== undefined ? `<div style="font-size: 0.85em; color: #666; margin-top: 0.25rem;"><span class="material-icons-sharp" style="font-size: 0.9em; vertical-align: middle;">place</span> ${staff.distance} km</div>` : '';
+
+            item.innerHTML = `
+                <div style="flex: 1;">
+                    <div style="font-weight: bold;">${staff.name} ${staff.is_close ? '<span style="color: var(--color-primary); font-size: 0.8em;">✓ Gần</span>' : ''}</div>
+                    <div style="font-size: 0.9em; color: var(--color-info-dark);">${staff.phone}</div>
+                    ${distanceText}
+                </div>
+                <button onclick="assignStaff('${staff.id}')" style="background: var(--color-primary); color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer;">Chọn</button>
+            `;
+            list.appendChild(item);
+        });
+    }
+
+    function handleError(err) {
+        console.error(err);
+        document.getElementById('staffList').innerHTML = 'Lỗi khi tải danh sách.';
+    }
+
+    function closeAssignModal() {
+        document.getElementById('assignModal').style.display = 'none';
+        currentSessionId = null;
+        currentOrderId = null;
+    }
+
+    function assignStaff(staffId) {
+        if (!currentSessionId && !currentOrderId) return;
+
+        if (!confirm('Xác nhận chọn nhân viên này?')) return;
+
+        let url = '';
+        let body = {};
+
+        if (currentSessionId) {
+            url = `{{ route('admin.orders.assign-staff') }}`;
+            body = { session_id: currentSessionId, staff_id: staffId };
+        } else if (currentOrderId) {
+            url = `{{ route('admin.orders.assign-staff-order') }}`;
+            body = { order_id: currentOrderId, staff_id: staffId };
+        }
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify(body)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Đã phân công thành công!');
+                location.reload();
+            } else {
+                alert('Có lỗi xảy ra.');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Lỗi kết nối.');
+        });
+    }
+</script>
 @endsection

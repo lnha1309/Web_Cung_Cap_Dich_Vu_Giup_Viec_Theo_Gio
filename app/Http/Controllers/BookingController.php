@@ -1289,6 +1289,13 @@ HTML;
             $booking->TrangThaiDon = 'cancelled';
             $booking->save();
 
+            // For monthly orders, cancel only incomplete sessions
+            if ($booking->LoaiDon === 'month') {
+                \App\Models\LichBuoiThang::where('ID_DD', $booking->ID_DD)
+                    ->where('TrangThaiBuoi', '!=', 'completed')
+                    ->update(['TrangThaiBuoi' => 'cancelled']);
+            }
+
             // Send notification to customer
             $notificationService->notifyOrderCancelled($booking, 'user_cancel', $refundResult);
 
@@ -1310,7 +1317,7 @@ HTML;
                 'booking_id' => $id,
                 'error' => $e->getMessage(),
             ]);
-            return back()->with('error', 'Có lỗi xảy ra khi hủy đơn hàng. Vui lòng thử lại.');
+            return back()->with('error', 'Lỗi: ' . $e->getMessage());
         }
     }
 

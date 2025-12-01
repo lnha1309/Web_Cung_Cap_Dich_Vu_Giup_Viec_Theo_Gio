@@ -193,6 +193,12 @@
       margin-top: 5px;
       display: none;
     }
+
+    input.invalid,
+    select.invalid,
+    textarea.invalid {
+      border-color: #dc3545;
+    }
     
     .success-text {
       color: #28a745;
@@ -352,6 +358,7 @@
       <div class="form-group">
         <label for="username">Tên đăng nhập *</label>
         <input type="text" id="username" placeholder="Tên đăng nhập của bạn" required>
+        <span class="error" id="usernameError">Tên đăng nhập phải tối thiểu 4 ký tự và không trùng hệ thống.</span>
       </div>
       <div class="form-group" style="position: relative;">
     <label for="password">Mật khẩu *</label>
@@ -362,6 +369,7 @@
             <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/>
         </svg>
     </span>
+    <span class="error" id="passwordError">Mật khẩu tối thiểu 8 ký tự, có chữ hoa, chữ thường và ký tự đặc biệt.</span>
 </div>
 <div class="form-group" style="position: relative;">
     <label for="confirmPassword">Xác nhận mật khẩu *</label>
@@ -371,6 +379,7 @@
             <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/>
         </svg>
     </span>
+    <span class="error" id="confirmPasswordError">Mật khẩu nhập lại chưa khớp.</span>
 </div>
 
       <div class="form-group">
@@ -429,7 +438,7 @@
           <button type="button" id="sendEmailCodeBtn">Gửi OTP</button>
         </div>
         <div class="info-text" id="emailTimer"></div>
-        <span class="error" id="emailError">Email không hợp lệ</span>
+        <span class="error" id="emailError">Email không hợp lệ hoặc đã được sử dụng.</span>
         <span class="success-text" id="emailSuccess">✓ Mã xác thực đã được gửi đến email!</span>
         <p class="info-text">Mã OTP sẽ được gửi đến email của bạn</p>
       </div>
@@ -449,7 +458,7 @@
       <div class="form-group">
         <label for="phone">Số điện thoại *</label>
         <input type="text" id="phone" placeholder="0912345678" required>
-        <span class="error" id="phoneError">Số điện thoại không hợp lệ (VD: 0912345678)</span>
+        <span class="error" id="phoneError">Số điện thoại không hợp lệ hoặc đã được sử dụng (VD: 0912345678)</span>
         <p class="info-text">Dùng để liên hệ khi cần thiết</p>
       </div>
 
@@ -575,7 +584,23 @@
     const SEND_OTP_URL = "{{ route('register.sendOtp') }}";
     const VERIFY_OTP_URL = "{{ route('register.verifyOtp') }}";
     const APPLY_REGISTER_URL = "{{ route('apply.register') }}";
+    const CHECK_USERNAME_URL = "{{ route('register.checkUsername') }}";
     const csrfToken = '{{ csrf_token() }}';
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[^a-zA-Z0-9]).{8,}$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const phoneRegex = /^(0|\+84)[3|5|7|8|9][0-9]{8}$/;
+    const serverErrors = {
+      username: '',
+      email: '',
+      phone: '',
+      password: '',
+    };
+    const usernameInput = document.getElementById("username");
+    const passwordInput = document.getElementById("password");
+    const confirmPasswordInput = document.getElementById("confirmPassword");
+    const emailInput = document.getElementById("email");
+    const phoneInput = document.getElementById("phone");
+    let usernameCheckTimer = null;
 
     // Biến toàn cục
     let generatedCaptcha = "";
@@ -587,6 +612,199 @@
 
     // Lưu thông tin bước 1
     let step1Data = {};
+
+    function setFieldError(field, message, isServer = false) {
+      const errorEl = document.getElementById(`${field}Error`);
+      const inputEl = document.getElementById(field);
+
+      if (errorEl) {
+        errorEl.textContent = message;
+        errorEl.style.display = "block";
+      }
+
+      if (inputEl) {
+        inputEl.classList.add("invalid");
+      }
+
+      if (isServer && serverErrors[field] !== undefined) {
+        serverErrors[field] = message;
+      }
+    }
+
+    function clearFieldError(field) {
+      const errorEl = document.getElementById(`${field}Error`);
+      const inputEl = document.getElementById(field);
+
+      if (errorEl) {
+        errorEl.style.display = "none";
+      }
+
+      if (inputEl) {
+        inputEl.classList.remove("invalid");
+      }
+
+      if (serverErrors[field] !== undefined) {
+        serverErrors[field] = '';
+      }
+    }
+
+    function validateUsernameField() {
+      const value = usernameInput.value.trim();
+
+      if (serverErrors.username) {
+        setFieldError('username', serverErrors.username);
+        return false;
+      }
+
+      if (value && value.length < 4) {
+        setFieldError('username', 'Tên đăng nhập tối thiểu 4 ký tự.');
+        return false;
+      }
+
+      if (!value) {
+        return false;
+      }
+
+      clearFieldError('username');
+      return true;
+    }
+
+    async function checkUsernameAvailability(value) {
+      const trimmed = value.trim();
+      if (!trimmed || trimmed.length < 4) {
+        return;
+      }
+
+      // remember value to avoid late responses overriding newer input
+      const expected = trimmed;
+
+      try {
+        const resp = await fetch(CHECK_USERNAME_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({ TenDN: expected })
+        });
+
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+          throw new Error(data.message || 'Không kiểm tra được tên đăng nhập.');
+        }
+
+        // only apply if input has not changed
+        if (usernameInput.value.trim() !== expected) return;
+
+        if (!data.available) {
+          setFieldError('username', 'Tên đăng nhập đã tồn tại.', true);
+        } else {
+          clearFieldError('username');
+        }
+      } catch (error) {
+        console.error('Username check failed:', error);
+      } finally {
+        checkFormComplete();
+      }
+    }
+
+    function validateEmailField() {
+      const email = emailInput.value.trim();
+
+      if (serverErrors.email) {
+        setFieldError('email', serverErrors.email);
+        return false;
+      }
+
+      if (email && !emailRegex.test(email)) {
+        setFieldError('email', 'Email không hợp lệ.');
+        return false;
+      }
+
+      if (!email) {
+        clearFieldError('email');
+        return false;
+      }
+
+      clearFieldError('email');
+      return true;
+    }
+
+    function validatePhoneField() {
+      const phone = phoneInput.value.trim();
+
+      if (serverErrors.phone) {
+        setFieldError('phone', serverErrors.phone);
+        return false;
+      }
+
+      if (phone && !phoneRegex.test(phone)) {
+        setFieldError('phone', 'Số điện thoại không hợp lệ (VD: 0912345678)');
+        return false;
+      }
+
+      if (!phone) {
+        clearFieldError('phone');
+        return false;
+      }
+
+      clearFieldError('phone');
+      return true;
+    }
+
+    function validatePasswordFields() {
+      const password = passwordInput.value;
+      const confirmPassword = confirmPasswordInput.value;
+
+      if (serverErrors.password) {
+        setFieldError('password', serverErrors.password, true);
+      }
+
+      const isPasswordValid = passwordRegex.test(password);
+      if (password) {
+        if (!isPasswordValid) {
+          setFieldError('password', 'Mật khẩu tối thiểu 8 ký tự, có chữ hoa, chữ thường và ký tự đặc biệt.');
+        } else {
+          clearFieldError('password');
+        }
+      } else {
+        clearFieldError('password');
+      }
+
+      const passwordsMatch = password && confirmPassword && password === confirmPassword;
+      if (confirmPassword) {
+        if (!passwordsMatch) {
+          setFieldError('confirmPassword', 'Mật khẩu nhập lại chưa khớp.');
+        } else {
+          clearFieldError('confirmPassword');
+        }
+      } else {
+        clearFieldError('confirmPassword');
+      }
+
+      return { isPasswordValid, passwordsMatch };
+    }
+
+    function applyServerValidationErrors(errors) {
+      let handled = false;
+
+      ['username', 'email', 'phone', 'password'].forEach(field => {
+        if (errors[field]?.length) {
+          setFieldError(field, errors[field][0], true);
+          handled = true;
+        }
+      });
+
+      if (handled) {
+        document.getElementById("step2").classList.remove("active");
+        document.getElementById("step1").classList.add("active");
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        checkFormComplete();
+      }
+
+      return handled;
+    }
 
     // Hàm tạo ký tự ngẫu nhiên cho CAPTCHA
     function randomChar() {
@@ -750,16 +968,16 @@
       e.preventDefault();
       e.stopPropagation();
       
-      const email = document.getElementById("email").value.trim();
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      
+      const email = emailInput.value.trim();
+
+      clearFieldError('email');
       if (!emailRegex.test(email)) {
-        document.getElementById("emailError").style.display = "block";
+        setFieldError('email', 'Email không hợp lệ.');
         document.getElementById("emailSuccess").style.display = "none";
         return;
       }
       
-      document.getElementById("emailError").style.display = "none";
+      validateEmailField();
       
       if (emailCooldown) {
         alert("⏰ Vui lòng đợi 60 giây trước khi gửi lại mã email!");
@@ -894,27 +1112,53 @@
       checkFormComplete();
     });
 
-    document.getElementById("email").addEventListener("input", function() {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (this.value && !emailRegex.test(this.value)) {
-        document.getElementById("emailError").style.display = "block";
-      } else {
-        document.getElementById("emailError").style.display = "none";
+    usernameInput.addEventListener("input", function() {
+      clearFieldError('username');
+      validateUsernameField();
+      if (usernameCheckTimer) clearTimeout(usernameCheckTimer);
+      const value = this.value;
+      if (value.trim().length >= 4) {
+        usernameCheckTimer = setTimeout(() => checkUsernameAvailability(value), 400);
       }
+      checkFormComplete();
+    });
+
+    usernameInput.addEventListener("blur", function() {
+      const value = this.value;
+      if (value.trim().length >= 4) {
+        checkUsernameAvailability(value);
+      }
+    });
+
+    passwordInput.addEventListener("input", function() {
+      clearFieldError('password');
+      validatePasswordFields();
+      checkFormComplete();
+    });
+
+    confirmPasswordInput.addEventListener("input", function() {
+      validatePasswordFields();
+      checkFormComplete();
+    });
+
+    emailInput.addEventListener("input", function() {
+      clearFieldError('email');
       resetEmailVerification();
+      validateEmailField();
+      checkFormComplete();
+    });
+
+    phoneInput.addEventListener("input", function() {
+      clearFieldError('phone');
+      validatePhoneField();
       checkFormComplete();
     });
 
     function checkFormComplete() {
       const fullname = document.getElementById("fullname").value.trim();
-      const username = document.getElementById("username").value.trim();
-      const password = document.getElementById("password").value;
-      const confirmPassword = document.getElementById("confirmPassword").value;
       const dob = document.getElementById("dob").value;
       const gender = document.getElementById("gender").value;
       const experience = document.getElementById("experience").value;
-      const phone = document.getElementById("phone").value.trim();
-      const email = document.getElementById("email").value.trim();
       
       let isAdult = false;
       if (dob) {
@@ -928,31 +1172,24 @@
         }
         
         isAdult = age >= 18;
-      }
-      
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      const isEmailValid = emailRegex.test(email);
-      
-      const phoneRegex = /^(0|\+84)[3|5|7|8|9][0-9]{8}$/;
-      const isPhoneValid = phoneRegex.test(phone);
-
-      if (phone && !isPhoneValid) {
-        document.getElementById("phoneError").style.display = "block";
+        document.getElementById("dobError").style.display = isAdult ? "none" : "block";
       } else {
-        document.getElementById("phoneError").style.display = "none";
+        document.getElementById("dobError").style.display = "none";
       }
+
+      const usernameValid = validateUsernameField();
+      const { isPasswordValid, passwordsMatch } = validatePasswordFields();
+      const phoneValid = validatePhoneField();
+      const emailValid = validateEmailField();
       
-      const passwordsMatch = password && confirmPassword && password === confirmPassword;
-      
-      const isFormValid = fullname && username && password && confirmPassword && passwordsMatch &&
-                          dob && gender && experience && phone && email && 
-                          isAdult && isPhoneValid && isEmailValid &&
-                          emailCodeVerified && captchaVerified;
+      const isFormValid = fullname && usernameValid && isPasswordValid && passwordsMatch &&
+                          dob && gender && experience && phoneValid && emailValid && 
+                          isAdult && emailCodeVerified && captchaVerified;
       
       document.getElementById("submitBtn").disabled = !isFormValid;
     }
 
-    ["fullname", "gender", "experience", "phone"].forEach(id => {
+    ["fullname", "gender", "experience"].forEach(id => {
       document.getElementById(id).addEventListener("input", checkFormComplete);
       document.getElementById(id).addEventListener("change", checkFormComplete);
     });
@@ -960,8 +1197,10 @@
     document.getElementById("registerForm").addEventListener("submit", function(e) {
       e.preventDefault();
       
-      const password = document.getElementById("password").value;
-      const confirmPassword = document.getElementById("confirmPassword").value;
+      const usernameValid = validateUsernameField();
+      const passwordValidation = validatePasswordFields();
+      const emailValid = validateEmailField();
+      const phoneValid = validatePhoneField();
 
       if (!emailCodeVerified) {
         alert("⚠️ Vui lòng xác thực mã email trước!");
@@ -973,21 +1212,26 @@
         return;
       }
 
-      if (!password || !confirmPassword || password !== confirmPassword) {
-        alert("⚠️ Mật khẩu và xác nhận mật khẩu phải trùng khớp!");
+      if (!usernameValid || !passwordValidation.isPasswordValid || !passwordValidation.passwordsMatch || !emailValid || !phoneValid) {
+        alert("⚠️ Vui lòng kiểm tra lại các trường được đánh dấu đỏ.");
+        return;
+      }
+
+      if (document.getElementById("dobError").style.display === "block") {
+        alert("⚠️ Bạn cần đủ 18 tuổi để đăng ký.");
         return;
       }
       
       // Lưu dữ liệu bước 1
       step1Data = {
         username: document.getElementById("username").value.trim(),
-        password: password,
+        password: document.getElementById("password").value,
         fullname: document.getElementById("fullname").value.trim(),
         phone: document.getElementById("phone").value.trim(),
         email: document.getElementById("email").value.trim(),
         gender: document.getElementById("gender").value,
         dob: document.getElementById("dob").value,
-        experience: document.getElementById("experience").value
+        khu_vuc: document.getElementById("experience").value
       };
       
       alert("✅ Đăng ký tài khoản thành công!\n\n🔐 Bạn đã hoàn thành xác thực:\n✓ Email Code\n✓ CAPTCHA\n\n📋 Tiếp theo, vui lòng điền đầy đủ thông tin chi tiết.");
@@ -1045,7 +1289,7 @@ document.getElementById("detailForm").addEventListener("submit", async function(
       phone: step1Data.phone,
       gender: step1Data.gender,
       dob: step1Data.dob,
-      khu_vuc: step1Data.experience
+      khu_vuc: step1Data.khu_vuc
     };
 
     const accountResp = await fetch(APPLY_REGISTER_URL, {
@@ -1060,10 +1304,21 @@ document.getElementById("detailForm").addEventListener("submit", async function(
 
     if (!accountResp.ok) {
       const errData = await accountResp.json().catch(() => ({}));
+      const errors = errData.errors || {};
+      const handled = applyServerValidationErrors(errors);
       const firstError = errData.message
-        || Object.values(errData.errors || {})?.[0]?.[0]
+        || Object.values(errors || {})?.[0]?.[0]
         || 'Không thể tạo tài khoản, vui lòng thử lại.';
-      throw new Error(firstError);
+
+      document.getElementById("loadingIndicator").classList.remove("show");
+      document.getElementById("submitDetailBtn").disabled = false;
+
+      if (!handled) {
+        alert(firstError);
+      } else {
+        alert("⚠️ Vui lòng kiểm tra lại các trường được đánh dấu đỏ.");
+      }
+      return;
     }
 
     console.log("🔄 Bắt đầu chuyển đổi file...");
@@ -1085,7 +1340,8 @@ document.getElementById("detailForm").addEventListener("submit", async function(
       email: step1Data.email,
       gender: step1Data.gender,
       dob: step1Data.dob,
-      experience: step1Data.experience,
+      khu_vuc_lam_viec: step1Data.khu_vuc,
+      experience: step1Data.khu_vuc, // giữ tương thích script cũ đang đọc "experience"
       
       // Bước 2
       position: position,
@@ -1110,7 +1366,7 @@ document.getElementById("detailForm").addEventListener("submit", async function(
     console.log("Email:", finalData.email);
     console.log("Giới tính:", finalData.gender);
     console.log("Ngày sinh:", finalData.dob);
-    console.log("Kinh nghiệm:", finalData.experience);
+    console.log("Khu vực làm việc:", finalData.khu_vuc_lam_viec);
     console.log("Vị trí:", finalData.position);
     console.log("Địa chỉ:", finalData.address);
     console.log("Học vấn:", finalData.education);

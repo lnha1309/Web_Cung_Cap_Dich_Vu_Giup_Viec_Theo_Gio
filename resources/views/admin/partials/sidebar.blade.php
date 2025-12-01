@@ -49,6 +49,10 @@
             <span class="material-icons-sharp"> person </span>
             <h3>Khách hàng</h3>
         </a>
+        <a href="{{ route('admin.profile.show') }}" class="{{ $activeItem === 'profile' ? 'active' : '' }}">
+            <span class="material-icons-sharp"> settings </span>
+            <h3>Tài khoản</h3>
+        </a>
         <a href="{{ route('logout') }}" onclick="event.preventDefault(); document.getElementById('admin-logout-form').submit();">
             <span class="material-icons-sharp"> logout </span>
             <h3>Logout</h3>

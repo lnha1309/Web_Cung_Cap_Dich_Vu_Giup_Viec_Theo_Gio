@@ -52,6 +52,7 @@
         .otp-verification.show { display: block; }
         .success-message { color: #4caf50; margin-top: 8px; display: none; }
         .error-message { color: #d32f2f; margin-top: 8px; display: none; font-size: 13px; }
+        input.invalid { border-color: #d32f2f; }
 
         .register-button {
             width: 100%; padding: 14px; background: #004d2e;
@@ -159,6 +160,7 @@
         <div class="form-group">
             <label for="password">Mật khẩu</label>
             <input type="password" id="password" name="password" required>
+            <div class="error-message" id="passwordRuleError">Mật khẩu phải có 8 ký tự, gồm chữ hoa, chữ thường và ký tự đặc biệt.</div>
         </div>
 
         <div class="form-group">
@@ -174,6 +176,9 @@
 <script>
     const csrfToken = '{{ csrf_token() }}';
     let countdown = null;
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[^a-zA-Z0-9]).{8,}$/;
+    const phoneRegex = /^(0|\+84)[3|5|7|8|9][0-9]{8}$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     const usernameInput = document.getElementById('username');
     const usernameError = document.getElementById('usernameError');
@@ -183,10 +188,12 @@
     function sendEmailOTP() {
         const emailInput = document.getElementById('email');
         const email = emailInput.value.trim();
-        if (!email || !email.includes('@')) {
+        if (!emailRegex.test(email)) {
+            emailInput.classList.add('invalid');
             alert('Vui lòng nhập email hợp lệ!');
             return;
         }
+        emailInput.classList.remove('invalid');
 
         const sendBtn = document.getElementById('sendOtpBtn');
         sendBtn.disabled = true;
@@ -283,19 +290,41 @@
         const pass = document.getElementById('password').value;
         const confirm = document.getElementById('confirmPassword').value;
         const error = document.getElementById('passwordError');
+        const ruleError = document.getElementById('passwordRuleError');
+
+        const strong = passwordRegex.test(pass);
+        if (pass && !strong) {
+            ruleError.style.display = 'block';
+            document.getElementById('password').classList.add('invalid');
+        } else {
+            ruleError.style.display = 'none';
+            document.getElementById('password').classList.remove('invalid');
+        }
+
         if (confirm.length > 0 && pass !== confirm) {
             error.style.display = 'block';
+            document.getElementById('confirmPassword').classList.add('invalid');
             return false;
         } else {
             error.style.display = 'none';
-            return true;
+            document.getElementById('confirmPassword').classList.remove('invalid');
         }
+
+        return strong;
     }
 
     usernameInput.addEventListener('blur', () => {
         const TenDN = usernameInput.value.trim();
         if (!TenDN) {
             usernameError.style.display = 'none';
+            usernameInput.classList.remove('invalid');
+            return;
+        }
+
+        if (TenDN.length < 4) {
+            usernameError.textContent = 'Tên đăng nhập tối thiểu 4 ký tự.';
+            usernameError.style.display = 'block';
+            usernameInput.classList.add('invalid');
             return;
         }
 
@@ -313,13 +342,16 @@
                 if (!data.available) {
                     usernameError.textContent = 'Tên đăng nhập đã tồn tại, vui lòng chọn tên khác.';
                     usernameError.style.display = 'block';
+                    usernameInput.classList.add('invalid');
                 } else {
                     usernameError.style.display = 'none';
+                    usernameInput.classList.remove('invalid');
                 }
             })
             .catch(() => {
                 usernameError.textContent = '';
                 usernameError.style.display = 'none';
+                usernameInput.classList.remove('invalid');
             });
     });
 
@@ -327,6 +359,14 @@
         const SDT = phoneInput.value.trim();
         if (!SDT) {
             phoneError.style.display = 'none';
+            phoneInput.classList.remove('invalid');
+            return;
+        }
+
+        if (!phoneRegex.test(SDT)) {
+            phoneError.textContent = 'Số điện thoại không hợp lệ.';
+            phoneError.style.display = 'block';
+            phoneInput.classList.add('invalid');
             return;
         }
 
@@ -344,22 +384,54 @@
                 if (!data.available) {
                     phoneError.textContent = 'Số điện thoại đã được sử dụng, vui lòng nhập số khác.';
                     phoneError.style.display = 'block';
+                    phoneInput.classList.add('invalid');
                 } else {
                     phoneError.style.display = 'none';
+                    phoneInput.classList.remove('invalid');
                 }
             })
             .catch(() => {
                 phoneError.textContent = '';
                 phoneError.style.display = 'none';
+                phoneInput.classList.remove('invalid');
             });
     });
 
     document.getElementById('confirmPassword').addEventListener('input', checkPasswordMatch);
+    document.getElementById('password').addEventListener('input', checkPasswordMatch);
+    phoneInput.addEventListener('input', () => {
+        phoneError.style.display = 'none';
+        phoneInput.classList.remove('invalid');
+    });
+    usernameInput.addEventListener('input', () => {
+        usernameError.style.display = 'none';
+        usernameInput.classList.remove('invalid');
+    });
 
     document.getElementById('registerForm').addEventListener('submit', function(e) {
-        if (!checkPasswordMatch()) {
+        const usernameVal = usernameInput.value.trim();
+        const phoneVal = phoneInput.value.trim();
+        const passOk = checkPasswordMatch();
+
+        if (usernameVal.length < 4) {
+            usernameError.textContent = 'Tên đăng nhập tối thiểu 4 ký tự.';
+            usernameError.style.display = 'block';
+            usernameInput.classList.add('invalid');
             e.preventDefault();
-            alert('Mật khẩu không khớp!');
+            return;
+        }
+
+        if (!phoneRegex.test(phoneVal)) {
+            phoneError.textContent = 'Số điện thoại không hợp lệ.';
+            phoneError.style.display = 'block';
+            phoneInput.classList.add('invalid');
+            e.preventDefault();
+            return;
+        }
+
+        if (!passOk || document.getElementById('passwordError').style.display === 'block' || document.getElementById('passwordRuleError').style.display === 'block') {
+            e.preventDefault();
+            alert('Mật khẩu chưa đạt yêu cầu.');
             return;
         }
 

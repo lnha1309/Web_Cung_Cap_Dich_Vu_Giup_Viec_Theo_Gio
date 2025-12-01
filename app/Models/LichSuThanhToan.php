@@ -20,5 +20,6 @@ class LichSuThanhToan extends Model
         'SoTienThanhToan',
         'MaGiaoDichVNPAY',
         'ID_DD',
+        'LoaiGiaoDich',
     ];
 }

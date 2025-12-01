@@ -21,28 +21,40 @@ class AdminController extends Controller
         // 2. KPIs
         
         // Total Orders (Day, Week, Month)
+        // Total Orders (Range)
+        $totalOrdersRange = DonDat::whereBetween('NgayTao', [$startDate, $endDate])->count();
+        
+        // Keep these for small text if needed, or remove if unused. 
+        // For now, I'll keep them but the main display will use Range.
         $totalOrdersDay = DonDat::whereDate('NgayTao', Carbon::today())->count();
         $totalOrdersWeek = DonDat::whereBetween('NgayTao', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()])->count();
-        $totalOrdersMonth = DonDat::whereMonth('NgayTao', Carbon::now()->month)->whereYear('NgayTao', Carbon::now()->year)->count();
 
-        // Pending Orders
-        $pendingOrders = DonDat::whereIn('TrangThaiDon', ['assigned'])->count();
+        // Pending Orders (Range)
+        $pendingOrders = DonDat::whereIn('TrangThaiDon', ['assigned'])
+            ->whereBetween('NgayTao', [$startDate, $endDate])
+            ->count();
 
-        // In-progress Orders
-        $inProgressOrders = DonDat::where('TrangThaiDon','confirmed')->count();
+        // In-progress Orders (Range)
+        $inProgressOrders = DonDat::where('TrangThaiDon','confirmed')
+            ->whereBetween('NgayTao', [$startDate, $endDate])
+            ->count();
+
+        // Completed Orders (Range)
+        $completedOrders = DonDat::where('TrangThaiDon', 'completed')
+            ->whereBetween('NgayTao', [$startDate, $endDate])
+            ->count();
 
         $workingStaff = NhanVien::count(); 
+
+        $revenueRange = DonDat::whereBetween('NgayTao', [$startDate, $endDate])
+            ->whereIn('TrangThaiDon', ['completed'])
+            ->sum('TongTienSauGiam');
 
         $revenueDay = DonDat::whereDate('NgayTao', Carbon::today())
             ->whereIn('TrangThaiDon', ['completed'])
             ->sum('TongTienSauGiam');
             
         $revenueWeek = DonDat::whereBetween('NgayTao', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()])
-            ->whereIn('TrangThaiDon', ['completed'])
-            ->sum('TongTienSauGiam');
-
-        $revenueMonth = DonDat::whereMonth('NgayTao', Carbon::now()->month)
-            ->whereYear('NgayTao', Carbon::now()->year)
             ->whereIn('TrangThaiDon', ['completed'])
             ->sum('TongTienSauGiam');
 
@@ -107,14 +119,16 @@ class AdminController extends Controller
             'startDate',
             'endDate',
             'totalOrdersDay',
+            'totalOrdersRange',
+            'totalOrdersDay',
             'totalOrdersWeek',
-            'totalOrdersMonth',
             'pendingOrders',
             'inProgressOrders',
+            'completedOrders',
             'workingStaff',
+            'revenueRange',
             'revenueDay',
             'revenueWeek',
-            'revenueMonth',
             'ordersByDayLabels',
             'ordersByDayValues',
             'serviceDistributionLabels',
@@ -124,5 +138,52 @@ class AdminController extends Controller
             'recentOrders',
             'deliverStatusLabels'
         ));
+    }
+
+    public function exportRevenue(Request $request)
+    {
+        $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
+        $endDate = $request->input('end_date', Carbon::now()->endOfMonth()->format('Y-m-d'));
+
+        $data = DonDat::join('DichVu', 'DonDat.ID_DV', '=', 'DichVu.ID_DV')
+            ->select(
+                'DichVu.TenDV',
+                DB::raw('SUM(DonDat.TongTienSauGiam) as DoanhThu'),
+                DB::raw('COUNT(DISTINCT DonDat.ID_KH) as SoKhachHang')
+            )
+            ->whereBetween('DonDat.NgayTao', [$startDate, $endDate])
+            ->where('DonDat.TrangThaiDon', 'completed')
+            ->groupBy('DichVu.ID_DV', 'DichVu.TenDV')
+            ->get();
+
+        $headers = [
+            "Content-type"        => "text/csv",
+            "Content-Disposition" => "attachment; filename=revenue-report.csv",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
+        ];
+
+        $callback = function() use ($data) {
+            $file = fopen('php://output', 'w');
+            
+            // Add BOM for Excel to recognize UTF-8
+            fputs($file, "\xEF\xBB\xBF");
+
+            // Header row
+            fputcsv($file, ['Tên dịch vụ', 'Doanh thu', 'Số khách hàng đặt'], ';');
+
+            foreach ($data as $row) {
+                fputcsv($file, [
+                    $row->TenDV, 
+                    $row->DoanhThu, 
+                    $row->SoKhachHang
+                ], ';');
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }

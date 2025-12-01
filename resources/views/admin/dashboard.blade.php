@@ -450,14 +450,30 @@
   <main>
     <h1>Dashboard</h1>
 
-    <div class="date">
-        <form action="{{ route('admin.dashboard') }}" method="GET" style="display: flex; gap: 10px; align-items: center;">
-            <input type="date" name="start_date" value="{{ $startDate }}">
+    <div class="date" style="display: flex; gap: 1rem; align-items: center;">
+        <form id="filterForm" action="{{ route('admin.dashboard') }}" method="GET" style="display: flex; gap: 10px; align-items: center;">
+            <input type="date" name="start_date" id="start_date" value="{{ $startDate }}">
             <span>to</span>
-            <input type="date" name="end_date" value="{{ $endDate }}">
+            <input type="date" name="end_date" id="end_date" value="{{ $endDate }}">
             <button type="submit">Filter</button>
         </form>
+        <a href="{{ route('admin.revenue.export', ['start_date' => $startDate, 'end_date' => $endDate]) }}" class="btn btn-success" style="background: #10B981; color: white; padding: 0.6rem 1.2rem; border-radius: var(--border-radius-1); text-decoration: none; font-weight: 500; display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: all 300ms ease;">
+            <span class="material-icons-sharp">file_download</span>
+            Xuất Excel
+        </a>
     </div>
+
+    <script>
+        document.getElementById('filterForm').addEventListener('submit', function(e) {
+            const startDate = new Date(document.getElementById('start_date').value);
+            const endDate = new Date(document.getElementById('end_date').value);
+
+            if (endDate < startDate) {
+                e.preventDefault();
+                alert('Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu!');
+            }
+        });
+    </script>
 
     <div class="insights">
         <!-- Total Orders -->
@@ -465,8 +481,8 @@
             <span class="material-icons-sharp">shopping_cart</span>
             <div class="middle">
                 <div class="left">
-                    <h3>Tổng Đơn (Tháng)</h3>
-                    <h1>{{ $totalOrdersMonth }}</h1>
+                    <h3>Tổng Đơn</h3>
+                    <h1>{{ $totalOrdersRange }}</h1>
                 </div>
             </div>
             <small class="text-muted">Day: {{ $totalOrdersDay }} | Week: {{ $totalOrdersWeek }}</small>
@@ -477,8 +493,8 @@
             <span class="material-icons-sharp">stacked_line_chart</span>
             <div class="middle">
                 <div class="left">
-                    <h3>Doanh thu (Tháng)</h3>
-                    <h1>{{ number_format($revenueMonth) }} đ</h1>
+                    <h3>Doanh thu</h3>
+                    <h1>{{ number_format($revenueRange) }} đ</h1>
                 </div>
             </div>
             <small class="text-muted">Day: {{ number_format($revenueDay) }} | Week: {{ number_format($revenueWeek) }}</small>
@@ -506,6 +522,18 @@
                 </div>
             </div>
             <small class="text-muted">On the way</small>
+        </div>
+
+        <!-- Completed Orders -->
+        <div class="income">
+             <span class="material-icons-sharp">check_circle</span>
+            <div class="middle">
+                <div class="left">
+                    <h3>Đơn Đã Hoàn Thành</h3>
+                    <h1>{{ $completedOrders }}</h1>
+                </div>
+            </div>
+            <small class="text-muted">Successfully delivered</small>
         </div>
 
          <!-- Working Staff -->

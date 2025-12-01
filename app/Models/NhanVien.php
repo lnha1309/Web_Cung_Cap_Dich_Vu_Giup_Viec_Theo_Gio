@@ -31,4 +31,19 @@ class NhanVien extends Model
     {
         return $this->hasMany(LichLamViec::class, 'ID_NV', 'ID_NV');
     }
+
+    public function taiKhoan()
+    {
+        return $this->belongsTo(TaiKhoan::class, 'ID_TK', 'ID_TK');
+    }
+
+    public function lichBuoiThang()
+    {
+        return $this->hasMany(LichBuoiThang::class, 'ID_NV', 'ID_NV');
+    }
+
+    public function donDat()
+    {
+        return $this->hasMany(DonDat::class, 'ID_NV', 'ID_NV');
+    }
 }

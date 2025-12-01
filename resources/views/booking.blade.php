@@ -3247,7 +3247,7 @@
                             </div>
 
                             <div class="note">
-                                <strong>Lưu ý:</strong> Chúng tôi chỉ cung cấp dịch vụ tối đa 4 tiếng trong một đơn đặt. Nếu bạn có nhu cầu sử dụng dịch vụ hơn 4 tiếng, bạn có thể đặt dịch vụ Tổng vệ sinh hoặc đặt 2 đơn riêng biệt.
+                                <strong>Lưu ý:</strong> Chúng tôi chỉ cung cấp dịch vụ tối đa 4 tiếng trong một đơn đặt.
                             </div>
                         </div>
 
@@ -3275,7 +3275,7 @@
 
                         <div class="form-group" id="noteGroup">
                             <label>Chọn ngày bắt dầu:</label>
-                            <input type="date" id="startDate">
+                            <input type="date" id="startDate" readonly>
                         </div>
                         <div class="form-group">
                             <label>Chọn thời gian bắt đầu:</label>
@@ -3764,14 +3764,21 @@
         // ==================== KHỞI TẠO NGÀY ====================
         function initializeDates() {
             try {
+                // Set min date to tomorrow
                 const tomorrow = new Date();
                 tomorrow.setDate(tomorrow.getDate() + 1);
                 const tomorrowStr = tomorrow.toISOString().split('T')[0];
+                
+                // Calculate max date (7 days from tomorrow)
+                const maxDate = new Date();
+                maxDate.setDate(maxDate.getDate() + 8);
+                const maxDateStr = maxDate.toISOString().split('T')[0];
 
                 // Booking form date
                 const dateInput = document.getElementById('startDate');
                 if (dateInput) {
                     dateInput.min = tomorrowStr;
+                    dateInput.max = maxDateStr;
                     dateInput.value = tomorrowStr;
                 }
             } catch (e) {
@@ -3781,6 +3788,24 @@
 
         try {
             initializeDates();
+            
+            // Prevent keyboard navigation (arrow keys, page up/down) from changing date
+            const dateInput = document.getElementById('startDate');
+            if (dateInput) {
+                dateInput.addEventListener('keydown', function(e) {
+                    // Block arrow keys, page up/down, and other navigation keys
+                    if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End'].includes(e.key)) {
+                        e.preventDefault();
+                        return false;
+                    }
+                });
+                
+                // Also prevent mouse wheel from changing the value
+                dateInput.addEventListener('wheel', function(e) {
+                    e.preventDefault();
+                    return false;
+                }, { passive: false });
+            }
         } catch (e) {
             console.error('Error calling initializeDates:', e);
         }
