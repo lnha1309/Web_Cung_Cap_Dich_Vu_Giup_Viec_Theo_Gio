@@ -98,52 +98,90 @@ class AutoCancelOrdersJob implements ShouldQueue
 
 
     /**
-     * Cancel monthly orders based on first scheduled session
+     * Cancel monthly sessions that meet the criteria
      */
     private function cancelMonthlyOrders()
     {
         $count = 0;
 
-        // Find monthly orders with available sessions
-        $orders = DonDat::where('LoaiDon', 'month')
-            ->whereIn('TrangThaiDon', ['assigned', 'finding_staff', 'rejected'])
-            ->whereHas('lichBuoiThang', function ($query) {
-                $query->whereIn('TrangThaiBuoi', ['finding_staff', 'rejected']);
+        // Find monthly sessions that are finding_staff or rejected, have no staff, and are within 2 hours
+        $sessions = LichBuoiThang::whereIn('TrangThaiBuoi', ['finding_staff', 'rejected'])
+            ->whereNull('ID_NV')
+            ->whereHas('donDat', function ($q) {
+                $q->where('LoaiDon', 'month')
+                  ->where('TrangThaiDon', '!=', 'cancelled');
             })
-            ->with(['lichBuoiThang' => function ($query) {
-                $query->whereIn('TrangThaiBuoi', ['finding_staff', 'rejected'])
-                    ->orderBy('NgayLam')
-                    ->orderBy('GioBatDau');
-            }])
+            ->with('donDat')
             ->get();
 
-        foreach ($orders as $order) {
+        foreach ($sessions as $session) {
             try {
-                // Get first available session
-                $firstSession = $order->lichBuoiThang->first();
-
-                if ($firstSession && $firstSession->NgayLam && $firstSession->GioBatDau) {
-                    $startTime = Carbon::parse($firstSession->NgayLam . ' ' . $firstSession->GioBatDau);
+                if ($session->NgayLam && $session->GioBatDau) {
+                    $startTime = Carbon::parse($session->NgayLam . ' ' . $session->GioBatDau);
                     $cancelCheckTime = $startTime->copy()->subHours(2);
                     $now = now();
 
                     $shouldCancel = $now->gte($cancelCheckTime);
 
-                    // Cancel even if we are past start time (missed window earlier)
                     if ($shouldCancel) {
-                        $this->cancelOrder($order, 'auto_cancel_2h');
+                        $this->cancelSession($session, 'auto_cancel_2h');
                         $count++;
                     }
                 }
             } catch (\Exception $e) {
-                Log::error('Error cancelling monthly order', [
-                    'order_id' => $order->ID_DD,
+                Log::error('Error cancelling monthly session', [
+                    'session_id' => $session->ID_Buoi,
                     'error' => $e->getMessage()
                 ]);
             }
         }
 
         return $count;
+    }
+
+    /**
+     * Cancel a session and trigger refund + notification
+     */
+    private function cancelSession($session, $reason)
+    {
+        DB::beginTransaction();
+
+        try {
+            // 1. Update session status
+            $session->TrangThaiBuoi = 'cancelled';
+            $session->save();
+
+            Log::info('Session auto-cancelled', [
+                'session_id' => $session->ID_Buoi,
+                'reason' => $reason
+            ]);
+
+            // 2. Process refund if applicable
+            $refundResult = $this->refundService->refundSession($session, $reason);
+
+            Log::info('Session Refund processed', [
+                'session_id' => $session->ID_Buoi,
+                'success' => $refundResult['success'],
+                'amount' => $refundResult['amount'],
+                'payment_method' => $refundResult['payment_method']
+            ]);
+
+            // 3. Send notification to customer
+            $this->notificationService->notifySessionCancelled($session, $reason, $refundResult);
+
+            DB::commit();
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Error in cancelSession transaction', [
+                'session_id' => $session->ID_Buoi,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            throw $e;
+        }
     }
 
     /**

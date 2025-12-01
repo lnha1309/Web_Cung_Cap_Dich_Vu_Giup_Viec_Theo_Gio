@@ -129,7 +129,7 @@ class RefundService
             'vnp_Command' => 'refund',
             'vnp_TmnCode' => config('vnpay.tmn_code'),
             'vnp_TransactionType' => $transactionType,
-            'vnp_TxnRef' => $booking->ID_DD,
+            'vnp_TxnRef' => $booking->ID_DD, // Must match the original payment TxnRef
             'vnp_Amount' => $amount,
             'vnp_TransactionNo' => $payment->MaGiaoDichVNPAY,
             'vnp_TransactionDate' => $payment->ThoiGian ? Carbon::parse($payment->ThoiGian)->format('YmdHis') : $createDate,
@@ -174,9 +174,12 @@ class RefundService
                 return ['success' => true];
             }
 
+            $errorCode = $body['vnp_ResponseCode'] ?? '99';
+            $errorMessage = $this->getVnpayErrorMessage($errorCode);
+
             return [
                 'success' => false,
-                'message' => $body['vnp_Message'] ?? 'Lỗi không xác định',
+                'message' => $errorMessage,
             ];
         } catch (\Exception $e) {
             Log::error('VNPay Refund Exception', [
@@ -189,6 +192,26 @@ class RefundService
                 'message' => 'Lỗi kết nối VNPay: ' . $e->getMessage(),
             ];
         }
+    }
+
+    private function getVnpayErrorMessage($code)
+    {
+        $errors = [
+            '00' => 'Giao dịch thành công',
+            '02' => 'Tổng số tiền hoàn trả lớn hơn số tiền gốc',
+            '03' => 'Dữ liệu gửi sang không đúng định dạng',
+            '04' => 'Không cho phép hoàn trả toàn phần sau khi hoàn trả một phần',
+            '13' => 'Chỉ cho phép hoàn trả một phần',
+            '91' => 'Không tìm thấy giao dịch yêu cầu hoàn trả',
+            '93' => 'Số tiền hoàn trả không hợp lệ. Số tiền hoàn trả phải nhỏ hơn hoặc bằng số tiền thanh toán.',
+            '94' => 'Yêu cầu bị trùng lặp trong thời gian giới hạn của API (Giới hạn trong 5 phút)',
+            '95' => 'Giao dịch này không thành công bên VNPAY. VNPAY từ chối xử lý yêu cầu.',
+            '97' => 'Chữ ký không hợp lệ',
+            '98' => 'Timeout Exception',
+            '99' => 'Lỗi khác từ VNPay',
+        ];
+
+        return $errors[$code] ?? 'Lỗi không xác định từ VNPay (Mã: ' . $code . ')';
     }
 
     /**
@@ -212,5 +235,77 @@ class RefundService
             'amount' => $refundAmount,
             'reason' => $reason
         ]);
+    }
+    /**
+     * Refund a single monthly session
+     * 
+     * @param LichBuoiThang $session
+     * @param string $reason
+     * @return array
+     */
+    public function refundSession($session, $reason = 'auto_cancel_session')
+    {
+        $booking = $session->donDat;
+        if (!$booking) {
+            return ['success' => false, 'message' => 'Không tìm thấy đơn hàng gốc'];
+        }
+
+        // Find successful payment transaction
+        $payment = LichSuThanhToan::where('ID_DD', $booking->ID_DD)
+            ->where('TrangThai', 'ThanhCong')
+            ->where('LoaiGiaoDich', 'payment')
+            ->first();
+
+        if (!$payment) {
+            return [
+                'success' => true,
+                'amount' => 0,
+                'message' => 'Không tìm thấy giao dịch thanh toán',
+                'payment_method' => 'unknown'
+            ];
+        }
+
+        $paymentMethod = $payment->PhuongThucThanhToan;
+        
+        // Calculate refund amount for one session
+        // Formula: (Total Amount / Total Sessions) * 80%
+        $totalSessions = $booking->lichBuoiThang->count();
+        $refundAmount = 0;
+        
+        if ($totalSessions > 0) {
+            $refundAmount = ($booking->TongTienSauGiam / $totalSessions) * 0.8;
+        }
+
+        // Only process VNPay refunds
+        if (strcasecmp($paymentMethod, 'VNPay') === 0 && $payment->MaGiaoDichVNPAY && $refundAmount > 0) {
+            $refundResult = $this->callVnpayRefund($booking, $payment, $refundAmount, $reason);
+
+            if (!$refundResult['success']) {
+                return [
+                    'success' => false,
+                    'amount' => 0,
+                    'message' => $refundResult['message'],
+                    'payment_method' => $paymentMethod
+                ];
+            }
+
+            // Log refund transaction
+            $this->logRefundTransaction($booking, $payment, $refundAmount, $reason);
+
+            return [
+                'success' => true,
+                'amount' => $refundAmount,
+                'message' => 'Hoàn tiền buổi làm thành công qua VNPay',
+                'payment_method' => $paymentMethod
+            ];
+        }
+
+        // Cash payment or no refund needed
+        return [
+            'success' => true,
+            'amount' => 0,
+            'message' => $paymentMethod === 'TienMat' ? 'Thanh toán bằng tiền mặt' : 'Không cần hoàn tiền',
+            'payment_method' => $paymentMethod
+        ];
     }
 }

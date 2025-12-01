@@ -127,36 +127,31 @@
                     $statusLabel = $order->TrangThaiDon;
                     
                     switch($order->TrangThaiDon) {
-                        case 'waiting_confirmation':
-                            $statusClass = 'warning';
-                            $statusLabel = 'Chờ xác nhận';
-                            break;
-                        case 'finding_staff':
-                            $statusClass = 'info';
-                            $statusLabel = 'Đang tìm NV';
-                            break;
-                        case 'assigned':
-                            $statusClass = 'primary';
-                            $statusLabel = 'Đã có NV';
-                            break;
-                        case 'confirmed':
-                            $statusClass = 'primary';
-                            $statusLabel = 'Đã xác nhận';
-                            break;
-                        case 'done':
-                        case 'completed':
-                            $statusClass = 'success';
-                            $statusLabel = 'Hoàn thành';
-                            break;
-                        case 'cancelled':
-                            $statusClass = 'danger';
-                            $statusLabel = 'Đã hủy';
-                            break;
-                        case 'rejected':
-                            $statusClass = 'danger';
-                            $statusLabel = 'Đã từ chối';
-                            break;
-                    }
+                    case 'rejected':
+                        $statusClass = 'warning';
+                        $statusLabel = 'Nhân viên từ chối';
+                        break;
+                    case 'finding_staff':
+                        $statusClass = 'info';
+                        $statusLabel = 'Đang tìm NV';
+                        break;
+                    case 'assigned':
+                        $statusClass = 'primary';
+                        $statusLabel = 'Đã có NV';
+                        break;
+                    case 'completed':
+                        $statusClass = 'success';
+                        $statusLabel = 'Hoàn thành';
+                        break;
+                    case 'cancelled':
+                        $statusClass = 'danger';
+                        $statusLabel = 'Đã hủy';
+                        break;
+                    case 'confirmed':
+                        $statusClass = 'info';
+                        $statusLabel = 'Nhân viên đã xác nhận';
+                        break;
+                }
                 @endphp
                 <span class="status-badge {{ $statusClass }}">{{ $statusLabel }}</span>
             </div>
@@ -185,7 +180,7 @@
                         <span class="info-label">Nhân viên thực hiện</span>
                         <div class="info-value">
                             {{ $order->nhanVien->Ten_NV ?? 'Chưa có nhân viên' }}
-                            @if($order->LoaiDon == 'hour' && $order->TrangThaiDon != 'cancelled' && $order->TrangThaiDon != 'completed' && $order->TrangThaiDon != 'rejected')
+                            @if($order->LoaiDon == 'hour' && $order->TrangThaiDon != 'cancelled' && $order->TrangThaiDon != 'completed')
                                 <button onclick="openAssignOrderModal('{{ $order->ID_DD }}')" title="Đổi nhân viên" style="background: none; border: none; cursor: pointer; color: var(--color-primary); vertical-align: middle; margin-left: 0.5rem;">
                                     <span class="material-icons-sharp" style="font-size: 1.2rem;">edit</span>
                                 </button>
@@ -255,19 +250,20 @@
                         <div class="info-value">{{ $methodDisplay }}</div>
                     </div>
                     @php
-                        // Lấy số tiền hoàn từ bảng ThongBao
-                        $refundNotification = \App\Models\ThongBao::where('ID_KH', $order->ID_KH)
-                            ->where('LoaiThongBao', 'order_cancelled')
+                        // Lấy tổng số tiền hoàn từ bảng ThongBao (bao gồm hủy đơn và hủy buổi)
+                        $refundNotifications = \App\Models\ThongBao::where('ID_KH', $order->ID_KH)
+                            ->whereIn('LoaiThongBao', ['order_cancelled', 'session_cancelled'])
                             ->whereNotNull('DuLieuLienQuan')
-                            ->get()
-                            ->first(function($notification) use ($order) {
-                                $data = $notification->DuLieuLienQuan;
-                                return isset($data['ID_DD']) && $data['ID_DD'] === $order->ID_DD;
-                            });
+                            ->get();
                         
                         $refunded = 0;
-                        if ($refundNotification && isset($refundNotification->DuLieuLienQuan['refund_amount'])) {
-                            $refunded = $refundNotification->DuLieuLienQuan['refund_amount'];
+                        foreach ($refundNotifications as $notification) {
+                            $data = $notification->DuLieuLienQuan;
+                            if (isset($data['ID_DD']) && $data['ID_DD'] === $order->ID_DD) {
+                                if (isset($data['refund_amount'])) {
+                                    $refunded += (float) $data['refund_amount'];
+                                }
+                            }
                         }
                     @endphp
                     @if($refunded > 0)
@@ -341,14 +337,20 @@
                                     $staff = \App\Models\NhanVien::find($schedule->ID_NV);
                                 @endphp
                                 {{ $staff->Ten_NV ?? $schedule->ID_NV }}
-                                @if($schedule->TrangThaiBuoi != 'cancelled' && $schedule->TrangThaiBuoi != 'completed' && $order->TrangThaiDon != 'cancelled' && $order->TrangThaiDon != 'rejected')
+                                @if($schedule->TrangThaiBuoi != 'cancelled' && $schedule->TrangThaiBuoi != 'completed' && $order->TrangThaiDon != 'cancelled')
                                     <button onclick="openAssignModal('{{ $schedule->ID_Buoi }}')" title="Đổi nhân viên" style="background: none; border: none; cursor: pointer; color: var(--color-primary); vertical-align: middle;">
                                         <span class="material-icons-sharp" style="font-size: 1.2rem;">edit</span>
                                     </button>
+                                    <button onclick="cancelSession('{{ $schedule->ID_Buoi }}')" title="Hủy buổi làm" style="background: none; border: none; cursor: pointer; color: var(--color-danger); vertical-align: middle; margin-left: 0.5rem;">
+                                        <span class="material-icons-sharp" style="font-size: 1.2rem;">cancel</span>
+                                    </button>
                                 @endif
                             @else
-                                @if($schedule->TrangThaiBuoi != 'cancelled' && $schedule->TrangThaiBuoi != 'completed' && $order->TrangThaiDon != 'cancelled' && $order->TrangThaiDon != 'rejected')
+                                @if($schedule->TrangThaiBuoi != 'cancelled' && $schedule->TrangThaiBuoi != 'completed' && $order->TrangThaiDon != 'cancelled')
                                     <button class="status-badge primary" onclick="openAssignModal('{{ $schedule->ID_Buoi }}')" style="border: none; cursor: pointer;">Chọn NV</button>
+                                    <button onclick="cancelSession('{{ $schedule->ID_Buoi }}')" title="Hủy buổi làm" style="background: none; border: none; cursor: pointer; color: var(--color-danger); vertical-align: middle; margin-left: 0.5rem;">
+                                        <span class="material-icons-sharp" style="font-size: 1.2rem;">cancel</span>
+                                    </button>
                                 @endif
                             @endif
                         </td>
@@ -488,6 +490,32 @@
                 location.reload();
             } else {
                 alert('Có lỗi xảy ra.');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Lỗi kết nối.');
+        });
+    }
+
+    function cancelSession(sessionId) {
+        if (!confirm('Bạn có chắc chắn muốn hủy buổi làm này? Nếu đã thanh toán VNPay, tiền sẽ được hoàn lại.')) return;
+
+        fetch(`{{ route('admin.orders.cancel-session') }}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ session_id: sessionId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert(data.message || 'Có lỗi xảy ra.');
             }
         })
         .catch(err => {
