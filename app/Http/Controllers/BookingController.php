@@ -20,6 +20,7 @@ use App\Models\NhanVien;
 use App\Models\TaiKhoan;
 use App\Services\VNPayService;
 use App\Services\SurchargeService;
+use App\Services\StaffWalletService;
 use App\Services\RefundService;
 use App\Services\NotificationService;
 use App\Support\IdGenerator;
@@ -758,6 +759,12 @@ class BookingController extends Controller
 
         $status  = 'failed';
         $message = 'Thanh toan that bai.';
+        $handledOrder = false;
+        $handledWallet = false;
+
+        if (!$isValidSignature) {
+            $message = 'Chu ky khong hop le.';
+        }
 
         if ($isValidSignature && $responseCode === '00') {
             $status  = 'success';
@@ -766,6 +773,7 @@ class BookingController extends Controller
             if ($txnRef) {
                 $order = DonDat::find($txnRef);
                 if ($order) {
+                    $handledOrder = true;
                     // Save old status for notification
                     $oldStatus = $order->TrangThaiDon;
                     
@@ -806,10 +814,42 @@ class BookingController extends Controller
                         $payment->MaGiaoDichVNPAY = $transactionNo;
                         $payment->save();
                     }
+                } else {
+                    $walletTx = app(StaffWalletService::class)
+                        ->finalizeTopup($txnRef, true, $transactionNo, $responseCode);
+                    if ($walletTx) {
+                        $handledWallet = true;
+                        $message = 'Nap tien thanh cong.';
+                    }
                 }
             }
-        } elseif (!$isValidSignature) {
-            $message = 'Chu ky khong hop le.';
+        } elseif ($isValidSignature && $txnRef) {
+            // Mark payment as failed when VNPay returns non-00
+            $order = DonDat::find($txnRef);
+            if ($order) {
+                $handledOrder = true;
+                $payment = LichSuThanhToan::where('ID_DD', $order->ID_DD)
+                    ->where('PhuongThucThanhToan', 'VNPay')
+                    ->orderByDesc('ThoiGian')
+                    ->first();
+                if ($payment) {
+                    $payment->TrangThai = 'ThatBai';
+                    $payment->MaGiaoDichVNPAY = $transactionNo;
+                    $payment->save();
+                }
+                $message = 'Thanh toan khong thanh cong. Ma: ' . $responseCode;
+            }
+        }
+
+        if ($txnRef && !$handledOrder && (!$isValidSignature || $responseCode !== '00')) {
+            $walletTx = app(StaffWalletService::class)
+                ->finalizeTopup($txnRef, false, $transactionNo, $responseCode);
+            if ($walletTx) {
+                $handledWallet = true;
+                if ($message === 'Thanh toan that bai.') {
+                    $message = 'Nap tien that bai.';
+                }
+            }
         }
 
         Log::info('VNPay return handled', [
@@ -818,6 +858,7 @@ class BookingController extends Controller
             'transaction_no' => $transactionNo,
             'status'         => $status,
             'valid_signature'=> $isValidSignature,
+            'wallet_handled' => $handledWallet,
         ]);
 
         $appRedirect = $request->query('app_redirect');

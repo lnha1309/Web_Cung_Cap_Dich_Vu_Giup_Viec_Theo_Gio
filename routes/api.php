@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\ApiVoucherController;
 use App\Http\Controllers\Api\ApiStaffScheduleController;
 use App\Http\Controllers\Api\ApiStaffBookingController;
 use App\Http\Controllers\Api\ApiNotificationController;
+use App\Http\Controllers\Api\ApiStaffWalletController;
 
 /*
 |--------------------------------------------------------------------------
@@ -31,6 +32,8 @@ Route::prefix('auth')->group(function () {
     Route::post('/check-username', [ApiAuthController::class, 'checkUsername']);
     Route::post('/check-phone', [ApiAuthController::class, 'checkPhone']);
     Route::post('/check-email', [ApiAuthController::class, 'checkEmail']);
+    Route::post('/password/send-otp', [ApiAuthController::class, 'sendResetOtp']);
+    Route::post('/password/reset', [ApiAuthController::class, 'resetPasswordWithOtp']);
 });
 
 // Public service routes
@@ -95,6 +98,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/schedules', [ApiStaffScheduleController::class, 'update']);
         Route::post('/schedules', [ApiStaffScheduleController::class, 'store']);
 
+        Route::get('/wallet', [ApiStaffWalletController::class, 'summary']);
+        Route::get('/wallet/history', [ApiStaffWalletController::class, 'history']);
+        Route::get('/wallet/history/{id}', [ApiStaffWalletController::class, 'show']);
+        Route::post('/wallet/topup', [ApiStaffWalletController::class, 'topup']);
+
         Route::get('/bookings/available', [ApiStaffBookingController::class, 'available']);
         Route::get('/bookings', [ApiStaffBookingController::class, 'index']);
         Route::get('/bookings/{id}', [ApiStaffBookingController::class, 'show']);
@@ -102,6 +110,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/bookings/{id}/reject', [ApiStaffBookingController::class, 'reject']);
         Route::post('/bookings/{id}/claim', [ApiStaffBookingController::class, 'claim']);
         Route::post('/bookings/{id}/complete', [ApiStaffBookingController::class, 'complete']);
+        Route::get('/month-sessions/available', [ApiStaffBookingController::class, 'availableMonthSessions']);
+        Route::post('/month-sessions/{id}/claim', [ApiStaffBookingController::class, 'claimMonthSession']);
+        Route::post('/month-sessions/{id}/reject', [ApiStaffBookingController::class, 'rejectMonthSession']);
         Route::get('/earnings', [ApiStaffBookingController::class, 'earnings']);
         Route::get('/weekly-report', [ApiStaffBookingController::class, 'weeklyReport']);
     });

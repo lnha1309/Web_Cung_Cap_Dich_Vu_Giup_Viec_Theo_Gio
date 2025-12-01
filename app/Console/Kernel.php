@@ -2,9 +2,11 @@
 
 namespace App\Console;
 
+use App\Jobs\AutoCancelOrdersJob;
+use App\Jobs\AutoCompleteOrdersJob;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
-use App\Jobs\AutoCancelOrdersJob;
 
 class Kernel extends ConsoleKernel
 {
@@ -13,13 +15,11 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // Trong giai đoạn dev: cho chạy mỗi phút cho dễ test
-        $schedule->call(function () {
-            // Chạy job ngay lập tức, không đưa vào queue
-            AutoCancelOrdersJob::dispatchSync();
-        })->everyMinute();
+        // Dev: run every minute for easy testing (force sync connection so queue worker không cần chạy)
+        $schedule->job(new AutoCancelOrdersJob())->everyMinute()->onConnection('sync');
+        $schedule->job(new AutoCompleteOrdersJob())->everyMinute()->onConnection('sync');
 
-        // Sau khi ổn rồi có thể đổi lại:
+        // Once stable, consider slowing down:
         // })->everyFiveMinutes();
     }
 

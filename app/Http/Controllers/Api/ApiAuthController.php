@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use App\Mail\OtpMail;
+use App\Mail\ResetPasswordOtpMail;
 
 class ApiAuthController extends Controller
 {
@@ -306,6 +307,123 @@ class ApiAuthController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Doi mat khau thanh cong.',
+        ]);
+    }
+
+    /**
+     * Send OTP for password reset
+     * POST /api/auth/password/send-otp
+     */
+    public function sendResetOtp(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'username' => ['required', 'string'],
+            'email' => ['required', 'email'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $account = $this->findAccountByUsernameAndEmail($request->username, $request->email);
+        if (!$account) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Khong tim thay tai khoan voi ten dang nhap va email nay.',
+            ], 404);
+        }
+
+        $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $cacheKey = $this->resetOtpCacheKey($request->username, $request->email);
+
+        Cache::put($cacheKey, [
+            'otp' => $otp,
+            'username' => $request->username,
+            'email' => $request->email,
+            'expires_at' => Carbon::now()->addMinutes(10)->timestamp,
+        ], now()->addMinutes(10));
+
+        try {
+            Mail::to($request->email)->send(new ResetPasswordOtpMail($otp));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Da gui ma OTP toi email cua ban. Ma co hieu luc trong 10 phut.',
+                'debug_otp' => config('app.debug') ? $otp : null,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Khong the gui OTP. Vui long thu lai.',
+                'debug_error' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
+        }
+    }
+
+    /**
+     * Reset password with OTP
+     * POST /api/auth/password/reset
+     */
+    public function resetPasswordWithOtp(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'username' => ['required', 'string'],
+            'email' => ['required', 'email'],
+            'otp' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:8'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $cacheKey = $this->resetOtpCacheKey($request->username, $request->email);
+        $cached = Cache::get($cacheKey);
+
+        if (!$cached) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Chua gui OTP hoac OTP da het han. Vui long gui lai.',
+            ], 422);
+        }
+
+        if (($cached['otp'] ?? null) !== $request->otp) {
+            return response()->json([
+                'success' => false,
+                'error' => 'OTP khong dung hoac thong tin khong khop.',
+            ], 422);
+        }
+
+        if (Carbon::now()->timestamp > ($cached['expires_at'] ?? 0)) {
+            Cache::forget($cacheKey);
+            return response()->json([
+                'success' => false,
+                'error' => 'OTP da het han. Vui long gui lai.',
+            ], 422);
+        }
+
+        $account = $this->findAccountByUsernameAndEmail($request->username, $request->email);
+        if (!$account) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Khong tim thay tai khoan voi ten dang nhap va email nay.',
+            ], 404);
+        }
+
+        $account->MatKhau = Hash::make($request->password);
+        $account->save();
+
+        Cache::forget($cacheKey);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Dat lai mat khau thanh cong. Vui long dang nhap bang mat khau moi.',
         ]);
     }
 
@@ -755,6 +873,25 @@ class ApiAuthController extends Controller
                 ],
             ],
         ]);
+    }
+
+    private function resetOtpCacheKey(string $username, string $email): string
+    {
+        $normalized = strtolower(trim($username)) . '|' . strtolower(trim($email));
+        return 'reset_otp_' . md5($normalized);
+    }
+
+    private function findAccountByUsernameAndEmail(string $username, string $email): ?TaiKhoan
+    {
+        return TaiKhoan::where('TenDN', $username)
+            ->where(function ($query) use ($email) {
+                $query->whereHas('khachHang', function ($sub) use ($email) {
+                    $sub->where('Email', $email);
+                })->orWhereHas('nhanVien', function ($sub) use ($email) {
+                    $sub->where('Email', $email);
+                });
+            })
+            ->first();
     }
 
     private function staffRatingStats(?NhanVien $nhanVien): array

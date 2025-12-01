@@ -104,14 +104,14 @@ class AutoCancelOrdersJob implements ShouldQueue
     {
         $count = 0;
 
-        // Find monthly orders with scheduled sessions
+        // Find monthly orders with available sessions
         $orders = DonDat::where('LoaiDon', 'month')
             ->whereIn('TrangThaiDon', ['assigned', 'finding_staff', 'rejected'])
             ->whereHas('lichBuoiThang', function ($query) {
-                $query->whereIn('TrangThaiBuoi', ['scheduled', 'finding_staff']);
+                $query->whereIn('TrangThaiBuoi', ['finding_staff', 'rejected']);
             })
             ->with(['lichBuoiThang' => function ($query) {
-                $query->whereIn('TrangThaiBuoi', ['scheduled', 'finding_staff'])
+                $query->whereIn('TrangThaiBuoi', ['finding_staff', 'rejected'])
                     ->orderBy('NgayLam')
                     ->orderBy('GioBatDau');
             }])
@@ -119,7 +119,7 @@ class AutoCancelOrdersJob implements ShouldQueue
 
         foreach ($orders as $order) {
             try {
-                // Get first scheduled session
+                // Get first available session
                 $firstSession = $order->lichBuoiThang->first();
 
                 if ($firstSession && $firstSession->NgayLam && $firstSession->GioBatDau) {
