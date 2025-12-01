@@ -12,12 +12,14 @@ use App\Models\LichBuoiThang;
 use App\Models\KhachHang;
 use App\Models\NhanVien;
 use App\Models\DanhGiaNhanVien;
+use App\Models\TaiKhoan;
 use App\Services\NotificationService;
 use App\Services\StaffWalletService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class ApiStaffBookingController extends Controller
 {
@@ -43,7 +45,7 @@ class ApiStaffBookingController extends Controller
         if (!$nhanVien) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi nhan vien moi xem duoc don.',
+                'error' => 'Chỉ nhân viên mới xem được đơn.',
             ], 403);
         }
 
@@ -208,7 +210,7 @@ class ApiStaffBookingController extends Controller
         if (!$nhanVien) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi nhan vien moi xem duoc buoi thang.',
+                'error' => 'Chỉ nhân viên mới xem được buổi tháng.',
             ], 403);
         }
 
@@ -281,7 +283,7 @@ class ApiStaffBookingController extends Controller
         if (!$nhanVien) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi nhan vien moi xem duoc thu thap.',
+                'error' => 'Chỉ nhân viên mới xem được thu thập.',
             ], 403);
         }
 
@@ -368,11 +370,11 @@ class ApiStaffBookingController extends Controller
         if (!$nhanVien) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi nhan vien moi xem duoc bao cao.',
+                'error' => 'Chỉ nhân viên mới xem được báo cáo.',
             ], 403);
         }
 
-        // Cho phep nhan ca start/end hoac from/to, mac dinh la tuan hien tai (Thu 2 - Chu nhat)
+        // Cho phép nhân ca start/end hoac from/to, mặc định là tuần hiện tại (Thứ 2 - Chủ nhật)
         $startParam = $request->query('start') ?? $request->query('from');
         $endParam = $request->query('end') ?? $request->query('to');
 
@@ -480,7 +482,7 @@ class ApiStaffBookingController extends Controller
         if (!$nhanVien) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi nhan vien moi xem duoc danh sach don.',
+                'error' => 'Chỉ nhân viên mới xem được danh sách đơn.',
             ], 403);
         }
 
@@ -560,7 +562,7 @@ class ApiStaffBookingController extends Controller
         if (!$nhanVien) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi nhan vien moi xem duoc don.',
+                'error' => 'Chỉ nhân viên mới xem được đơn.',
             ], 403);
         }
 
@@ -572,7 +574,7 @@ class ApiStaffBookingController extends Controller
         if (!$booking) {
             return response()->json([
                 'success' => false,
-                'error' => 'Khong tim thay don dat.',
+                'error' => 'Không tìm thấy đơn.',
             ], 404);
         }
 
@@ -684,7 +686,7 @@ class ApiStaffBookingController extends Controller
         if (!$nhanVien) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi nhan vien moi nhan duoc don.',
+                'error' => 'Chỉ nhân viên mới nhận được đơn.',
             ], 403);
         }
 
@@ -695,7 +697,7 @@ class ApiStaffBookingController extends Controller
         if (!$booking) {
             return response()->json([
                 'success' => false,
-                'error' => 'Khong tim thay don dat.',
+                'error' => 'Không tìm thấy đơn.',
             ], 404);
         }
 
@@ -707,14 +709,14 @@ class ApiStaffBookingController extends Controller
         if ($booking->TrangThaiDon !== 'assigned') {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi duoc nhan don khi trang thai la assigned.',
+                'error' => 'Chỉ được nhận đơn khi trạng thái là assigned.',
             ], 422);
         }
 
         if (!$booking->NgayLam || !$booking->GioBatDau || !$booking->ThoiLuongGio) {
             return response()->json([
                 'success' => false,
-                'error' => 'Don thieu thong tin thoi gian.',
+                'error' => 'Đơn thiếu thông tin thời gian.',
             ], 422);
         }
 
@@ -748,13 +750,13 @@ class ApiStaffBookingController extends Controller
             if ($this->overlaps($start, $end, $b['start'], $b['end'])) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Thoi gian don nay trung voi don ban dang nhan.',
+                    'error' => 'Thời gian đơn này trùng với đơn bạn đang nhận.',
                 ], 422);
             }
             if ($start->gte($b['start']) && $start->lt($gapEnd)) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Can cach it nhat 1 gio sau khi ket thuc don truoc.',
+                    'error' => 'Cần cách ít nhất 1 giờ sau khi kết thúc đơn trước.',
                 ], 422);
             }
         }
@@ -780,7 +782,7 @@ class ApiStaffBookingController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Da nhan don.',
+            'message' => 'Đã nhận đơn.',
         ]);
     }
 
@@ -794,7 +796,7 @@ class ApiStaffBookingController extends Controller
         if (!$nhanVien) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi nhan vien moi nhan duoc don.',
+                'error' => 'Chỉ nhân viên mới nhận được đơn.',
             ], 403);
         }
 
@@ -805,7 +807,7 @@ class ApiStaffBookingController extends Controller
         if (!$booking) {
             return response()->json([
                 'success' => false,
-                'error' => 'Khong tim thay don phu hop.',
+                'error' => 'Không tìm thấy đơn phù hợp.',
             ], 404);
         }
 
@@ -817,14 +819,14 @@ class ApiStaffBookingController extends Controller
         if (!$booking->NgayLam || !$booking->GioBatDau || !$booking->ThoiLuongGio) {
             return response()->json([
                 'success' => false,
-                'error' => 'Don thieu thong tin thoi gian.',
+                'error' => 'Đơn thiếu thông tin thời gian.',
             ], 422);
         }
 
         if ((float) $booking->ThoiLuongGio < 2) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi nhan don co thoi luong tu 2 gio tro len.',
+                'error' => 'Chi nhận đơn có thời lượng từ 2 giờ trở lên.',
             ], 422);
         }
 
@@ -836,14 +838,14 @@ class ApiStaffBookingController extends Controller
         if ($bookingStart->lt($nowPlus2h)) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi nhan don bat dau sau it nhat 2 gio.',
+                'error' => 'Chi nhận đơn bắt đầu sau ít nhất 2 giờ.',
             ], 422);
         }
 
         if ($bookingStart->gt($nowPlus7d)) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi nhan don trong vong 7 ngay toi.',
+                'error' => 'Chi nhận đơn trong vòng 7 ngày tới.',
             ], 422);
         }
 
@@ -872,7 +874,7 @@ class ApiStaffBookingController extends Controller
             if ($b['date'] === $booking->NgayLam && $this->overlaps($start, $end, $b['start'], $b['end'])) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Thoi gian don nay trung voi don ban dang nhan.',
+                    'error' => 'Thời gian đơn này trùng với đơn bạn đang nhận.',
                 ], 422);
             }
 
@@ -881,7 +883,7 @@ class ApiStaffBookingController extends Controller
                 if ($start->gte($b['start']) && $start->lt($gapEnd)) {
                     return response()->json([
                         'success' => false,
-                        'error' => 'Can cach it nhat 1 gio sau khi ket thuc don truoc.',
+                        'error' => 'Cần cách ít nhất 1 giờ sau khi kết thúc đơn trước.',
                     ], 422);
                 }
             }
@@ -908,7 +910,7 @@ class ApiStaffBookingController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Da nhan va xac nhan don.',
+            'message' => 'Đã nhận và xác nhận đơn.',
         ]);
     }
 
@@ -922,7 +924,7 @@ class ApiStaffBookingController extends Controller
         if (!$nhanVien) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi nhan vien moi nhan duoc buoi thang.',
+                'error' => 'Chỉ nhân viên mới nhận được buổi tháng.',
             ], 403);
         }
 
@@ -935,14 +937,14 @@ class ApiStaffBookingController extends Controller
         if (!$session || !$session->donDat || $session->donDat->LoaiDon !== 'month') {
             return response()->json([
                 'success' => false,
-                'error' => 'Khong tim thay buoi thang phu hop.',
+                'error' => 'Không tìm thấy buổi tháng phù hợp.',
             ], 404);
         }
 
         if (!$session->NgayLam || !$session->GioBatDau) {
             return response()->json([
                 'success' => false,
-                'error' => 'Buoi thang thieu thong tin thoi gian.',
+                'error' => 'Buổi tháng thiếu thông tin thời gian.',
             ], 422);
         }
 
@@ -950,7 +952,7 @@ class ApiStaffBookingController extends Controller
         if ($durationHours < 2) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi nhan buoi tu 2 gio tro len.',
+                'error' => 'Chi nhận buổi từ 2 giờ trở lên.',
             ], 422);
         }
 
@@ -961,7 +963,7 @@ class ApiStaffBookingController extends Controller
         if ($sessionStart->lt(Carbon::now()->addHours(2))) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi nhan buoi bat dau sau it nhat 2 gio.',
+                'error' => 'Chi nhận buổi bắt đầu sau ít nhất 2 giờ.',
             ], 422);
         }
 
@@ -977,7 +979,7 @@ class ApiStaffBookingController extends Controller
         if ($sessionStart->gt($sevenDaysAhead)) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi nhan buoi trong 7 ngay toi.',
+                'error' => 'Chi nhận buổi trong vòng 7 ngày tới.',
             ], 422);
         }
 
@@ -1026,13 +1028,13 @@ class ApiStaffBookingController extends Controller
             if ($this->overlaps($startTime, $endTime, $b['start'], $b['end'])) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Thoi gian buoi nay trung voi don ban dang nhan.',
+                    'error' => 'Thời gian buổi này trùng với đơn bạn đang nhận.',
                 ], 422);
             }
             if ($startTime->gte($b['start']) && $startTime->lt($gapEnd)) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Can cach it nhat 1 gio sau khi ket thuc don truoc.',
+                    'error' => 'Cần cách ít nhất 1 giờ sau khi kết thúc đơn trước.',
                 ], 422);
             }
         }
@@ -1045,13 +1047,13 @@ class ApiStaffBookingController extends Controller
             if ($this->overlaps($startTime, $endTime, $b['start'], $b['end'])) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Thoi gian buoi nay trung voi buoi thang ban dang nhan.',
+                    'error' => 'Thời gian buổi này trùng với buổi tháng bạn đang nhận.',
                 ], 422);
             }
             if ($startTime->gte($b['start']) && $startTime->lt($gapEnd)) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Can cach it nhat 1 gio sau khi ket thuc buoi truoc.',
+                    'error' => 'Cần cách ít nhất 1 giờ sau khi kết thúc buổi trước.',
                 ], 422);
             }
         }
@@ -1069,7 +1071,7 @@ class ApiStaffBookingController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Da nhan buoi thang.',
+            'message' => 'Đã nhận và xác nhận buổi tháng.',
         ]);
     }
 
@@ -1083,7 +1085,7 @@ class ApiStaffBookingController extends Controller
         if (!$nhanVien) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi nhan vien moi tu choi duoc buoi thang.',
+                'error' => 'Chỉ nhân viên mới từ chối được buổi tháng.',
             ], 403);
         }
 
@@ -1095,14 +1097,14 @@ class ApiStaffBookingController extends Controller
         if (!$session || !$session->donDat || $session->donDat->LoaiDon !== 'month') {
             return response()->json([
                 'success' => false,
-                'error' => 'Khong tim thay buoi thang phu hop.',
+                'error' => 'Không tìm thấy buổi tháng phù hợp.',
             ], 404);
         }
 
         if ($session->TrangThaiBuoi !== 'assigned') {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi tu choi khi trang thai buoi la assigned.',
+                'error' => 'Chi từ chối khi trạng thái buổi là assigned.',
             ], 422);
         }
 
@@ -1128,9 +1130,15 @@ class ApiStaffBookingController extends Controller
             }
         }
 
+        $this->logReject($nhanVien->ID_TK, $session->ID_Buoi, 'month_session');
+        $locked = $this->checkAndBanStaff($nhanVien->ID_TK);
+
         return response()->json([
             'success' => true,
-            'message' => 'Da tu choi buoi thang.',
+            'message' => $locked
+                ? 'Đã từ chối buổi tháng và tài khoản bị khóa (banned) do từ chối quá 2 lần/tuan.'
+                : 'Đã từ chối buổi tháng.',
+            'locked' => $locked,
         ]);
     }
 
@@ -1144,7 +1152,7 @@ class ApiStaffBookingController extends Controller
         if (!$nhanVien) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi nhan vien moi tu choi duoc don.',
+                'error' => 'Chỉ nhân viên mới từ chối được đơn.',
             ], 403);
         }
 
@@ -1155,14 +1163,14 @@ class ApiStaffBookingController extends Controller
         if (!$booking) {
             return response()->json([
                 'success' => false,
-                'error' => 'Khong tim thay don dat.',
+                'error' => 'Không tìm thấy đơn.',
             ], 404);
         }
 
         if ($booking->TrangThaiDon !== 'assigned') {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi duoc tu choi don khi trang thai la assigned.',
+                'error' => 'Chi được từ chối đơn khi trạng thái là assigned.',
             ], 422);
         }
 
@@ -1184,9 +1192,15 @@ class ApiStaffBookingController extends Controller
         // Ensure schedule stays ready (not counted as assigned)
         $this->touchScheduleStatus($nhanVien->ID_NV, $booking, 'ready');
 
+        $this->logReject($nhanVien->ID_TK, $booking->ID_DD, 'hour_booking');
+        $locked = $this->checkAndBanStaff($nhanVien->ID_TK);
+
         return response()->json([
             'success' => true,
-            'message' => 'Da tu choi don.',
+            'message' => $locked
+                ? 'Đã từ chối đơn và tài khoản bị khóa (banned) do từ chối quá 2 lần/tuan.'
+                : 'Đã từ chối đơn.',
+            'locked' => $locked,
         ]);
     }
 
@@ -1200,7 +1214,7 @@ class ApiStaffBookingController extends Controller
         if (!$nhanVien) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi nhan vien moi hoan thanh don.',
+                'error' => 'Chỉ nhân viên mới hoàn thành được đơn.',
             ], 403);
         }
 
@@ -1211,21 +1225,21 @@ class ApiStaffBookingController extends Controller
         if (!$booking) {
             return response()->json([
                 'success' => false,
-                'error' => 'Khong tim thay don dat.',
+                'error' => 'Không tìm thấy đơn.',
             ], 404);
         }
 
         if (!in_array($booking->TrangThaiDon, ['assigned', 'confirmed', 'completed'], true)) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi hoan thanh don dang lam.',
+                'error' => 'Chi hoàn thành đơn đang làm.',
             ], 422);
         }
 
         if (!$booking->NgayLam || !$booking->GioBatDau || !$booking->ThoiLuongGio) {
             return response()->json([
                 'success' => false,
-                'error' => 'Don thieu thong tin thoi gian.',
+                'error' => 'Đơn thiếu thông tin thời gian.',
             ], 422);
         }
 
@@ -1237,7 +1251,7 @@ class ApiStaffBookingController extends Controller
         if (Carbon::now()->lt($end)) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi hoan thanh sau khi ket thuc don.',
+                'error' => 'Chi hoàn thành sau khi kết thúc đơn.',
             ], 422);
         }
 
@@ -1284,14 +1298,14 @@ class ApiStaffBookingController extends Controller
                 if ($normalizedMethod === 'cash') {
                     $commission = -1 * round($orderAmount * 0.2, 2);
                     $walletService->applyChange($nhanVien, $commission, 'cash_commission', [
-                        'description' => 'Tru 20% don tien mat ' . $booking->ID_DD,
+                        'description' => 'Trừ 20% đơn tiền mặt ' . $booking->ID_DD,
                         'order_id' => $booking->ID_DD,
                         'source' => 'cash',
                     ]);
                 } else {
                     $credit = round($orderAmount * 0.8, 2);
                     $walletService->applyChange($nhanVien, $credit, 'order_credit', [
-                        'description' => 'Cong 80% don thanh toan online ' . $booking->ID_DD,
+                        'description' => 'Cộng 80% đơn thanh toán online ' . $booking->ID_DD,
                         'order_id' => $booking->ID_DD,
                         'source' => strtolower((string) $paymentMethod),
                     ]);
@@ -1301,7 +1315,7 @@ class ApiStaffBookingController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Da hoan thanh don.',
+            'message' => 'Đã hoàn thành đơn.',
         ]);
     }
 
@@ -1313,7 +1327,7 @@ class ApiStaffBookingController extends Controller
 
         return response()->json([
             'success' => false,
-            'error' => 'So du khong du. Vui long nap toi thieu 400.000d qua VNPAY de nhan don.',
+            'error' => 'Số dư không đủ. Vui lòng nạp tối thiểu 400.000đ qua VNPAY để nhận đơn.',
         ], 403);
     }
 
@@ -1342,5 +1356,45 @@ class ApiStaffBookingController extends Controller
             $schedule->TrangThai = $status;
             $schedule->save();
         }
+    }
+
+    private function logReject(string $accountId, string $targetId, string $type): void
+    {
+        try {
+            DB::table('StaffRejectLogs')->insert([
+                'staff_id' => $accountId,
+                'target_id' => $targetId,
+                'type' => $type,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Log reject failed', [
+                'staff_id' => $accountId,
+                'target_id' => $targetId,
+                'type' => $type,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function checkAndBanStaff(string $accountId): bool
+    {
+        $weekAgo = Carbon::now()->subDays(7);
+        $count = DB::table('StaffRejectLogs')
+            ->where('staff_id', $accountId)
+            ->where('created_at', '>=', $weekAgo)
+            ->count();
+
+        if ($count > 2) {
+            $taiKhoan = TaiKhoan::find($accountId);
+            if ($taiKhoan && $taiKhoan->TrangThaiTK !== 'banned') {
+                $taiKhoan->TrangThaiTK = 'banned';
+                $taiKhoan->save();
+            }
+            return true;
+        }
+
+        return false;
     }
 }

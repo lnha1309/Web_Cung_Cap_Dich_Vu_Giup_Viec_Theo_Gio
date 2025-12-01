@@ -177,6 +177,11 @@ class ApiBookingController extends Controller
             'cancelled' => $sessions->where('TrangThaiBuoi', 'cancelled')->count(),
         ];
         $sessionCounts['upcoming'] = max(0, $sessionCounts['total'] - $sessionCounts['completed'] - $sessionCounts['cancelled']);
+        $canRescheduleFindingStaff = $booking->LoaiDon === 'hour'
+            && $booking->TrangThaiDon === 'finding_staff'
+            && $booking->FindingStaffPromptSentAt !== null
+            && ($booking->RescheduleCount ?? 0) < 1;
+        $suggestedNearestTime = $this->suggestNearestAvailableTime($booking);
 
         return response()->json([
             'success' => true,
@@ -227,6 +232,11 @@ class ApiBookingController extends Controller
                 ] : null,
                 'can_rate' => in_array($booking->TrangThaiDon, ['completed', 'done'], true)
                     && !$rating,
+                'finding_staff_prompt_sent_at' => $booking->FindingStaffPromptSentAt,
+                'finding_staff_response' => $booking->FindingStaffResponse,
+                'reschedule_count' => (int) ($booking->RescheduleCount ?? 0),
+                'can_reschedule' => $canRescheduleFindingStaff,
+                'suggested_time' => $suggestedNearestTime,
             ]
         ]);
     }
@@ -645,6 +655,382 @@ class ApiBookingController extends Controller
     }
 
     /**
+     * Handle finding-staff prompt (wait / reschedule)
+     * POST /api/bookings/{id}/finding-staff-action
+     */
+    public function findingStaffAction(Request $request, string $id, VNPayService $vnPay, NotificationService $notificationService)
+    {
+        $user = $request->user();
+        $khachHang = $user->khachHang;
+        if (!$khachHang) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Vui long dang nhap khach hang.',
+            ], 403);
+        }
+
+        $booking = DonDat::with('lichSuThanhToan')
+            ->where('ID_DD', $id)
+            ->where('ID_KH', $khachHang->ID_KH)
+            ->first();
+
+        if (!$booking) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Khong tim thay don dat.',
+            ], 404);
+        }
+
+        if ($booking->LoaiDon !== 'hour' || $booking->TrangThaiDon !== 'finding_staff') {
+            return response()->json([
+                'success' => false,
+                'error' => 'Chi ho tro don theo gio dang tim nhan vien.',
+            ], 422);
+        }
+
+        if (($booking->RescheduleCount ?? 0) >= 1) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Chi duoc doi thoi gian 1 lan.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'action' => ['required', 'in:wait,reschedule'],
+            'new_date' => ['required_if:action,reschedule', 'date'],
+            'new_time' => ['required_if:action,reschedule', 'date_format:H:i'],
+        ]);
+
+        if ($validated['action'] === 'wait') {
+            $booking->FindingStaffResponse = 'wait';
+            if (!$booking->FindingStaffPromptSentAt) {
+                $booking->FindingStaffPromptSentAt = now();
+            }
+            $booking->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Da ghi nhan ban tiep tuc cho.',
+            ]);
+        }
+
+        $newDate = $validated['new_date'];
+        $newTime = $validated['new_time'];
+        $newStart = Carbon::parse($newDate . ' ' . $newTime);
+
+        if ($newStart->hour < 7 || $newStart->hour > 17) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Chi cho phep doi trong khung 07:00 - 17:00.',
+            ], 422);
+        }
+
+        if ($newStart->lessThanOrEqualTo(Carbon::now())) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Thoi gian moi phai lon hon hien tai.',
+            ], 422);
+        }
+
+        $oldHour = $booking->GioBatDau ? Carbon::parse($booking->GioBatDau)->hour : null;
+        $newHour = $newStart->hour;
+
+        $surchargeAmount = 30000;
+        $hasPt001 = \App\Models\ChiTietPhuThu::where('ID_DD', $booking->ID_DD)
+            ->where('ID_PT', 'PT001')
+            ->exists();
+
+        $needsSurcharge = ($newHour < 8 || $newHour == 17)
+            && ($oldHour === null || !($oldHour < 8 || $oldHour == 17))
+            && !$hasPt001;
+
+        $paymentUrl = null;
+
+        $booking->NgayLam = $newDate;
+        $booking->GioBatDau = $newStart->format('H:i:s');
+        $booking->FindingStaffResponse = 'reschedule';
+        $booking->RescheduleCount = ($booking->RescheduleCount ?? 0) + 1;
+
+        if ($needsSurcharge) {
+            \App\Models\ChiTietPhuThu::create([
+                'ID_PT' => 'PT001',
+                'ID_DD' => $booking->ID_DD,
+                'Ghichu' => 'Phu thu doi gio 7h/17h',
+            ]);
+
+            $booking->TongTien = ($booking->TongTien ?? 0) + $surchargeAmount;
+            $booking->TongTienSauGiam = ($booking->TongTienSauGiam ?? $booking->TongTien ?? 0) + $surchargeAmount;
+
+            $payment = $booking->lichSuThanhToan->first();
+            $paymentMethod = $payment?->PhuongThucThanhToan ?? 'TienMat';
+
+            if ($paymentMethod === 'VNPay') {
+                $paymentId = IdGenerator::next('LichSuThanhToan', 'ID_LSTT', 'LSTT_');
+
+                LichSuThanhToan::create([
+                    'ID_LSTT' => $paymentId,
+                    'PhuongThucThanhToan' => 'VNPay',
+                    'TrangThai' => 'ChoXuLy',
+                    'SoTienThanhToan' => $surchargeAmount,
+                    'ID_DD' => $booking->ID_DD,
+                    'LoaiGiaoDich' => 'payment',
+                    'GhiChu' => 'Phu thu doi gio cao diem (truoc 8h hoac 17h)',
+                    'ThoiGian' => now(),
+                ]);
+
+                $paymentUrl = $vnPay->createPaymentUrl([
+                    'txn_ref' => $paymentId,
+                    'amount' => $surchargeAmount,
+                    'order_info' => 'Phu thu doi gio don ' . $booking->ID_DD,
+                ]);
+            } else {
+                LichSuThanhToan::create([
+                    'ID_LSTT' => IdGenerator::next('LichSuThanhToan', 'ID_LSTT', 'LSTT_'),
+                    'PhuongThucThanhToan' => 'TienMat',
+                    'TrangThai' => 'ChoXuLy',
+                    'SoTienThanhToan' => $surchargeAmount,
+                    'ID_DD' => $booking->ID_DD,
+                    'LoaiGiaoDich' => 'payment',
+                    'GhiChu' => 'Phu thu doi gio cao diem (truoc 8h hoac 17h)',
+                    'ThoiGian' => now(),
+                ]);
+            }
+        }
+
+        $booking->save();
+
+        try {
+            $notificationService->notifyOrderRescheduled($booking);
+        } catch (\Exception $e) {
+            Log::error('Failed to send reschedule notification (API)', [
+                'booking_id' => $booking->ID_DD,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'requires_payment' => $paymentUrl !== null,
+            'payment_url' => $paymentUrl,
+            'message' => $needsSurcharge
+                ? 'Da cap nhat thoi gian va them phu thu 30,000d.'
+                : 'Da cap nhat thoi gian bat dau don.',
+        ]);
+    }
+
+    /**
+     * Get staff/time suggestions for finding_staff order
+     * GET /api/bookings/{id}/suggestions
+     */
+    public function suggestions(Request $request, string $id)
+    {
+        $user = $request->user();
+        $khachHang = $user->khachHang;
+        if (!$khachHang) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Vui long dang nhap khach hang.',
+            ], 403);
+        }
+
+        $booking = DonDat::with('diaChi', 'dichVu')
+            ->where('ID_DD', $id)
+            ->where('ID_KH', $khachHang->ID_KH)
+            ->first();
+
+        if (!$booking) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Khong tim thay don dat.',
+            ], 404);
+        }
+
+        if ($booking->LoaiDon !== 'hour' || $booking->TrangThaiDon !== 'finding_staff') {
+            return response()->json([
+                'success' => false,
+                'error' => 'Chi ho tro don theo gio dang tim nhan vien.',
+            ], 422);
+        }
+
+        $suggestions = $this->getSuggestedStaffAndTime($booking);
+
+        return response()->json([
+            'success' => true,
+            'data' => $suggestions,
+        ]);
+    }
+
+    /**
+     * Apply a suggestion (assign staff + new time)
+     * POST /api/bookings/{id}/apply-suggestion
+     */
+    public function applySuggestion(Request $request, string $id, VNPayService $vnPay, NotificationService $notificationService)
+    {
+        $user = $request->user();
+        $khachHang = $user->khachHang;
+        if (!$khachHang) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Vui long dang nhap khach hang.',
+            ], 403);
+        }
+
+        $booking = DonDat::with(['dichVu', 'lichSuThanhToan'])
+            ->where('ID_DD', $id)
+            ->where('ID_KH', $khachHang->ID_KH)
+            ->first();
+
+        if (!$booking) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Khong tim thay don dat.',
+            ], 404);
+        }
+
+        if ($booking->LoaiDon !== 'hour' || $booking->TrangThaiDon !== 'finding_staff') {
+            return response()->json([
+                'success' => false,
+                'error' => 'Chi ho tro don theo gio dang tim nhan vien.',
+            ], 422);
+        }
+
+        if (($booking->RescheduleCount ?? 0) >= 1) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Chi duoc doi thoi gian 1 lan.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'id_nv' => ['required', 'string', 'exists:NhanVien,ID_NV'],
+            'suggested_date' => ['required', 'date'],
+            'suggested_time' => ['required', 'date_format:H:i'],
+        ]);
+
+        $newDate = $validated['suggested_date'];
+        $newTime = $validated['suggested_time'];
+        $newStaffId = $validated['id_nv'];
+
+        $newStart = Carbon::parse($newDate . ' ' . $newTime);
+        if ($newStart->hour < 7 || $newStart->hour > 17) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Gio bat dau phai trong khung 07:00 - 17:00',
+            ], 422);
+        }
+
+        if ($newStart->lessThanOrEqualTo(Carbon::now())) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Thoi gian phai lon hon hien tai.',
+            ], 422);
+        }
+
+        $oldHour = $booking->GioBatDau ? Carbon::parse($booking->GioBatDau)->hour : null;
+        $newHour = $newStart->hour;
+
+        $surchargeAmount = 30000;
+        $hasPt001 = \App\Models\ChiTietPhuThu::where('ID_DD', $booking->ID_DD)
+            ->where('ID_PT', 'PT001')
+            ->exists();
+
+        $needsSurcharge = ($newHour < 8 || $newHour == 17)
+            && ($oldHour === null || !($oldHour < 8 || $oldHour == 17))
+            && !$hasPt001;
+
+        $paymentUrl = null;
+
+        $booking->NgayLam = $newDate;
+        $booking->GioBatDau = $newStart->format('H:i:s');
+        $booking->ID_NV = $newStaffId;
+        $booking->TrangThaiDon = 'assigned';
+        $booking->FindingStaffResponse = 'reschedule';
+        $booking->RescheduleCount = ($booking->RescheduleCount ?? 0) + 1;
+
+        if ($needsSurcharge) {
+            \App\Models\ChiTietPhuThu::create([
+                'ID_PT' => 'PT001',
+                'ID_DD' => $booking->ID_DD,
+                'Ghichu' => 'Phu thu doi gio 7h/17h',
+            ]);
+
+            $booking->TongTien = ($booking->TongTien ?? 0) + $surchargeAmount;
+            $booking->TongTienSauGiam = ($booking->TongTienSauGiam ?? $booking->TongTien ?? 0) + $surchargeAmount;
+
+            $payment = $booking->lichSuThanhToan->first();
+            $paymentMethod = $payment?->PhuongThucThanhToan ?? 'TienMat';
+
+            if ($paymentMethod === 'VNPay') {
+                $paymentId = IdGenerator::next('LichSuThanhToan', 'ID_LSTT', 'LSTT_');
+
+                LichSuThanhToan::create([
+                    'ID_LSTT' => $paymentId,
+                    'PhuongThucThanhToan' => 'VNPay',
+                    'TrangThai' => 'ChoXuLy',
+                    'SoTienThanhToan' => $surchargeAmount,
+                    'ID_DD' => $booking->ID_DD,
+                    'LoaiGiaoDich' => 'payment',
+                    'GhiChu' => 'Phu thu doi gio cao diem (truoc 8h hoac 17h)',
+                    'ThoiGian' => now(),
+                ]);
+
+                $paymentUrl = $vnPay->createPaymentUrl([
+                    'txn_ref' => $paymentId,
+                    'amount' => $surchargeAmount,
+                    'order_info' => 'Phu thu doi gio don ' . $booking->ID_DD,
+                ]);
+            } else {
+                LichSuThanhToan::create([
+                    'ID_LSTT' => IdGenerator::next('LichSuThanhToan', 'ID_LSTT', 'LSTT_'),
+                    'PhuongThucThanhToan' => 'TienMat',
+                    'TrangThai' => 'ChoXuLy',
+                    'SoTienThanhToan' => $surchargeAmount,
+                    'ID_DD' => $booking->ID_DD,
+                    'LoaiGiaoDich' => 'payment',
+                    'GhiChu' => 'Phu thu doi gio cao diem (truoc 8h hoac 17h)',
+                    'ThoiGian' => now(),
+                ]);
+            }
+        }
+
+        $booking->save();
+
+        try {
+            $this->notifyStaffAssigned($booking);
+        } catch (\Exception $e) {
+            Log::error('Failed to notify staff assigned after suggestion (API)', [
+                'booking_id' => $booking->ID_DD,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        try {
+            $notificationService->notifyOrderRescheduled($booking);
+        } catch (\Exception $e) {
+            Log::error('Failed to send reschedule notification (API apply suggestion)', [
+                'booking_id' => $booking->ID_DD,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'requires_payment' => $paymentUrl !== null,
+            'payment_url' => $paymentUrl,
+            'message' => $needsSurcharge
+                ? 'Da cap nhat don va them phu thu 30,000d.'
+                : 'Da cap nhat don va gan nhan vien.',
+            'data' => [
+                'new_date' => $newStart->format('d/m/Y'),
+                'new_time' => $newStart->format('H:i'),
+                'staff_name' => NhanVien::find($newStaffId)?->Ten_NV ?? '',
+                'surcharge_added' => $needsSurcharge,
+                'surcharge_amount' => $needsSurcharge ? $surchargeAmount : 0,
+            ],
+        ]);
+    }
+
+    /**
      * Find available staff
      * POST /api/bookings/find-staff
      */
@@ -947,6 +1333,223 @@ private function notifyStaffAssigned(DonDat $booking): void
         ])->post('https://api.onesignal.com/notifications', $payload);
     }
 
+    /**
+     * Suggest nearest time in 07-17 with ready staff
+     */
+    private function suggestNearestAvailableTime(DonDat $booking): ?string
+    {
+        if ($booking->LoaiDon !== 'hour' || !$booking->NgayLam || !$booking->GioBatDau) {
+            return null;
+        }
+
+        try {
+            $base = Carbon::parse($booking->GioBatDau);
+        } catch (\Exception) {
+            return null;
+        }
+
+        $duration = $booking->ThoiLuongGio ?? ($booking->dichVu->ThoiLuong ?? 2);
+        $hours = range(7, 17);
+        $candidates = [];
+        foreach ($hours as $h) {
+            $diff = abs($base->hour - $h);
+            $candidates[] = ['hour' => $h, 'diff' => $diff];
+        }
+
+        usort($candidates, function ($a, $b) {
+            if ($a['diff'] === $b['diff']) {
+                return $a['hour'] <=> $b['hour'];
+            }
+            return $a['diff'] <=> $b['diff'];
+        });
+
+        foreach ($candidates as $cand) {
+            $start = Carbon::parse($booking->NgayLam . ' ' . sprintf('%02d:00:00', $cand['hour']));
+            $end = $start->copy()->addHours((float) $duration);
+
+            $hasStaff = LichLamViec::where('NgayLam', $booking->NgayLam)
+                ->where('TrangThai', 'ready')
+                ->where('GioBatDau', '<=', $start->format('H:i:s'))
+                ->where('GioKetThuc', '>=', $end->format('H:i:s'))
+                ->exists();
+
+            if ($hasStaff) {
+                return $start->format('H:i');
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Get top staff suggestions with nearest available time
+     */
+    private function getSuggestedStaffAndTime(DonDat $booking): array
+    {
+        if ($booking->LoaiDon !== 'hour' || !$booking->NgayLam || !$booking->GioBatDau) {
+            return [];
+        }
+
+        $duration = $booking->ThoiLuongGio ?? ($booking->dichVu->ThoiLuong ?? 2);
+        $originalDate = Carbon::parse($booking->NgayLam);
+
+        $customerQuan = null;
+        if ($booking->diaChi) {
+            $diaChiText = $booking->diaChi->DiaChiDayDu ?? '';
+            if ($diaChiText !== '') {
+                $customerQuan = $this->guessQuanFromAddress($diaChiText);
+            }
+        }
+
+        $suggestions = [];
+        $datesToSearch = [];
+        for ($i = 0; $i <= 3; $i++) {
+            if ($i === 0) {
+                $datesToSearch[] = $originalDate->copy();
+            } else {
+                $datesToSearch[] = $originalDate->copy()->addDays($i);
+                $datesToSearch[] = $originalDate->copy()->subDays($i);
+            }
+        }
+
+        foreach ($datesToSearch as $searchDate) {
+            if ($searchDate->isPast()) {
+                continue;
+            }
+
+            $ngayLam = $searchDate->format('Y-m-d');
+            $lichLamViec = LichLamViec::with('nhanVien')
+                ->where('NgayLam', $ngayLam)
+                ->where('TrangThai', 'ready')
+                ->get();
+
+            foreach ($lichLamViec as $lich) {
+                $nv = $lich->nhanVien;
+                if (!$nv) {
+                    continue;
+                }
+
+                $avgScore = DanhGiaNhanVien::where('ID_NV', $nv->ID_NV)->avg('Diem');
+                $ratingPercent = $avgScore ? round(((float) $avgScore) / 5 * 100) : 30;
+
+                $proximityPercent = 50;
+                if ($customerQuan) {
+                    if ($nv->ID_Quan === $customerQuan->ID_Quan) {
+                        $proximityPercent = 100;
+                    } elseif (
+                        $nv->KhuVucLamViec &&
+                        mb_stripos($nv->KhuVucLamViec, $customerQuan->TenQuan) !== false
+                    ) {
+                        $proximityPercent = 80;
+                    } else {
+                        $nvQuan = $nv->ID_Quan ? Quan::find($nv->ID_Quan) : null;
+                        if (
+                            $nvQuan &&
+                            $nvQuan->ViDo !== null &&
+                            $nvQuan->KinhDo !== null &&
+                            $customerQuan->ViDo !== null &&
+                            $customerQuan->KinhDo !== null
+                        ) {
+                            $distKm = $this->distanceKm(
+                                (float) $nvQuan->ViDo,
+                                (float) $nvQuan->KinhDo,
+                                (float) $customerQuan->ViDo,
+                                (float) $customerQuan->KinhDo
+                            );
+                            $proximityPercent = max(0, 100 - (int) round($distKm * 10));
+                        }
+                    }
+                }
+
+                $scheduleStart = Carbon::parse($lich->GioBatDau);
+                $scheduleEnd = Carbon::parse($lich->GioKetThuc);
+
+                $bestTime = null;
+                $minDiff = PHP_INT_MAX;
+
+                $currentTime = $scheduleStart->copy();
+                while ($currentTime->copy()->addHours($duration)->lessThanOrEqualTo($scheduleEnd)) {
+                    $potentialEnd = $currentTime->copy()->addHours($duration);
+                    $hasConflict = $this->hasTimeConflict(
+                        $nv->ID_NV,
+                        $ngayLam,
+                        $currentTime->format('H:i:s'),
+                        $potentialEnd->format('H:i:s')
+                    );
+
+                    if (!$hasConflict) {
+                        $proposedDateTime = Carbon::parse($ngayLam . ' ' . $currentTime->format('H:i:s'));
+                        $originalDateTime = Carbon::parse($booking->NgayLam . ' ' . $booking->GioBatDau);
+                        $diff = abs($proposedDateTime->diffInMinutes($originalDateTime));
+
+                        if ($diff < $minDiff) {
+                            $minDiff = $diff;
+                            $bestTime = $currentTime->copy();
+                        }
+                    }
+
+                    $currentTime->addMinutes(30);
+                }
+
+                if ($bestTime) {
+                    $hinhAnh = $nv->HinhAnh;
+                    if (empty($hinhAnh)) {
+                        $hinhAnh = 'https://ui-avatars.com/api/?name=' . urlencode($nv->Ten_NV) . '&background=004d2e&color=fff&size=150';
+                    } elseif (!str_starts_with($hinhAnh, 'http')) {
+                        $hinhAnh = url('storage/' . ltrim($hinhAnh, '/'));
+                    }
+
+                    $jobsCompleted = DonDat::where('ID_NV', $nv->ID_NV)
+                        ->where('TrangThaiDon', 'done')
+                        ->count();
+
+                    $score = $ratingPercent * 0.3 + $proximityPercent * 0.7;
+                    $daysDiff = abs($searchDate->diffInDays($originalDate));
+                    $datePenalty = $daysDiff * 10;
+                    $adjustedScore = max(0, $score - $datePenalty);
+
+                    $suggestions[] = [
+                        'id_nv' => $nv->ID_NV,
+                        'ten_nv' => $nv->Ten_NV,
+                        'hinh_anh' => $hinhAnh,
+                        'sdt' => $nv->SDT,
+                        'rating_percent' => $ratingPercent,
+                        'avg_rating' => $avgScore ? round($avgScore, 1) : 0,
+                        'proximity_percent' => $proximityPercent,
+                        'score' => (float) $adjustedScore,
+                        'jobs_completed' => $jobsCompleted,
+                        'suggested_date' => $searchDate->format('Y-m-d'),
+                        'suggested_time' => $bestTime->format('H:i'),
+                        'time_diff_minutes' => $minDiff,
+                        'days_diff' => $daysDiff,
+                    ];
+                }
+            }
+
+            if (count($suggestions) >= 10) {
+                break;
+            }
+        }
+
+        usort($suggestions, static function (array $a, array $b): int {
+            return $b['score'] <=> $a['score'];
+        });
+
+        return array_slice($suggestions, 0, 3);
+    }
+
+    private function hasTimeConflict(string $staffId, string $date, string $startTime, string $endTime): bool
+    {
+        return DonDat::where('ID_NV', $staffId)
+            ->where('NgayLam', $date)
+            ->whereNotIn('TrangThaiDon', ['cancelled', 'rejected'])
+            ->where(function ($query) use ($startTime, $endTime) {
+                $query->whereRaw('GioBatDau < ?', [$endTime])
+                    ->whereRaw('ADDTIME(GioBatDau, SEC_TO_TIME(ThoiLuongGio * 3600)) > ?', [$startTime]);
+            })
+            ->exists();
+    }
+
     // Helper methods
     private function voucherUsedByCustomer(string $customerId, string $code): bool
     {
@@ -1109,4 +1712,3 @@ private function notifyStaffAssigned(DonDat $booking): void
         return $record?->PhuongThucThanhToan;
     }
 }
-
