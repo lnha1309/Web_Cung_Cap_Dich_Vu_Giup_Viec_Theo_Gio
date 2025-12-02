@@ -13,6 +13,8 @@
                         Xác nhận đặt đơn thành công
                     @elseif($type === 'failed')
                         Thanh toán không thành công
+                    @elseif($type === 'session_cancelled')
+                        Hủy buổi làm việc
                     @else
                         Đơn hàng đã bị hủy
                     @endif
@@ -28,6 +30,8 @@
                         Cảm ơn bạn đã đặt dịch vụ. Dưới đây là thông tin chi tiết đơn hàng của bạn.
                     @elseif($type === 'failed')
                         Việc thanh toán qua VNPay không thành công. Bạn vui lòng kiểm tra lại và đặt lại đơn nếu cần.
+                    @elseif($type === 'session_cancelled')
+                        Buổi làm việc của bạn đã được hủy. {{ $reason ?? 'Không xác định' }}.
                     @else
                         Đơn hàng của bạn đã được hủy. Lý do: {{ $reason ?? 'Không xác định' }}.
                     @endif
@@ -49,13 +53,25 @@
                         </tr>
                     @endif
                     <tr>
-                        <td style="padding: 8px 0; font-weight: bold;">Số tiền</td>
+                        <td style="padding: 8px 0; font-weight: bold;">
+                            @if($type === 'session_cancelled')
+                                Giá trị buổi làm
+                            @else
+                                Số tiền
+                            @endif
+                        </td>
                         <td style="padding: 8px 0;">{{ number_format((float) $amount, 0, ',', '.') }} đ</td>
                     </tr>
                     @if($type === 'failed' && $reason)
                         <tr>
                             <td style="padding: 8px 0; font-weight: bold;">Lý do</td>
                             <td style="padding: 8px 0;">{{ $reason }}</td>
+                        </tr>
+                    @endif
+                    @if($type === 'session_cancelled' && ($refund_amount ?? 0) > 0)
+                        <tr>
+                            <td style="padding: 8px 0; font-weight: bold;">Số tiền hoàn (80%)</td>
+                            <td style="padding: 8px 0; color: #d9534f; font-weight: bold;">{{ number_format((float) $refund_amount, 0, ',', '.') }} đ ({{ $payment_method ?? 'VNPay' }})</td>
                         </tr>
                     @endif
                     @if(($type === 'cancelled' || $type === 'failed') && ($refund_amount ?? 0) > 0)
@@ -70,6 +86,8 @@
                     <p style="margin: 0;">Chúng tôi sẽ tiếp tục xử lý đơn và gửi cập nhật khi có thay đổi.</p>
                 @elseif($type === 'failed')
                     <p style="margin: 0;">Nếu bạn cần hỗ trợ, vui lòng liên hệ chúng tôi để được trợ giúp.</p>
+                @elseif($type === 'session_cancelled')
+                    <p style="margin: 0;">Các buổi làm còn lại trong đơn hàng của bạn vẫn sẽ được thực hiện theo lịch. Cảm ơn bạn đã sử dụng dịch vụ.</p>
                 @else
                     <p style="margin: 0;">Nếu đây là nhầm lẫn, vui lòng đặt lại đơn hoặc liên hệ hỗ trợ.</p>
                 @endif

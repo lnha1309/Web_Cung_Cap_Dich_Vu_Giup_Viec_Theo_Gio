@@ -112,7 +112,9 @@ class ApiBookingController extends Controller
         $service = DichVu::find($booking->ID_DV);
         $address = DiaChi::find($booking->ID_DC);
         $staff = $booking->ID_NV ? NhanVien::find($booking->ID_NV) : null;
+        // Chỉ xét giao dịch thanh toán (bỏ qua giao dịch hoàn tiền) để tránh hiển thị trạng thái chờ sai
         $paymentRecord = LichSuThanhToan::where('ID_DD', $id)
+            ->where('LoaiGiaoDich', 'payment')
             ->orderByDesc('ThoiGian')
             ->first();
         $rating = DanhGiaNhanVien::where('ID_DD', $id)->first();

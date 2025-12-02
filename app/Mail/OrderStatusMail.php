@@ -29,6 +29,7 @@ class OrderStatusMail extends Mailable
             'created' => "Xác nhận đặt đơn #{$bookingId}",
             'cancelled' => "Đơn #{$bookingId} đã được hủy",
             'failed' => "Thanh toán đơn #{$bookingId} không thành công",
+            'session_cancelled' => "Hủy buổi làm trong đơn #{$bookingId}",
         ];
 
         $subject = $subjectMap[$type] ?? ("Thông báo đơn #{$bookingId}");

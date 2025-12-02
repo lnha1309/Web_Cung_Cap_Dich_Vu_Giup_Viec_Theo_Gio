@@ -341,16 +341,10 @@
                                     <button onclick="openAssignModal('{{ $schedule->ID_Buoi }}')" title="Đổi nhân viên" style="background: none; border: none; cursor: pointer; color: var(--color-primary); vertical-align: middle;">
                                         <span class="material-icons-sharp" style="font-size: 1.2rem;">edit</span>
                                     </button>
-                                    <button onclick="cancelSession('{{ $schedule->ID_Buoi }}')" title="Hủy buổi làm" style="background: none; border: none; cursor: pointer; color: var(--color-danger); vertical-align: middle; margin-left: 0.5rem;">
-                                        <span class="material-icons-sharp" style="font-size: 1.2rem;">cancel</span>
-                                    </button>
                                 @endif
                             @else
                                 @if($schedule->TrangThaiBuoi != 'cancelled' && $schedule->TrangThaiBuoi != 'completed' && $order->TrangThaiDon != 'cancelled')
                                     <button class="status-badge primary" onclick="openAssignModal('{{ $schedule->ID_Buoi }}')" style="border: none; cursor: pointer;">Chọn NV</button>
-                                    <button onclick="cancelSession('{{ $schedule->ID_Buoi }}')" title="Hủy buổi làm" style="background: none; border: none; cursor: pointer; color: var(--color-danger); vertical-align: middle; margin-left: 0.5rem;">
-                                        <span class="material-icons-sharp" style="font-size: 1.2rem;">cancel</span>
-                                    </button>
                                 @endif
                             @endif
                         </td>
@@ -498,30 +492,6 @@
         });
     }
 
-    function cancelSession(sessionId) {
-        if (!confirm('Bạn có chắc chắn muốn hủy buổi làm này? Nếu đã thanh toán VNPay, tiền sẽ được hoàn lại.')) return;
 
-        fetch(`{{ route('admin.orders.cancel-session') }}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            },
-            body: JSON.stringify({ session_id: sessionId })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                location.reload();
-            } else {
-                alert(data.message || 'Có lỗi xảy ra.');
-            }
-        })
-        .catch(err => {
-            console.error(err);
-            alert('Lỗi kết nối.');
-        });
-    }
 </script>
 @endsection

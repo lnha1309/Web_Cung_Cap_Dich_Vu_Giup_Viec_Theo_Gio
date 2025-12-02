@@ -317,63 +317,6 @@ class AdminOrderController extends Controller
         return response()->json(['success' => true]);
     }
 
-    public function cancelSession(Request $request, \App\Services\RefundService $refundService, \App\Services\NotificationService $notificationService)
-    {
-        $request->validate([
-            'session_id' => 'required'
-        ]);
-
-        $session = \App\Models\LichBuoiThang::with(['donDat.khachHang', 'nhanVien'])->findOrFail($request->session_id);
-        
-        if ($session->TrangThaiBuoi === 'cancelled') {
-            return response()->json(['success' => false, 'message' => 'Buổi làm này đã bị hủy trước đó.']);
-        }
-
-        if ($session->TrangThaiBuoi === 'completed') {
-             return response()->json(['success' => false, 'message' => 'Không thể hủy buổi làm đã hoàn thành.']);
-        }
-
-        // 1. Refund logic
-        $refundResult = $refundService->refundSession($session, 'user_cancel_session');
-        
-        // 2. Update Session Status
-        $session->TrangThaiBuoi = 'cancelled';
-        $session->save();
-
-        // 3. Notify Staff & Update Schedule
-        if ($session->ID_NV) {
-            $staff = $session->nhanVien;
-            
-            // Update LichLamViec status back to 'ready'
-            // We try to match the schedule based on date and start time
-            \App\Models\LichLamViec::where('ID_NV', $session->ID_NV)
-                ->where('NgayLam', $session->NgayLam)
-                ->where('GioBatDau', '<=', $session->GioBatDau)
-                ->where('TrangThai', 'assigned')
-                ->update(['TrangThai' => 'ready']);
-
-            // Send Email to Staff
-            try {
-                \Mail::to($staff->Email)->send(new \App\Mail\StaffSessionCancelledMail([
-                    'staff_name' => $staff->Ten_NV,
-                    'session_date' => \Carbon\Carbon::parse($session->NgayLam)->format('d/m/Y'),
-                    'session_time' => \Carbon\Carbon::parse($session->GioBatDau)->format('H:i'),
-                    'order_id' => $session->ID_DD,
-                    'reason' => 'Khách hàng yêu cầu hủy',
-                ]));
-            } catch (\Exception $e) {
-                \Log::error('Failed to send staff cancellation email: ' . $e->getMessage());
-            }
-        }
-
-        // 4. Notify Customer
-        $notificationService->notifySessionCancelled($session, 'user_cancel_session', [
-            'amount' => $refundResult['amount'],
-            'payment_method' => $refundResult['payment_method']
-        ]);
-
-        return response()->json(['success' => true, 'message' => 'Hủy buổi làm thành công.']);
-    }
 
     public function export(Request $request)
     {

@@ -127,7 +127,6 @@ Route::middleware('auth')->group(function () {
         // Hourly Order Staff Assignment
         Route::get('orders/staff-available-order/{order}', [App\Http\Controllers\AdminOrderController::class, 'getAvailableStaffForOrder'])->name('orders.available-staff-order');
         Route::post('orders/assign-staff-order', [App\Http\Controllers\AdminOrderController::class, 'assignStaffToOrder'])->name('orders.assign-staff-order');
-        Route::post('orders/cancel-session', [App\Http\Controllers\AdminOrderController::class, 'cancelSession'])->name('orders.cancel-session');
 
         // Employee Management
         Route::resource('employees', App\Http\Controllers\AdminEmployeeController::class)->only(['index']);
