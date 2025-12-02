@@ -66,8 +66,14 @@ class RefundService
                 ];
             }
 
-            // Log refund transaction
-            $this->logRefundTransaction($booking, $payment, $refundAmount, $reason);
+            // Log refund transaction (lưu mã giao dịch hoàn tiền nếu có)
+            $this->logRefundTransaction(
+                $booking,
+                $payment,
+                $refundAmount,
+                $reason,
+                $refundResult['transaction_no'] ?? null
+            );
 
             return [
                 'success' => true,
@@ -171,7 +177,12 @@ class RefundService
             ]);
 
             if (($body['vnp_ResponseCode'] ?? null) === '00') {
-                return ['success' => true];
+                // Lấy mã giao dịch hoàn tiền trả về (ưu tiên TransactionNo)
+                $refundTxnNo = $body['vnp_TransactionNo'] ?? $body['vnp_TxnRef'] ?? null;
+                return [
+                    'success' => true,
+                    'transaction_no' => $refundTxnNo,
+                ];
             }
 
             $errorCode = $body['vnp_ResponseCode'] ?? '99';
@@ -217,7 +228,7 @@ class RefundService
     /**
      * Log refund transaction to database
      */
-    private function logRefundTransaction($booking, $originalPayment, $refundAmount, $reason)
+    private function logRefundTransaction($booking, $originalPayment, $refundAmount, $reason, $refundTxnNo = null)
     {
         LichSuThanhToan::create([
             'ID_LSTT' => \App\Support\IdGenerator::next('LichSuThanhToan', 'ID_LSTT', 'LSTT_'),
@@ -227,6 +238,7 @@ class RefundService
             'ID_DD' => $booking->ID_DD,
             'LoaiGiaoDich' => 'refund',
             'LyDoHoanTien' => $reason,
+            'MaGiaoDichVNPAY' => $refundTxnNo,
             'MaGiaoDichGoc' => $originalPayment->MaGiaoDichVNPAY,
         ]);
 
@@ -289,8 +301,14 @@ class RefundService
                 ];
             }
 
-            // Log refund transaction
-            $this->logRefundTransaction($booking, $payment, $refundAmount, $reason);
+            // Log refund transaction (lưu mã giao dịch hoàn tiền nếu có)
+            $this->logRefundTransaction(
+                $booking,
+                $payment,
+                $refundAmount,
+                $reason,
+                $refundResult['transaction_no'] ?? null
+            );
 
             return [
                 'success' => true,
