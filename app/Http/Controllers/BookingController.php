@@ -55,9 +55,19 @@ class BookingController extends Controller
     public function show(Request $request)
     {
         $addressText = $request->query('address');
+        $services = DichVu::orderBy('ThoiLuong')->get([
+            'ID_DV',
+            'TenDV',
+            'MoTa',
+            'GiaDV',
+            'DienTichToiDa',
+            'SoPhong',
+            'ThoiLuong',
+        ]);
 
         return view('booking', [
             'selectedAddress' => $addressText,
+            'services' => $services,
         ]);
     }
 
@@ -1266,14 +1276,14 @@ HTML;
         $activeStatuses = ['finding_staff', 'assigned', 'confirmed', 'rejected', 'completed', 'working'];
         $historyStatuses = ['completed', 'cancelled', 'failed'];
 
-        $hourCurrent = DonDat::with(['nhanVien', 'lichSuThanhToan'])
+        $hourCurrent = DonDat::with(['nhanVien', 'lichSuThanhToan', 'dichVu'])
                             ->where('ID_KH', $customer->ID_KH)
                             ->where('LoaiDon', 'hour')
-                            ->whereIn('TrangThaiDon', $activeStatuses) 
+                            ->whereIn('TrangThaiDon', $activeStatuses)
                             ->orderBy('NgayTao', 'desc')
                             ->get();
 
-        $hourHistory = DonDat::with(['nhanVien', 'lichSuThanhToan'])
+        $hourHistory = DonDat::with(['nhanVien', 'lichSuThanhToan', 'dichVu'])
                             ->where('ID_KH', $customer->ID_KH)
                             ->where('LoaiDon', 'hour')
                             ->whereIn('TrangThaiDon', $historyStatuses)

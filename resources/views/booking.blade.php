@@ -954,7 +954,8 @@
 
             /* Duration Options */
             .duration-options {
-                flex-direction: column;
+                display: grid;
+                grid-template-columns: 1fr;
                 gap: 10px;
             }
 
@@ -1323,11 +1324,13 @@
             }
 
             .duration-options {
-                flex-wrap: wrap;
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 12px;
             }
 
             .duration-option {
-                flex: 1 1 calc(50% - 6px);
+                flex: 1 1 auto;
             }
 
             .extra-tasks {
@@ -1962,13 +1965,14 @@
         }
 
         .duration-options {
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 12px;
             margin-bottom: 16px;
         }
 
         .duration-option {
-            flex: 1;
+            flex: 1 1 auto;
             border: 2px solid #e0e0e0;
             border-radius: 25px;
             padding: 16px;
@@ -1984,6 +1988,13 @@
         .duration-option.selected {
             background-color: #DCEDEA;
             border-color: #004d2e;
+        }
+
+        .duration-option .service-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: #004d2e;
+            margin-bottom: 4px;
         }
 
         .duration-option .hours {
@@ -3214,27 +3225,51 @@
 
 
                     <div class="booking-form">
-                        <div class="form-section">
-                            <h3>Thêm thông tin chi tiết về đơn đặt</h3>
+                            <div class="form-section">
+                                <h3>Thêm thông tin chi tiết về đơn đặt</h3>
 
                             <div style="margin-bottom: 24px;">
-                                <label style="display: block; font-size: 20px; font-weight: 600; margin-bottom: 12px;">Thời lượng</label>
+                                <label style="display: block; font-size: 20px; font-weight: 600; margin-bottom: 12px;">Dịch vụ</label>
                                 <div class="duration-options">
-                                    <div class="duration-option" data-hours="2">
-                                        <div class="hours">2 giờ</div>
-                                        <div class="price">192.000 VNĐ</div>
-                                        <div class="description">Diện tích tối đa 55m² <br>hoặc 2 phòng</div>
-                                    </div>
-                                    <div class="duration-option" data-hours="3">
-                                        <div class="hours">3 giờ</div>
-                                        <div class="price">240.000 VNĐ</div>
-                                        <div class="description">Diện tích tối đa 85m² <br>hoặc 3 phòng</div>
-                                    </div>
-                                    <div class="duration-option" data-hours="4">
-                                        <div class="hours">4 giờ</div>
-                                        <div class="price">320.000 VNĐ</div>
-                                        <div class="description">Diện tích tối đa 105m² <br>hoặc 4 phòng</div>
-                                    </div>
+                                    @forelse(($services ?? []) as $service)
+                                        @php
+                                            $hoursValue = $service->ThoiLuong !== null ? (float) $service->ThoiLuong : 0;
+                                            $hoursLabel = fmod($hoursValue, 1) === 0.0
+                                                ? (int) $hoursValue
+                                                : rtrim(rtrim(number_format($hoursValue, 2, '.', ''), '0'), '.');
+                                            $areaText = $service->DienTichToiDa !== null
+                                                ? 'Diện tích tối đa ' . rtrim(rtrim(number_format((float) $service->DienTichToiDa, 2, '.', ''), '0'), '.') . 'm²'
+                                                : null;
+                                            $roomText = $service->SoPhong
+                                                ? 'hoặc ' . (int) $service->SoPhong . ' phòng'
+                                                : null;
+                                            $description = $service->MoTa;
+                                        @endphp
+                                        <div
+                                            class="duration-option"
+                                            data-hours="{{ $hoursValue }}"
+                                            data-service-id="{{ $service->ID_DV }}"
+                                        >
+                                            <div class="service-name">{{ $service->TenDV }}</div>
+                                            <div class="hours">{{ $hoursLabel }} giờ</div>
+                                            <div class="price">{{ number_format((float) $service->GiaDV, 0, ',', '.') }} VNĐ</div>
+                                            <div class="description">
+                                                @if($areaText && $roomText)
+                                                    {{ $areaText }} <br>{{ $roomText }}
+                                                @elseif($areaText)
+                                                    {{ $areaText }}
+                                                @elseif($roomText)
+                                                    {{ $roomText }}
+                                                @elseif(!empty($description))
+                                                    {{ $description }}
+                                                @else
+                                                    &nbsp;
+                                                @endif
+                                            </div>
+                                        </div>
+                                    @empty
+                                        <p>Chưa có dịch vụ khả dụng.</p>
+                                    @endforelse
                                 </div>
                             </div>
 
@@ -3484,6 +3519,21 @@
         let selectedWeekdays = [];
         let repeatStartDate = null;
         let repeatEndDate = null;
+        let selectedServiceId = null;
+        @php
+            $servicesData = ($services ?? collect())->map(function ($service) {
+                return [
+                    'id' => $service->ID_DV,
+                    'name' => $service->TenDV,
+                    'description' => $service->MoTa,
+                    'price' => $service->GiaDV !== null ? (float) $service->GiaDV : null,
+                    'area' => $service->DienTichToiDa !== null ? (float) $service->DienTichToiDa : null,
+                    'rooms' => $service->SoPhong !== null ? (int) $service->SoPhong : null,
+                    'hours' => $service->ThoiLuong !== null ? (float) $service->ThoiLuong : null,
+                ];
+            })->values();
+        @endphp
+        const servicesData = @json($servicesData);
 
         // Voucher System
         let appliedVoucher = null;
@@ -4282,8 +4332,30 @@
             option.addEventListener('click', function() {
                 durationOptions.forEach(opt => opt.classList.remove('selected'));
                 this.classList.add('selected');
-                selectedDuration = parseInt(this.getAttribute('data-hours'));
+                const hours = Number(this.getAttribute('data-hours'));
+                selectedDuration = Number.isNaN(hours) ? 0 : hours;
+                selectedServiceId = this.getAttribute('data-service-id') || null;
                 window.selectedDuration = selectedDuration;
+
+                // Cập nhật tên dịch vụ ngay khi chọn gói
+                const matchedService = Array.isArray(servicesData)
+                    ? servicesData.find(s =>
+                        (selectedServiceId && s.id === selectedServiceId) ||
+                        (!selectedServiceId && Number(s.hours) === selectedDuration)
+                    )
+                    : null;
+                if (matchedService && matchedService.name) {
+                    window.bookingState = window.bookingState || {};
+                    window.bookingState.serviceName = matchedService.name;
+                    const typeForName =
+                        (window.bookingState.type === 'month' || selectedOption === 'repeat')
+                            ? 'month'
+                            : 'hour';
+                    if (typeof updateServiceName === 'function') {
+                        updateServiceName(typeForName);
+                    }
+                }
+
                 updateExtraTasks();
                 updatePrice();
             });
@@ -4410,16 +4482,40 @@
         }
 
         // ==================== UPDATE SERVICE NAME ====================
+        function getSelectedServiceName() {
+            if (Array.isArray(servicesData) && servicesData.length) {
+                if (selectedServiceId) {
+                    const byId = servicesData.find(s => s.id === selectedServiceId);
+                    if (byId && byId.name) return byId.name;
+                }
+                if (selectedDuration) {
+                    const byHours = servicesData.find(s => Number(s.hours) === Number(selectedDuration));
+                    if (byHours && byHours.name) return byHours.name;
+                }
+            }
+            return null;
+        }
+
+        function stripPackageSuffix(name) {
+            if (!name || typeof name !== 'string') return '';
+            return name.replace(/\s*\(Gói (tháng|một lần)\)\s*$/i, '').trim();
+        }
+
         function updateServiceName(type) {
             const serviceName = document.getElementById('serviceName');
             if (!serviceName) return;
-            
+
+            const baseNameRaw =
+                (window.bookingState && window.bookingState.serviceName) ||
+                getSelectedServiceName() ||
+                (serviceName.textContent ? serviceName.textContent.trim() : '') ||
+                'Giúp việc theo giờ';
+            const baseName = stripPackageSuffix(baseNameRaw);
+
             const isMonth = type === 'month' || type === 'repeat';
-            if (isMonth) {
-                serviceName.textContent = 'Giúp việc theo giờ (Gói tháng)';
-            } else {
-                serviceName.textContent = 'Giúp việc theo giờ (Gói một lần)';
-            }
+            serviceName.textContent = isMonth
+                ? `${baseName} (Gói tháng)`
+                : `${baseName} (Gói một lần)`;
         }
 
         // ==================== UPDATE REPEAT INFO DISPLAY ====================
@@ -4514,10 +4610,24 @@
 
         // ==================== PRICE CALCULATION ====================
         function getServicePricing(hours) {
-            if (hours === 2) return { price: 192000, id: "DV001" };
-            if (hours === 3) return { price: 240000, id: "DV002" };
-            if (hours === 4) return { price: 320000, id: "DV003" };
-            return { price: 0, id: null };
+            const numericHours = Number(hours);
+            if (!Array.isArray(servicesData) || !servicesData.length || Number.isNaN(numericHours)) {
+                return { price: 0, id: null, name: null };
+            }
+
+            let matched = null;
+            if (selectedServiceId) {
+                matched = servicesData.find(service => service.id === selectedServiceId);
+            }
+            if (!matched) {
+                matched = servicesData.find(service => Number(service.hours) === numericHours);
+            }
+            if (matched) {
+                return { price: Number(matched.price) || 0, id: matched.id || null, name: matched.name || null };
+            }
+
+            const fallback = servicesData[0];
+            return { price: Number(fallback?.price) || 0, id: fallback?.id || null, name: fallback?.name || null };
         }
 
         function getPackageDiscount(months) {
@@ -4558,6 +4668,8 @@
             const pricing = getServicePricing(hours);
             const basePrice = pricing.price;
             const idDv = pricing.id;
+            const serviceDisplayName = pricing.name || 'Giúp việc theo giờ';
+            window.bookingState = window.bookingState || {};
 
             if (!basePrice) {
                 resetPrice();
@@ -4588,6 +4700,7 @@
                 window.bookingState.totalPrice = total;
                 window.bookingState.totalAfterDiscount = total;
                 window.bookingState.id_dv = idDv;
+                window.bookingState.serviceName = serviceDisplayName;
                 window.bookingState.packageDiscountPercent = discountPercent;
                 window.bookingState.packageMonths = months;
                 window.bookingState.grossBeforePackageDiscount = gross;
@@ -4619,6 +4732,7 @@
             window.bookingState.totalPrice = basePrice;
             window.bookingState.totalAfterDiscount = basePrice;
             window.bookingState.id_dv = idDv;
+            window.bookingState.serviceName = serviceDisplayName;
             window.bookingState.packageMonths = null;
             window.bookingState.grossBeforePackageDiscount = basePrice;
             window.bookingState.packageDiscountAmount = 0;
@@ -4626,6 +4740,13 @@
 
             updatePackageDiscountDisplay();
             updateBookingCardTime();
+
+            const typeForName =
+                (window.bookingState && window.bookingState.type === 'month') ||
+                selectedOption === 'repeat'
+                    ? 'month'
+                    : 'hour';
+            updateServiceName(typeForName);
         }
 
         // ==================== NAVIGATION BUTTONS ====================
@@ -5265,12 +5386,19 @@ window.removeVoucher = function(index) {
             const serviceOptions = document.querySelectorAll('.service-option');
             serviceOptions.forEach(option => {
                 option.addEventListener('click', () => {
-                    const type = option.getAttribute('data-option') === 'repeat' ? 'month' : 'hour';
+                    const isRepeat = option.getAttribute('data-option') === 'repeat';
+                    const type = isRepeat ? 'month' : 'hour';
                     window.bookingState.type = type;
-                    if (serviceValueEl) {
-                        serviceValueEl.textContent = type === 'hour'
-                            ? 'Giúp việc theo giờ (một lần)'
-                            : 'Giúp việc theo tháng';
+                    selectedOption = isRepeat ? 'repeat' : 'onetime';
+                    if (typeof updateServiceName === 'function') {
+                        updateServiceName(type);
+                    } else if (serviceValueEl) {
+                        const base =
+                            (window.bookingState && window.bookingState.serviceName) ||
+                            (typeof getSelectedServiceName === 'function' ? getSelectedServiceName() : null) ||
+                            'Giúp việc theo giờ';
+                        const suffix = type === 'month' ? '(Gói tháng)' : '(Gói một lần)';
+                        serviceValueEl.textContent = `${base} ${suffix}`;
                     }
                 });
             });

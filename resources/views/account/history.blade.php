@@ -11,7 +11,18 @@
     .card:hover { transform: translateY(-2px); }
     .status-badge { padding: 8px 12px; border-radius: 30px; font-weight: 500; font-size: 0.85rem; }
     .table thead th { background-color: #f8f9fa; border-bottom: 2px solid #e9ecef; color: #6c757d; font-weight: 600; text-transform: uppercase; font-size: 0.8rem; }
-    .btn-action { border-radius: 20px; padding: 5px 15px; font-size: 0.85rem; }
+    .btn-action {
+        border-radius: 16px;
+        padding: 10px 16px;
+        font-size: 0.95rem;
+        font-weight: 700;
+        min-width: 110px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        line-height: 1.2;
+    }
     .booking-tabs .nav-link { border-radius: 12px; font-weight: 600; color: #495057; }
     .booking-tabs .nav-link.active { background-color: #0d6efd; color: #fff; box-shadow: 0 8px 22px rgba(13,110,253,0.25); }
     .booking-tab-pane { animation: fadeIn 0.2s ease; }
@@ -26,6 +37,36 @@
     .staff-chip { display: inline-flex; align-items: center; gap: 8px; }
     .staff-chip img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
     .session-meta { font-size: 0.9rem; color: #6c757d; }
+
+    /* Responsive tweaks */
+    @media (max-width: 768px) {
+        .card { border-radius: 10px; }
+        .table thead th { font-size: 0.75rem; white-space: nowrap; }
+        .table td { font-size: 0.85rem; }
+        .btn-action { width: 100%; min-width: auto; padding: 10px 12px; }
+        .booking-tabs .nav-link { font-size: 0.9rem; }
+        .table-responsive { overflow-x: auto; }
+    }
+
+    /* Mobile stacked rows */
+    @media (max-width: 576px) {
+        .table thead { display: none; }
+        .table tr { display: block; border-bottom: 1px solid #e9ecef; margin-bottom: 10px; }
+        .table td {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 10px 12px !important;
+        }
+        .table td::before {
+            content: attr(data-label);
+            font-weight: 600;
+            color: #6c757d;
+        }
+        .table td:last-child { justify-content: flex-end; }
+    }
 </style>
 
 @php
@@ -117,12 +158,13 @@
                             <table class="table table-hover align-middle mb-0">
                                 <thead>
                                     <tr>
-                                        <th class="ps-4">Mã đơn</th>
+                                        <th class="ps-4" style="width: 90px;">Mã đơn</th>
+                                        <th style="width: 220px;">Dịch vụ</th>
                                         <th>Thời gian</th>
                                         <th>Trạng thái</th>
                                         <th>Thanh toán</th>
                                         <th>Nhân viên</th>
-                                        <th>Tổng tiền</th>
+                                        <th style="width: 120px;">Tổng tiền</th>
                                         <th class="text-end pe-4">Thao tác</th>
                                     </tr>
                                 </thead>
@@ -143,23 +185,26 @@
                                         $avatar = $buildAvatar($staff);
                                     @endphp
                                     <tr>
-                                        <td class="ps-4">
+                                        <td class="ps-4" data-label="Mã đơn">
                                             <span class="fw-bold text-dark">#{{ $item->ID_DD }}</span>
                                         </td>
-                                        <td>
+                                        <td class="fw-semibold text-dark" data-label="Dịch vụ">
+                                            {{ $item->dichVu->TenDV ?? 'Chưa cập nhật' }}
+                                        </td>
+                                        <td data-label="Thời gian">
                                             <div class="d-flex flex-column">
                                                 <span class="fw-bold">{{ $item->NgayLam ? \Carbon\Carbon::parse($item->NgayLam)->format('d/m/Y') : 'Gói tháng' }}</span>
                                                 <small class="text-muted"><i class="bi bi-clock me-1"></i>{{ $item->GioBatDau ? \Carbon\Carbon::parse($item->GioBatDau)->format('H:i') : '--:--' }}</small>
                                             </div>
                                         </td>
-                                        <td>
+                                        <td data-label="Trạng thái">
                                             <span class="badge status-badge {{ $badge['class'] }}">
                                                 @if(!empty($badge['icon']))<i class="bi {{ $badge['icon'] }} me-1"></i>@endif
                                                 {{ $badge['label'] }}
                                             </span>
                                         </td>
-                                        <td><span class="text-muted">{{ $methodLabel }}</span></td>
-                                        <td>
+                                        <td data-label="Thanh toán"><span class="text-muted">{{ $methodLabel }}</span></td>
+                                        <td data-label="Nhân viên">
                                             @if($staff)
                                                 <div class="d-flex align-items-center gap-2">
                                                     <img src="{{ $avatar }}" alt="Nhân viên" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;">
@@ -172,10 +217,10 @@
                                                 <span class="text-muted small">Đang tìm nhân viên</span>
                                             @endif
                                         </td>
-                                        <td class="fw-bold text-success">
+                                        <td class="fw-bold text-success" data-label="Tổng tiền">
                                             {{ number_format($item->TongTienSauGiam) }} đ
                                         </td>
-                                        <td class="text-end pe-4">
+                                        <td class="text-end pe-4" data-label="Thao tác">
                                             <a href="{{ route('bookings.detail', $item->ID_DD) }}" class="btn btn-primary btn-action shadow-sm">
                                                 Chi tiết <i class="bi bi-arrow-right-short"></i>
                                             </a>
@@ -207,12 +252,13 @@
                             <table class="table table-hover align-middle mb-0">
                                 <thead>
                                     <tr>
-                                        <th class="ps-4">Mã đơn</th>
+                                        <th class="ps-4" style="width: 90px;">Mã đơn</th>
+                                        <th style="width: 220px;">Dịch vụ</th>
                                         <th>Ngày làm</th>
                                         <th>Trạng thái</th>
                                         <th>Thanh toán</th>
                                         <th>Nhân viên</th>
-                                        <th>Tổng tiền</th>
+                                        <th style="width: 120px;">Tổng tiền</th>
                                         <th class="text-end pe-4">Thao tác</th>
                                     </tr>
                                 </thead>
@@ -233,16 +279,19 @@
                                         $avatar = $buildAvatar($staff);
                                     @endphp
                                     <tr>
-                                        <td class="ps-4 text-muted">#{{ $item->ID_DD }}</td>
-                                        <td>{{ $item->NgayLam ? \Carbon\Carbon::parse($item->NgayLam)->format('d/m/Y') : 'Gói tháng' }}</td>
-                                        <td>
+                                        <td class="ps-4 text-muted" data-label="Mã đơn">#{{ $item->ID_DD }}</td>
+                                        <td class="fw-semibold text-dark" data-label="Dịch vụ">
+                                            {{ $item->dichVu->TenDV ?? 'Chưa cập nhật' }}
+                                        </td>
+                                        <td data-label="Ngày làm">{{ $item->NgayLam ? \Carbon\Carbon::parse($item->NgayLam)->format('d/m/Y') : 'Gói tháng' }}</td>
+                                        <td data-label="Trạng thái">
                                             <span class="badge status-badge {{ $badge['class'] }}">
                                                 @if(!empty($badge['icon']))<i class="bi {{ $badge['icon'] }} me-1"></i>@endif
                                                 {{ $badge['label'] }}
                                             </span>
                                         </td>
-                                        <td><span class="text-muted">{{ $methodLabel }}</span></td>
-                                        <td>
+                                        <td data-label="Thanh toán"><span class="text-muted">{{ $methodLabel }}</span></td>
+                                        <td data-label="Nhân viên">
                                             @if($staff)
                                                 <div class="d-flex align-items-center gap-2">
                                                     <img src="{{ $avatar }}" alt="Nhân viên" class="rounded-circle" style="width: 36px; height: 36px; object-fit: cover;">
@@ -255,8 +304,8 @@
                                                 <span class="text-muted small">Không có</span>
                                             @endif
                                         </td>
-                                        <td class="text-muted">{{ number_format($item->TongTienSauGiam) }} đ</td>
-                                        <td class="text-end pe-4">
+                                        <td class="text-muted" data-label="Tổng tiền">{{ number_format($item->TongTienSauGiam) }} đ</td>
+                                        <td class="text-end pe-4" data-label="Thao tác">
                                             <a href="{{ route('bookings.detail', $item->ID_DD) }}" class="btn btn-outline-secondary btn-action btn-sm">
                                                 Xem lại
                                             </a>
@@ -316,11 +365,15 @@
                                         : ['label' => 'Hoạt động', 'class' => 'bg-success bg-opacity-10 text-success border border-success', 'icon' => 'bi-play-circle'];
                                 @endphp
                                 <details class="booking-accordion mb-3">
-                                    <summary class="d-flex align-items-center justify-content-between gap-3">
-                                        <div class="d-flex flex-column flex-md-row gap-3 flex-fill">
+                                    <summary class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+                                        <div class="d-grid w-100" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
                                             <div>
                                                 <p class="text-muted mb-1 small">Mã gói tháng</p>
                                                 <span class="fw-bold text-dark">#{{ $booking->ID_DD }}</span>
+                                            </div>
+                                            <div>
+                                                <p class="text-muted mb-1 small">Dịch vụ</p>
+                                                <span class="fw-semibold text-dark">{{ $booking->dichVu->TenDV ?? 'Chưa cập nhật' }}</span>
                                             </div>
                                             <div>
                                                 <p class="text-muted mb-1 small">Khung thời gian</p>

@@ -1,3 +1,9 @@
+<style>
+    /* Force bold nav items across pages (override bootstrap defaults) */
+    header .nav-menu .nav-link {
+        font-weight: 500 !important;
+    }
+</style>
 <header>
     <div class="logo-container" onclick="window.location.href='{{ url('/') }}'" style="cursor: pointer;">
         <img src="{{ asset('assets/logo.png') }}" alt="bTaskee Logo" class="footer-logo">

@@ -53,7 +53,7 @@
         <a href="{{ url('select-address') }}" class="btn-book-link">
             <button class="btn-book">Đặt dịch vụ</button>
         </a>
-        <a href="{{ url('giupviectheogio') }}" class="btn-find-link">
+        <a href="{{ route('services.overview') }}" class="btn-find-link">
             <button class="btn-find">Khám phá dịch vụ</button>
         </a>
     </section>

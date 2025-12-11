@@ -12,8 +12,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Use raw SQL to modify the ENUM column as Doctrine DBAL has issues with ENUMs
-        DB::statement("ALTER TABLE `ThongBao` MODIFY COLUMN `LoaiThongBao` ENUM('order_created', 'order_cancelled', 'order_status_change', 'refund_completed', 'other', 'session_cancelled') NOT NULL");
+        // Keep existing enum values to avoid truncating old rows when adding the new option
+        DB::statement("ALTER TABLE `ThongBao` MODIFY COLUMN `LoaiThongBao` ENUM('order_created', 'order_cancelled', 'order_status_change', 'refund_completed', 'finding_staff_delay', 'order_rescheduled', 'other', 'session_cancelled') NOT NULL");
     }
 
     /**
@@ -21,6 +21,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement("ALTER TABLE `ThongBao` MODIFY COLUMN `LoaiThongBao` ENUM('order_created', 'order_cancelled', 'order_status_change', 'refund_completed', 'other') NOT NULL");
+        DB::statement("ALTER TABLE `ThongBao` MODIFY COLUMN `LoaiThongBao` ENUM('order_created', 'order_cancelled', 'order_status_change', 'refund_completed', 'finding_staff_delay', 'order_rescheduled', 'other') NOT NULL");
     }
 };

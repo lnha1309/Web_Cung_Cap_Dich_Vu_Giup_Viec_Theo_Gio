@@ -39,7 +39,7 @@ header {
 .nav-link {
     color: #1a1a1a;
     text-decoration: none;
-    font-weight: 500;
+    font-weight: 600;
     font-size: 1rem;
     transition: color 0.3s ease;
     cursor: pointer;

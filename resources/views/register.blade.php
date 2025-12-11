@@ -22,6 +22,20 @@
             border-radius: 15px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.1);
         }
+        .logo-link {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 12px;
+        }
+        .register-logo {
+            height: 60px;
+            width: auto;
+            object-fit: contain;
+            transition: transform 0.2s ease;
+        }
+        .register-logo:hover {
+            transform: scale(1.02);
+        }
         h1 { text-align: center; margin-bottom: 30px; color: #333; font-size: 28px; }
         .form-group { margin-bottom: 20px; }
         label { display: block; margin-bottom: 8px; color: #555; font-weight: 500; }
@@ -106,6 +120,9 @@
 </head>
 <body>
 <div class="register-container">
+    <a href="{{ url('/') }}" class="logo-link" aria-label="Quay ve trang chu">
+        <img src="{{ asset('assets/logo.png') }}" alt="Trang chu" class="register-logo">
+    </a>
     <h1>Đăng ký tài khoản</h1>
 
     @if ($errors->any())

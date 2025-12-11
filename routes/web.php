@@ -230,6 +230,14 @@ Route::get('/giupviectheothang', function () {
     return view('giupviectheothang');
 });
 
+Route::get('/dich-vu', function () {
+    $services = \App\Models\DichVu::orderBy('ThoiLuong')->get();
+
+    return view('services', [
+        'services' => $services,
+    ]);
+})->name('services.overview');
+
 // Debug routes
 if (file_exists(__DIR__ . '/web_test_debug.php')) {
     require __DIR__ . '/web_test_debug.php';

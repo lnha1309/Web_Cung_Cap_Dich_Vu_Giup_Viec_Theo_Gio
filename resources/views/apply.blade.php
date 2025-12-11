@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Đăng Ký Ứng Tuyển Nhân Viên</title>
+  @include('partials.head')
   <style>
     * {
       margin: 0;
@@ -14,10 +15,13 @@
     body {
       font-family: Arial, sans-serif;
       line-height: 1.6;
-      padding: 20px;
-      max-width: 800px;
-      margin: 0 auto;
       background: #f8f9fa;
+    }
+
+    .apply-page {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 24px 16px 48px;
     }
 
     h1 {
@@ -332,6 +336,8 @@
   </style>
 </head>
 <body>
+  @include('partials.header')
+  <main class="apply-page">
   <!-- BƯỚC 1: ĐĂNG KÝ TÀI KHOẢN -->
   <div id="step1" class="step active">
     <h1>CHÀO MỪNG BẠN ĐĂNG KÝ ỨNG TUYỂN</h1>
@@ -1522,5 +1528,8 @@ document.getElementById("detailForm").addEventListener("submit", async function(
 }
 
   </script>
+  </main>
+  @include('partials.footer')
+  @include('partials.scripts')
 </body>
 </html>
