@@ -324,10 +324,7 @@
             var invalidCity = Array.from(addressInputs).some(function (inp) {
                 return inp.dataset.cityValid === 'false';
             });
-            var hasAddress = Array.from(addressInputs).some(function (inp) {
-                return (inp.value || '').trim().length > 0;
-            });
-            saveButton.disabled = invalidCity || !hasAddress;
+            saveButton.disabled = invalidCity;
         };
 
         if (editButton) {
@@ -411,6 +408,11 @@
                         }
                     });
 
+                    // Fallback: nếu vẫn chưa có cityName, kiểm tra formatted_address
+                    if (!cityName && place.formatted_address) {
+                        cityName = place.formatted_address;
+                    }
+
                     var districtField = document.querySelector(
                         'input[name="addresses[' + index + '][district]"]'
                     );
@@ -419,10 +421,20 @@
                     }
 
                     var normalize = function (str) {
-                        return (str || '').toLowerCase();
+                        return (str || '')
+                            .toLowerCase()
+                            .normalize('NFD')
+                            .replace(/[\u0300-\u036f]/g, '') // Bỏ dấu tiếng Việt
+                            .replace(/đ/g, 'd')
+                            .replace(/Đ/g, 'd');
                     };
                     var cityNormalized = normalize(cityName);
-                    var isHcmc = /ho\s*chi\s*minh/.test(cityNormalized) || /^tp\.\s*hcm/.test(cityNormalized) || /^hcm/.test(cityNormalized);
+                    // Kiểm tra nhiều format: Ho Chi Minh, Hồ Chí Minh, TPHCM, TP.HCM, HCM, Saigon, etc.
+                    var isHcmc = /ho\s*chi\s*minh/.test(cityNormalized) || 
+                                 /tp\.?\s*hcm/.test(cityNormalized) || 
+                                 /\bhcm\b/.test(cityNormalized) ||
+                                 /saigon/.test(cityNormalized) ||
+                                 /thanh\s*pho\s*ho\s*chi\s*minh/.test(cityNormalized);
 
                     var markInvalid = function () {
                         input.dataset.cityValid = 'false';
@@ -458,15 +470,6 @@
                 var invalidCity = Array.from(addressInputs).some(function (inp) {
                     return inp.dataset.cityValid === 'false';
                 });
-                var hasAddress = Array.from(addressInputs).some(function (inp) {
-                    return (inp.value || '').trim().length > 0;
-                });
-                if (!hasAddress) {
-                    e.preventDefault();
-                    alert('Vui lòng nhập ít nhất một địa chỉ trước khi lưu.');
-                    updateSaveState();
-                    return;
-                }
                 if (invalidCity) {
                     e.preventDefault();
                     alert('Vui lòng chọn lại địa chỉ trong TP.HCM trước khi lưu.');
