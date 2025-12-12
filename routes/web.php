@@ -154,6 +154,12 @@ Route::middleware('auth')->group(function () {
         // Admin Profile
         Route::get('/profile', [App\Http\Controllers\AdminProfileController::class, 'show'])->name('profile.show');
         Route::post('/profile', [App\Http\Controllers\AdminProfileController::class, 'update'])->name('profile.update');
+        Route::patch('/profile/employee/{account}/role', [App\Http\Controllers\AdminProfileController::class, 'updateEmployeeRole'])->name('profile.employee.updateRole');
+        
+        // Account Types Management
+        Route::post('/profile/account-types', [App\Http\Controllers\AdminProfileController::class, 'storeAccountType'])->name('profile.accountTypes.store');
+        Route::patch('/profile/account-types/{id}', [App\Http\Controllers\AdminProfileController::class, 'updateAccountType'])->name('profile.accountTypes.update');
+        Route::delete('/profile/account-types/{id}', [App\Http\Controllers\AdminProfileController::class, 'destroyAccountType'])->name('profile.accountTypes.destroy');
     });
 
     Route::get('/my-bookings', [BookingController::class, 'history'])->name('bookings.history');
