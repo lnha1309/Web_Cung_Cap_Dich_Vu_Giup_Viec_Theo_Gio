@@ -180,7 +180,8 @@ Route::middleware('auth')->group(function () {
 Route::get('/payment/vnpay-return', [BookingController::class, 'vnpayReturn'])->name('vnpay.return');
 
 Route::get('/apply', function () {
-    return view('apply');
+    $quans = \App\Models\Quan::orderBy('TenQuan')->get();
+    return view('apply', ['quans' => $quans]);
 });
 Route::post('/apply/register', [ApplyRegisterController::class, 'store'])->name('apply.register');
 

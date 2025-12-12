@@ -53,11 +53,15 @@ class AdminCandidateController extends Controller
             return $key !== '' ? $key : md5(json_encode($row));
         })->values();
 
-        // Emails đã duyệt (đã có nhân viên)
+        // Emails đã duyệt (nhân viên có trạng thái active)
         $emailList = $rows->map(function ($row) use ($emailHeader) {
             return $emailHeader && isset($row[$emailHeader]) ? mb_strtolower(trim((string) $row[$emailHeader])) : null;
         })->filter()->unique()->values();
-        $approvedEmails = NhanVien::whereIn('Email', $emailList)->pluck('Email')->map(fn($e) => mb_strtolower($e))->toArray();
+        $approvedEmails = NhanVien::whereIn('Email', $emailList)
+            ->where('TrangThai', 'active')
+            ->pluck('Email')
+            ->map(fn($e) => mb_strtolower($e))
+            ->toArray();
         $approvalFilter = $request->get('approved');
 
         $filtered = $rows
@@ -251,64 +255,33 @@ class AdminCandidateController extends Controller
         $data = $validator->validated();
         $data['full_name'] = trim($data['full_name'] ?? '');
         if ($data['full_name'] === '') {
-            // Đừng đẩy email vào tên; ưu tiên SĐT, nếu vẫn trống thì gán nhãn mặc định
             $fallbackName = trim((string) ($data['phone'] ?? ''));
             $data['full_name'] = $fallbackName !== '' ? $fallbackName : 'Ứng viên';
         }
 
-        $account = TaiKhoan::where('email', $data['email'])->first();
+        // Tìm nhân viên qua email (vì email lưu trong bảng NhanVien, không phải TaiKhoan)
+        $nhanVien = NhanVien::where('Email', $data['email'])->first();
+
+        if (!$nhanVien) {
+            return back()->with('error', 'Không tìm thấy hồ sơ ứng viên với email: ' . $data['email']);
+        }
+
+        // Tìm tài khoản liên kết với nhân viên
+        $account = TaiKhoan::where('ID_TK', $nhanVien->ID_TK)->first();
 
         if (!$account) {
-            return back()->with('error', 'Không tìm thấy tài khoản ứng viên theo email: ' . $data['email']);
+            return back()->with('error', 'Không tìm thấy tài khoản liên kết với nhân viên này.');
         }
 
         try {
-            DB::transaction(function () use ($data, $account) {
-            // Activate account
-            $account->TrangThaiTK = 'active';
-            $account->save();
+            DB::transaction(function () use ($data, $account, $nhanVien) {
+                // Kích hoạt tài khoản
+                $account->TrangThaiTK = 'active';
+                $account->save();
 
-            // Create or update NhanVien
-            $nhanVien = NhanVien::where('ID_TK', $account->ID_TK)->first();
-                $dob = null;
-                if (!empty($data['dob'])) {
-                    try {
-                        $dob = Carbon::parse($data['dob'])->format('Y-m-d');
-                    } catch (\Throwable $e) {
-                        $dob = null;
-                    }
-                }
-
-                // Normalize gender to DB enum
-                $gender = $data['gender'] ?? null;
-                $genderLower = $gender ? mb_strtolower(trim($gender)) : null;
-                $genderDb = null;
-                if (in_array($genderLower, ['male', 'nam'])) {
-                    $genderDb = 'male';
-                } elseif (in_array($genderLower, ['female', 'nu', 'nữ'])) {
-                    $genderDb = 'female';
-                }
-
-                $nvPayload = [
-                    'Ten_NV' => $data['full_name'],
-                    'SDT' => $data['phone'],
-                    'Email' => $data['email'],
-                    'GioiTinh' => $genderDb,
-                    'NgaySinh' => $dob,
-                    'KhuVucLamViec' => $data['work_area'] ?? ($data['address'] ?? null),
-                    'TrangThai' => 'active',
-                    'SoDu' => 0,
-                ];
-
-            if (!$nhanVien) {
-                $idNv = IdGenerator::next('NhanVien', 'ID_NV', 'NV_');
-                    NhanVien::create(array_merge($nvPayload, [
-                        'ID_NV' => $idNv,
-                        'ID_TK' => $account->ID_TK,
-                    ]));
-            } else {
-                    $nhanVien->update($nvPayload);
-            }
+                // Kích hoạt nhân viên
+                $nhanVien->TrangThai = 'active';
+                $nhanVien->save();
             });
         } catch (\Throwable $e) {
             Log::error('Approve candidate failed', ['error' => $e->getMessage()]);
