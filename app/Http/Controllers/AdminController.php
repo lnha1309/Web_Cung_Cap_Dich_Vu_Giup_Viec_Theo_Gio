@@ -7,6 +7,7 @@ use Illuminate\Support\Carbon;
 use App\Models\DonDat;
 use App\Models\NhanVien;
 use App\Models\User;
+use App\Models\KhachHang;
 use App\Models\DanhGiaNhanVien;
 use Illuminate\Support\Facades\DB;
 
@@ -50,13 +51,8 @@ class AdminController extends Controller
                 'icon' => 'badge', // or engineering
                 'class' => 'info',
             ],
-            'shipping' => [ // Assuming this exists based on recentOrders logic
-                'label' => 'Đơn đang thực hiện',
-                'icon' => 'local_shipping',
-                'class' => 'info',
-            ],
              'rejected' => [
-                'label' => 'Đơn NV Từ chối',
+                'label' => 'Đơn NV từ chối',
                 'icon' => 'person_off',
                 'class' => 'danger',
             ],
@@ -78,7 +74,8 @@ class AdminController extends Controller
         $inProgressOrders = ($orderStatusCounts['cancelled'] ?? 0); // Previous code mapped this variable to 'cancelled' status for the "Đơn Huỷ" card.
         $completedOrders = ($orderStatusCounts['completed'] ?? 0);
 
-        $workingStaff = NhanVien::count(); 
+        $workingStaff = NhanVien::count();
+        $totalCustomers = KhachHang::count();
 
         $revenueRange = DonDat::whereBetween('NgayTao', [$startDate, $endDate])
             ->whereIn('TrangThaiDon', ['completed'])
@@ -95,8 +92,6 @@ class AdminController extends Controller
 
         // 3. Charts Data
 
-        // Line Chart: Orders per day (Last 30 days or selected range)
-        // Using selected range for the chart to make it dynamic
         $ordersByDayData = DonDat::select(DB::raw('DATE(NgayTao) as date'), DB::raw('count(*) as total'))
             ->whereBetween('NgayTao', [$startDate, $endDate])
             ->groupBy('date')
@@ -154,6 +149,7 @@ class AdminController extends Controller
             'inProgressOrders',
             'completedOrders',
             'workingStaff',
+            'totalCustomers',
             'revenueRange',
             'revenueDay',
             'revenueWeek',

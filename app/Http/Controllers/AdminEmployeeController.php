@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\NhanVien;
+use App\Models\DanhGiaNhanVien;
 use Illuminate\Http\Request;
 
 class AdminEmployeeController extends Controller
@@ -23,7 +24,7 @@ class AdminEmployeeController extends Controller
             });
         }
 
-        $employees = $query->with(['taiKhoan', 'donDat' => function($q) use ($startDate, $endDate) {
+        $employees = $query->with(['taiKhoan', 'danhGias', 'donDat' => function($q) use ($startDate, $endDate) {
             $q->whereIn('TrangThaiDon', ['completed', 'done'])
               ->whereBetween('NgayTao', [$startDate, $endDate]);
         }])->paginate(10);
@@ -284,6 +285,50 @@ class AdminEmployeeController extends Controller
         } catch (\Exception $e) {
             \DB::rollBack();
             return back()->with('error', 'Có lỗi xảy ra khi thanh toán lương: ' . $e->getMessage());
+        }
+    }
+
+    public function getReviews(NhanVien $employee)
+    {
+        $reviews = DanhGiaNhanVien::where('ID_NV', $employee->ID_NV)
+            ->orderBy('ThoiGian', 'desc')
+            ->get()
+            ->map(function($review) {
+                $khachHang = \App\Models\KhachHang::find($review->ID_KH);
+                return [
+                    'id' => $review->ID_DG,
+                    'diem' => $review->Diem,
+                    'nhanXet' => $review->NhanXet,
+                    'thoiGian' => $review->ThoiGian,
+                    'khachHang' => $khachHang ? $khachHang->Ten_KH : 'Ẩn danh',
+                ];
+            });
+
+        return response()->json([
+            'employee' => [
+                'id' => $employee->ID_NV,
+                'name' => $employee->Ten_NV,
+            ],
+            'avgRating' => $reviews->avg('diem') ?? 0,
+            'totalReviews' => $reviews->count(),
+            'reviews' => $reviews,
+        ]);
+    }
+
+    public function deleteReview($reviewId)
+    {
+        try {
+            $review = DanhGiaNhanVien::where('ID_DG', $reviewId)->first();
+            
+            if (!$review) {
+                return response()->json(['success' => false, 'message' => 'Không tìm thấy đánh giá'], 404);
+            }
+            
+            $review->delete();
+            
+            return response()->json(['success' => true, 'message' => 'Đã xóa đánh giá thành công']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Có lỗi xảy ra: ' . $e->getMessage()], 500);
         }
     }
 }

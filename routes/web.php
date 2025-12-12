@@ -148,6 +148,8 @@ Route::middleware('auth')->group(function () {
         Route::get('employees/salary', [App\Http\Controllers\AdminEmployeeController::class, 'getSalaryData'])->name('employees.salary');
         Route::get('employees/salary/export', [App\Http\Controllers\AdminEmployeeController::class, 'exportSalary'])->name('employees.salary.export');
         Route::post('employees/salary/process', [App\Http\Controllers\AdminEmployeeController::class, 'processSalaryPayment'])->name('employees.salary.process');
+        Route::get('employees/{employee}/reviews', [App\Http\Controllers\AdminEmployeeController::class, 'getReviews'])->name('employees.reviews');
+        Route::delete('employees/reviews/{review}', [App\Http\Controllers\AdminEmployeeController::class, 'deleteReview'])->name('employees.reviews.delete');
 
         // Admin Profile
         Route::get('/profile', [App\Http\Controllers\AdminProfileController::class, 'show'])->name('profile.show');

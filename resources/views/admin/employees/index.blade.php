@@ -226,6 +226,156 @@
     .status-badge.danger { background: #FEE2E2; color: #B91C1C; } /* Red */
     .status-badge.warning { background: #FEF3C7; color: #B45309; } /* Yellow */
 
+    /* Rating Stars */
+    .rating-stars {
+        color: #FFB800;
+        font-size: 1rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .rating-value {
+        color: var(--color-text-dark);
+        font-weight: 600;
+        margin-left: 0.25rem;
+    }
+
+    .btn-view-reviews {
+        background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+        color: white;
+        border: none;
+        padding: 0.4rem 0.8rem;
+        border-radius: 8px;
+        font-size: 0.75rem;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        transition: opacity 0.2s;
+    }
+
+    .btn-view-reviews:hover {
+        opacity: 0.9;
+    }
+
+    /* Modal Styles */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .modal-overlay.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: var(--color-white);
+        border-radius: var(--radius-card);
+        max-width: 600px;
+        width: 90%;
+        max-height: 80vh;
+        overflow: hidden;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+
+    .modal-header {
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--color-border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        color: var(--color-text-dark);
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--color-text-gray);
+        font-size: 1.5rem;
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+        overflow-y: auto;
+        max-height: 60vh;
+    }
+
+    .review-summary {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        background: var(--color-bg-light);
+        border-radius: 12px;
+    }
+
+    .review-summary-score {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--color-primary-orange);
+    }
+
+    .review-summary-details {
+        flex: 1;
+    }
+
+    .review-item {
+        padding: 1rem;
+        border: 1px solid var(--color-border);
+        border-radius: 12px;
+        margin-bottom: 1rem;
+    }
+
+    .review-item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .review-item-customer {
+        font-weight: 600;
+        color: var(--color-text-dark);
+    }
+
+    .review-item-date {
+        font-size: 0.8rem;
+        color: var(--color-text-gray);
+    }
+
+    .review-item-rating {
+        color: #FFB800;
+        margin-bottom: 0.5rem;
+    }
+
+    .review-item-comment {
+        color: var(--color-text-dark);
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+
+    .no-reviews {
+        text-align: center;
+        color: var(--color-text-gray);
+        padding: 2rem;
+    }
+
     /* Pagination */
     .pagination-wrapper {
         margin-top: 1.5rem;
@@ -363,6 +513,7 @@
                             <th>Khu vực</th>
                             <th>Số dư</th>
                             <th>Doanh thu ({{ \Carbon\Carbon::parse($startDate)->format('d/m') }} - {{ \Carbon\Carbon::parse($endDate)->format('d/m') }})</th>
+                            <th>Đánh giá</th>
                             <th>Trạng thái</th>
                         </tr>
                     </thead>
@@ -376,6 +527,31 @@
                             <td>{{ number_format($employee->SoDu) }} đ</td>
                             <td style="font-weight: bold; color: var(--color-primary-orange);">
                                 {{ number_format($employee->donDat->sum('TongTienSauGiam')) }} đ
+                            </td>
+                            <td>
+                                @php
+                                    $avgRating = $employee->danhGias->avg('Diem') ?? 0;
+                                    $totalReviews = $employee->danhGias->count();
+                                @endphp
+                                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                    <div class="rating-stars">
+                                        @for ($i = 1; $i <= 5; $i++)
+                                            @if ($i <= round($avgRating))
+                                                <span class="material-icons-sharp" style="font-size: 1rem;">star</span>
+                                            @else
+                                                <span class="material-icons-sharp" style="font-size: 1rem; color: #D1D5DB;">star</span>
+                                            @endif
+                                        @endfor
+                                        <span class="rating-value">{{ number_format($avgRating, 1) }}</span>
+                                        <span style="color: var(--color-text-gray); font-size: 0.8rem;">({{ $totalReviews }})</span>
+                                    </div>
+                                    @if($totalReviews > 0)
+                                    <button class="btn-view-reviews" onclick="viewReviews('{{ $employee->ID_NV }}')">
+                                        <span class="material-icons-sharp" style="font-size: 0.9rem;">visibility</span>
+                                        Xem chi tiết
+                                    </button>
+                                    @endif
+                                </div>
                             </td>
                             <td>
                                 @php
@@ -402,9 +578,15 @@
                                     <form action="{{ route('admin.employees.updateStatus', $employee) }}" method="POST" style="display: inline;">
                                         @csrf
                                         @method('PATCH')
-                                        <button type="submit" style="background: none; border: none; cursor: pointer; padding: 0; color: var(--color-text-gray);" title="{{ $btnTitle }}">
-                                            <span class="material-icons-sharp" style="font-size: 1.2rem;">{{ $btnIcon }}</span>
+                                        @if($status === 'active')
+                                        <button type="submit" style="background: #FEE2E2; color: #B91C1C; border: none; cursor: pointer; padding: 0.35rem 0.75rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 600;">
+                                            Khóa tài khoản
                                         </button>
+                                        @else
+                                        <button type="submit" style="background: #DCFCE7; color: #15803D; border: none; cursor: pointer; padding: 0.35rem 0.75rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 600;">
+                                            Mở khóa tài khoản
+                                        </button>
+                                        @endif
                                     </form>
                                     @endif
                                 </div>
@@ -412,7 +594,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="6" style="text-align: center; padding: 2rem;">
+                            <td colspan="8" style="text-align: center; padding: 2rem;">
                                 <span class="material-icons-sharp" style="font-size: 3rem; color: var(--color-text-gray); display: block; margin-bottom: 0.5rem;">inbox</span>
                                 Không có dữ liệu.
                             </td>
@@ -428,4 +610,153 @@
         </div>
     </main>
 </div>
+
+<!-- Reviews Modal -->
+<div class="modal-overlay" id="reviewsModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalTitle">Đánh giá nhân viên</h3>
+            <button class="modal-close" onclick="closeModal()">
+                <span class="material-icons-sharp">close</span>
+            </button>
+        </div>
+        <div class="modal-body" id="modalBody">
+            <!-- Content will be loaded via JavaScript -->
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentEmployeeId = null;
+    
+    function viewReviews(employeeId) {
+        currentEmployeeId = employeeId;
+        const modal = document.getElementById('reviewsModal');
+        const modalBody = document.getElementById('modalBody');
+        const modalTitle = document.getElementById('modalTitle');
+        
+        modalBody.innerHTML = '<div style="text-align: center; padding: 2rem;"><span class="material-icons-sharp" style="animation: spin 1s linear infinite;">sync</span> Đang tải...</div>';
+        modal.classList.add('active');
+        
+        loadReviews(employeeId);
+    }
+    
+    function loadReviews(employeeId) {
+        const modalBody = document.getElementById('modalBody');
+        const modalTitle = document.getElementById('modalTitle');
+        
+        fetch(`/admin/employees/${employeeId}/reviews`)
+            .then(response => response.json())
+            .then(data => {
+                modalTitle.textContent = `Đánh giá nhân viên: ${data.employee.name}`;
+                
+                let html = `
+                    <div class="review-summary">
+                        <div class="review-summary-score">${data.avgRating ? data.avgRating.toFixed(1) : '0.0'}</div>
+                        <div class="review-summary-details">
+                            <div class="rating-stars">
+                                ${generateStars(data.avgRating || 0)}
+                            </div>
+                            <div style="color: var(--color-text-gray); margin-top: 0.25rem;">${data.totalReviews} đánh giá</div>
+                        </div>
+                    </div>
+                `;
+                
+                if (data.reviews.length === 0) {
+                    html += '<div class="no-reviews"><span class="material-icons-sharp" style="font-size: 3rem; display: block; margin-bottom: 0.5rem;">rate_review</span>Chưa có đánh giá nào</div>';
+                } else {
+                    data.reviews.forEach(review => {
+                        const date = new Date(review.thoiGian);
+                        const formattedDate = date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                        
+                        html += `
+                            <div class="review-item" id="review-${review.id}">
+                                <div class="review-item-header">
+                                    <span class="review-item-customer">${review.khachHang}</span>
+                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                        <span class="review-item-date">${formattedDate}</span>
+                                        <button onclick="deleteReview('${review.id}')" style="background: #FEE2E2; color: #B91C1C; border: none; cursor: pointer; padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.7rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.25rem;" title="Xóa đánh giá">
+                                            <span class="material-icons-sharp" style="font-size: 0.8rem;">delete</span>
+                                            Xóa
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="review-item-rating">${generateStars(review.diem)}</div>
+                                <div class="review-item-comment">${review.nhanXet || '<em style="color: var(--color-text-gray);">Không có nhận xét</em>'}</div>
+                            </div>
+                        `;
+                    });
+                }
+                
+                modalBody.innerHTML = html;
+            })
+            .catch(error => {
+                modalBody.innerHTML = '<div class="no-reviews" style="color: #B91C1C;"><span class="material-icons-sharp" style="font-size: 3rem; display: block; margin-bottom: 0.5rem;">error</span>Có lỗi xảy ra khi tải đánh giá</div>';
+                console.error('Error:', error);
+            });
+    }
+    
+    function deleteReview(reviewId) {
+        if (!confirm('Bạn có chắc chắn muốn xóa đánh giá này?')) {
+            return;
+        }
+        
+        fetch(`/admin/employees/reviews/${reviewId}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Reload reviews to update the list and average
+                loadReviews(currentEmployeeId);
+                // Show success message
+                alert(data.message);
+            } else {
+                alert(data.message || 'Có lỗi xảy ra');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Có lỗi xảy ra khi xóa đánh giá');
+        });
+    }
+    
+    function generateStars(rating) {
+        let stars = '';
+        for (let i = 1; i <= 5; i++) {
+            if (i <= Math.round(rating)) {
+                stars += '<span class="material-icons-sharp" style="font-size: 1rem; color: #FFB800;">star</span>';
+            } else {
+                stars += '<span class="material-icons-sharp" style="font-size: 1rem; color: #D1D5DB;">star</span>';
+            }
+        }
+        return stars;
+    }
+    
+    function closeModal() {
+        document.getElementById('reviewsModal').classList.remove('active');
+        // Reload page to update average rating in the table
+        if (currentEmployeeId) {
+            location.reload();
+        }
+    }
+    
+    // Close modal when clicking outside
+    document.getElementById('reviewsModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeModal();
+        }
+    });
+    
+    // Close modal on escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeModal();
+        }
+    });
+</script>
 @endsection

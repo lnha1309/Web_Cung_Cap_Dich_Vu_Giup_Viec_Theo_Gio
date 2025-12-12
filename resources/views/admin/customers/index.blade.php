@@ -359,9 +359,15 @@
                                     <form action="{{ route('admin.customers.updateStatus', $customer) }}" method="POST" style="display: inline;">
                                         @csrf
                                         @method('PATCH')
-                                        <button type="submit" style="background: none; border: none; cursor: pointer; padding: 0; color: var(--color-text-gray);" title="{{ $btnTitle }}">
-                                            <span class="material-icons-sharp" style="font-size: 1.2rem;">{{ $btnIcon }}</span>
+                                        @if($status === 'active')
+                                        <button type="submit" style="background: #FEE2E2; color: #B91C1C; border: none; cursor: pointer; padding: 0.35rem 0.75rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 600;">
+                                            Khóa tài khoản
                                         </button>
+                                        @else
+                                        <button type="submit" style="background: #DCFCE7; color: #15803D; border: none; cursor: pointer; padding: 0.35rem 0.75rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 600;">
+                                            Mở khóa tài khoản
+                                        </button>
+                                        @endif
                                     </form>
                                     @endif
                                 </div>

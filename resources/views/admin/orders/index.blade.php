@@ -234,10 +234,10 @@
         <h1>Quản lý đơn hàng</h1>
 
         <div class="order-tabs">
-            <a href="{{ route('admin.orders.index', ['type' => 'hour']) }}" class="order-tab {{ $currentType == 'hour' ? 'active' : '' }}">
+            <a href="{{ route('admin.orders.index', array_merge(request()->only(['status', 'date_from', 'date_to', 'search']), ['type' => 'hour'])) }}" class="order-tab {{ $currentType == 'hour' ? 'active' : '' }}">
                 Giúp việc theo giờ
             </a>
-            <a href="{{ route('admin.orders.index', ['type' => 'month']) }}" class="order-tab {{ $currentType == 'month' ? 'active' : '' }}">
+            <a href="{{ route('admin.orders.index', array_merge(request()->only(['status', 'date_from', 'date_to', 'search']), ['type' => 'month'])) }}" class="order-tab {{ $currentType == 'month' ? 'active' : '' }}">
                 Giúp việc theo tháng
             </a>
         </div>

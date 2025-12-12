@@ -109,29 +109,48 @@
     /* Status Grid Layout */
     .status-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 1.2rem;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+    }
+    
+    @media screen and (max-width: 1200px) {
+        .status-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+    
+    @media screen and (max-width: 768px) {
+        .status-grid {
+            grid-template-columns: 1fr;
+        }
     }
     
     .status-grid > div {
         background: var(--color-white);
-        padding: 1.2rem;
+        padding: 1.5rem 2rem;
         border-radius: var(--card-border-radius);
         box-shadow: var(--box-shadow);
         transition: all 300ms ease;
+        display: flex;
+        align-items: center;
+        gap: 1.2rem;
     }
     
     .status-grid > div:hover {
         box-shadow: none;
-        transform: translateY(-3px);
+        transform: translateY(-5px);
     }
     
     .status-grid > div span {
         background: var(--color-primary);
-        padding: 0.5rem;
+        padding: 0.8rem;
         border-radius: 50%;
         color: var(--color-white);
-        font-size: 1.5rem; /* Smaller icon */
+        font-size: 1.8rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
     }
     
     /* Apply colors within status-grid */
@@ -142,13 +161,18 @@
     .status-grid > div.info span { background: var(--color-info-dark); }
 
     /* Compact text for status grid */
-    .status-grid h3 {
-        margin: 0.8rem 0 0.2rem;
-        font-size: 0.9rem;
+    .status-grid .left h3 {
+        margin: 0 0 0.3rem;
+        font-size: 0.95rem;
+        color: var(--color-dark-variant);
+        font-weight: 500;
     }
     
-    .status-grid h1 {
-        font-size: 1.4rem;
+    .status-grid .left h1 {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--color-dark);
+        margin: 0;
     }
 
     main .insights > div .middle {
@@ -563,6 +587,18 @@
             <small class="text-muted">Active staff</small>
         </div>
         
+        <!-- Total Customers -->
+        <div class="pending">
+             <span class="material-icons-sharp">people</span>
+            <div class="middle">
+                <div class="left">
+                    <h3>Tổng Khách Hàng</h3>
+                    <h1>{{ $totalCustomers }}</h1>
+                </div>
+            </div>
+            <small class="text-muted">Registered customers</small>
+        </div>
+        
     </div>
 
     <!-- Detailed Status Statistics -->
@@ -623,10 +659,12 @@
                 @foreach($recentOrders as $order)
                 @php
                     $statusClass = 'primary';
-                    if($order->TrangThaiDon == 'finding_staff') $statusClass = 'warning';
+                    if($order->TrangThaiDon == 'finding_staff') $statusClass = 'info';
                     elseif($order->TrangThaiDon == 'cancelled') $statusClass = 'danger';
                     elseif($order->TrangThaiDon == 'completed') $statusClass = 'success';
-                    elseif($order->TrangThaiDon == 'shipping') $statusClass = 'info';
+                    elseif($order->TrangThaiDon == 'assigned') $statusClass = 'primary';
+                    elseif($order->TrangThaiDon == 'rejected') $statusClass = 'warning';
+                    elseif($order->TrangThaiDon == 'confirmed') $statusClass = 'info';
                 @endphp
                 <tr>
                     <td>#{{ $order->ID_DD }}</td>

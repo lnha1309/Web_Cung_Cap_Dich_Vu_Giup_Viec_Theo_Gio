@@ -46,4 +46,9 @@ class NhanVien extends Model
     {
         return $this->hasMany(DonDat::class, 'ID_NV', 'ID_NV');
     }
+
+    public function danhGias()
+    {
+        return $this->hasMany(DanhGiaNhanVien::class, 'ID_NV', 'ID_NV');
+    }
 }
