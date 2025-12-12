@@ -20,29 +20,63 @@ class AdminController extends Controller
 
         // 2. KPIs
         
-        // Total Orders (Day, Week, Month)
         // Total Orders (Range)
         $totalOrdersRange = DonDat::whereBetween('NgayTao', [$startDate, $endDate])->count();
         
-        // Keep these for small text if needed, or remove if unused. 
-        // For now, I'll keep them but the main display will use Range.
+        // Keep these for small text if needed
         $totalOrdersDay = DonDat::whereDate('NgayTao', Carbon::today())->count();
         $totalOrdersWeek = DonDat::whereBetween('NgayTao', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()])->count();
 
-        // Pending Orders (Range)
-        $pendingOrders = DonDat::whereIn('TrangThaiDon', ['assigned'])
+        // Count all statuses in the range
+        $orderStatusCounts = DonDat::select('TrangThaiDon', DB::raw('count(*) as total'))
             ->whereBetween('NgayTao', [$startDate, $endDate])
-            ->count();
+            ->groupBy('TrangThaiDon')
+            ->pluck('total', 'TrangThaiDon')
+            ->toArray();
 
-        // In-progress Orders (Range)
-        $inProgressOrders = DonDat::where('TrangThaiDon','confirmed')
-            ->whereBetween('NgayTao', [$startDate, $endDate])
-            ->count();
+        $allStatusConfig = [
+            'finding_staff' => [
+                'label' => 'Đơn đang tìm NV',
+                'icon' => 'person_search',
+                'class' => 'warning',
+            ],
+            'confirmed' => [
+                'label' => 'Đơn đã xác nhận',
+                'icon' => 'verified', // or check_circle_outline
+                'class' => 'primary',
+            ],
+            'assigned' => [
+                'label' => 'Đơn đã có NV',
+                'icon' => 'badge', // or engineering
+                'class' => 'info',
+            ],
+            'shipping' => [ // Assuming this exists based on recentOrders logic
+                'label' => 'Đơn đang thực hiện',
+                'icon' => 'local_shipping',
+                'class' => 'info',
+            ],
+             'rejected' => [
+                'label' => 'Đơn NV Từ chối',
+                'icon' => 'person_off',
+                'class' => 'danger',
+            ],
+            'completed' => [
+                'label' => 'Đơn đã hoàn thành',
+                'icon' => 'check_circle',
+                'class' => 'success',
+            ],
+            'cancelled' => [
+                'label' => 'Đơn đã huỷ',
+                'icon' => 'cancel',
+                'class' => 'danger',
+            ],
+        ];
 
-        // Completed Orders (Range)
-        $completedOrders = DonDat::where('TrangThaiDon', 'completed')
-            ->whereBetween('NgayTao', [$startDate, $endDate])
-            ->count();
+        // Specific vars for top cards (backward compatibility or specific highlight)
+        $pendingOrders = $orderStatusCounts['confirmed'] ?? 0; // Or finding_staff? Let's use confirmed/assigned/finding_staff sum if "Pending" implies action needed. 
+        $pendingOrders = ($orderStatusCounts['assigned'] ?? 0); 
+        $inProgressOrders = ($orderStatusCounts['cancelled'] ?? 0); // Previous code mapped this variable to 'cancelled' status for the "Đơn Huỷ" card.
+        $completedOrders = ($orderStatusCounts['completed'] ?? 0);
 
         $workingStaff = NhanVien::count(); 
 
@@ -100,11 +134,6 @@ class AdminController extends Controller
             ->take(5)
             ->get();
             
-        // Map recent orders to match view expectation if needed, or update view to use model
-        // The view uses object properties, so model instances should work fine.
-        // Need to ensure relationships are loaded or accessed correctly in view.
-        
-        // Deliver Status Labels (Keep existing)
         $deliverStatusLabels = [
             'finding_staff' => 'Tìm nhân viên',
             'confirmed' => 'Đã xác nhận',
@@ -135,7 +164,9 @@ class AdminController extends Controller
             'orderTypeLabels',
             'orderTypeValues',
             'recentOrders',
-            'deliverStatusLabels'
+            'deliverStatusLabels',
+            'orderStatusCounts',
+            'allStatusConfig'
         ));
     }
 

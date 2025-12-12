@@ -98,6 +98,58 @@
     main .insights > div.pending span {
         background: var(--color-warning);
     }
+    
+    /* New Status Colors */
+    main .insights > div.primary span { background: var(--color-primary); }
+    main .insights > div.success span { background: var(--color-success); }
+    main .insights > div.danger span { background: var(--color-danger); }
+    main .insights > div.warning span { background: var(--color-warning); }
+    main .insights > div.info span { background: var(--color-info-dark); }
+    
+    /* Status Grid Layout */
+    .status-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1.2rem;
+    }
+    
+    .status-grid > div {
+        background: var(--color-white);
+        padding: 1.2rem;
+        border-radius: var(--card-border-radius);
+        box-shadow: var(--box-shadow);
+        transition: all 300ms ease;
+    }
+    
+    .status-grid > div:hover {
+        box-shadow: none;
+        transform: translateY(-3px);
+    }
+    
+    .status-grid > div span {
+        background: var(--color-primary);
+        padding: 0.5rem;
+        border-radius: 50%;
+        color: var(--color-white);
+        font-size: 1.5rem; /* Smaller icon */
+    }
+    
+    /* Apply colors within status-grid */
+    .status-grid > div.primary span { background: var(--color-primary); }
+    .status-grid > div.success span { background: var(--color-success); }
+    .status-grid > div.danger span { background: var(--color-danger); }
+    .status-grid > div.warning span { background: var(--color-warning); }
+    .status-grid > div.info span { background: var(--color-info-dark); }
+
+    /* Compact text for status grid */
+    .status-grid h3 {
+        margin: 0.8rem 0 0.2rem;
+        font-size: 0.9rem;
+    }
+    
+    .status-grid h1 {
+        font-size: 1.4rem;
+    }
 
     main .insights > div .middle {
         display: flex;
@@ -499,43 +551,6 @@
             </div>
             <small class="text-muted">Day: {{ number_format($revenueDay) }} | Week: {{ number_format($revenueWeek) }}</small>
         </div>
-
-        <!-- Pending Orders -->
-        <div class="pending">
-            <span class="material-icons-sharp">pending</span>
-            <div class="middle">
-                <div class="left">
-                    <h3>Đơn Chờ Xác Nhận</h3>
-                    <h1>{{ $pendingOrders }}</h1>
-                </div>
-            </div>
-            <small class="text-muted">Action needed</small>
-        </div>
-        
-        <!-- In Progress -->
-        <div class="sales">
-             <span class="material-icons-sharp">local_shipping</span>
-            <div class="middle">
-                <div class="left">
-                    <h3>Đơn Đang Thực Hiện</h3>
-                    <h1>{{ $inProgressOrders }}</h1>
-                </div>
-            </div>
-            <small class="text-muted">On the way</small>
-        </div>
-
-        <!-- Completed Orders -->
-        <div class="income">
-             <span class="material-icons-sharp">check_circle</span>
-            <div class="middle">
-                <div class="left">
-                    <h3>Đơn Đã Hoàn Thành</h3>
-                    <h1>{{ $completedOrders }}</h1>
-                </div>
-            </div>
-            <small class="text-muted">Successfully delivered</small>
-        </div>
-
          <!-- Working Staff -->
         <div class="expenses">
              <span class="material-icons-sharp">engineering</span>
@@ -548,6 +563,31 @@
             <small class="text-muted">Active staff</small>
         </div>
         
+    </div>
+
+    <!-- Detailed Status Statistics -->
+    <div style="margin-top: 2rem;">
+        <h2>Thống kê chi tiết trạng thái</h2>
+        <div class="status-grid" style="margin-top: 1rem;">
+            @foreach($allStatusConfig as $status => $config)
+            <div class="{{ $config['class'] }}" 
+                 onclick="window.location.href='{{ route('admin.orders.index', ['status' => $status, 'date_from' => $startDate, 'date_to' => $endDate]) }}'"
+                 style="cursor: pointer;">
+                <span class="material-icons-sharp">{{ $config['icon'] }}</span>
+                <div class="middle">
+                    <div class="left">
+                        <h3>{{ $config['label'] }}</h3>
+                        <h1>{{ $orderStatusCounts[$status] ?? 0 }}</h1>
+                    </div>
+                </div>
+                <!-- Remove Text Muted or keep it? User didn't ask to remove. 
+                     But the previous code in my memory had it removed by user maybe?
+                     Let's check the Diff 37. User REMOVED the <small> tag.
+                     So I should respect that and NOT put it back.
+                -->
+            </div>
+            @endforeach
+        </div>
     </div>
 
     <!-- Charts Section -->
