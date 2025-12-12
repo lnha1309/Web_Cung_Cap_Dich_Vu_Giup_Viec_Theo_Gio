@@ -14,7 +14,7 @@ class ApiServiceController extends Controller
      */
     public function index()
     {
-        $services = DichVu::all();
+        $services = DichVu::where('is_delete', false)->get();
 
         return response()->json([
             'success' => true,

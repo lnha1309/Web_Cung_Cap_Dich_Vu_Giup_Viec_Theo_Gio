@@ -252,6 +252,10 @@
         display: inline-block;
     }
 
+    .badge-status { padding: 0.35rem 0.8rem; border-radius: 999px; font-weight: 600; font-size: 0.8rem; }
+    .badge-active { background: #e8f5e9; color: #2e7d32; }
+    .badge-deleted { background: #ffebee; color: #c62828; }
+
     .pagination {
         display: flex;
         gap: 0.45rem;
@@ -433,6 +437,7 @@
                             <th>Diện tích tối đa</th>
                             <th>Số phòng</th>
                             <th>Thời lượng</th>
+                            <th>Trạng thái</th>
                             <th>Thao tác</th>
                         </tr>
                     </thead>
@@ -445,6 +450,13 @@
                                 <td>{{ $service->DienTichToiDa !== null ? rtrim(rtrim(number_format($service->DienTichToiDa, 2, '.', ''), '0'), '.') : '—' }}</td>
                                 <td>{{ $service->SoPhong ?? '—' }}</td>
                                 <td>{{ rtrim(rtrim(number_format($service->ThoiLuong, 2, '.', ''), '0'), '.') }} giờ</td>
+                                <td>
+                                    @if($service->is_delete)
+                                        <span class="badge-status badge-deleted">Đã xoá</span>
+                                    @else
+                                        <span class="badge-status badge-active">Hoạt động</span>
+                                    @endif
+                                </td>
                                 <td>
                                     <div class="actions">
                                         <button
@@ -460,18 +472,27 @@
                                         >
                                             Sửa
                                         </button>
-                                        <form action="{{ route('admin.services.destroy', $service->ID_DV) }}" method="POST"
-                                            onsubmit="return confirm('Xoá dịch vụ {{ $service->TenDV }}?');">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn danger">Xoá</button>
-                                        </form>
+                                        @if($service->is_delete)
+                                            <form action="{{ route('admin.services.restore', $service->ID_DV) }}" method="POST"
+                                                onsubmit="return confirm('Khôi phục dịch vụ {{ $service->TenDV }}?');">
+                                                @csrf
+                                                @method('PATCH')
+                                                <button type="submit" class="btn primary-btn">Khôi phục</button>
+                                            </form>
+                                        @else
+                                            <form action="{{ route('admin.services.destroy', $service->ID_DV) }}" method="POST"
+                                                onsubmit="return confirm('Xoá dịch vụ {{ $service->TenDV }}?');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn danger">Xoá</button>
+                                            </form>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="text-muted">Chưa có dịch vụ nào.</td>
+                                <td colspan="8" class="text-muted">Chưa có dịch vụ nào.</td>
                             </tr>
                         @endforelse
                     </tbody>

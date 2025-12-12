@@ -16,9 +16,19 @@ class PhuThu extends Model
         'ID_PT',
         'Ten_PT',
         'GiaCuoc',
+        'is_delete',
     ];
 
     protected $casts = [
         'GiaCuoc' => 'decimal:2',
+        'is_delete' => 'boolean',
     ];
+
+    /**
+     * Scope để lọc các phụ thu chưa bị xoá mềm
+     */
+    public function scopeNotDeleted($query)
+    {
+        return $query->where('is_delete', false);
+    }
 }

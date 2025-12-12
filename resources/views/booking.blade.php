@@ -1966,7 +1966,7 @@
 
         .duration-options {
             display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
             gap: 12px;
             margin-bottom: 16px;
         }
@@ -2703,7 +2703,7 @@
 
         .month-package-selector {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
             gap: 12px;
             margin-bottom: 16px;
         }
@@ -3170,22 +3170,18 @@
 
                     <h4>Thời gian lặp lại</h4>
                     <div class="month-package-selector">
-                        <div class="month-option" data-months="1" data-days="30" data-discount="5">
-                            <div class="month-duration">1 tháng</div>
-                            <div class="month-discount">Giảm 5%</div>
-                        </div>
-                        <div class="month-option" data-months="2" data-days="60" data-discount="10">
-                            <div class="month-duration">2 tháng</div>
-                            <div class="month-discount">Giảm 10%</div>
-                        </div>
-                        <div class="month-option" data-months="3" data-days="90" data-discount="15">
-                            <div class="month-duration">3 tháng</div>
-                            <div class="month-discount">Giảm 15%</div>
-                        </div>
-                        <div class="month-option" data-months="6" data-days="180" data-discount="20">
-                            <div class="month-duration">6 tháng</div>
-                            <div class="month-discount">Giảm 20%</div>
-                        </div>
+                        @foreach($monthlyPackages as $package)
+                            @php
+                                $months = (int) round($package->SoNgay / 30);
+                                $days = (int) $package->SoNgay;
+                                $discount = (float) $package->PhanTramGiam;
+                                $discountFormatted = rtrim(rtrim(number_format($discount, 2, '.', ''), '0'), '.');
+                            @endphp
+                            <div class="month-option" data-months="{{ $months }}" data-days="{{ $days }}" data-discount="{{ $discount }}" data-package-id="{{ $package->ID_Goi }}">
+                                <div class="month-duration">{{ $package->TenGoi }}</div>
+                                <div class="month-discount">Giảm {{ $discountFormatted }}%</div>
+                            </div>
+                        @endforeach
                     </div>
 
                     <!-- Nút xem lịch chi tiết -->
@@ -3286,27 +3282,36 @@
                             </div>
                         </div>
 
+                        @if(isset($surcharges) && $surcharges->count() > 0)
                         <div class="form-section">
                             <h3>Tùy chọn</h3>
                             <div class="options-group">
-                                <div class="option-item" data-option="pets">
-                                    <img src="assets/pets.png" alt="Pets">
-                                    <div class="label">Nhà có thú cưng</div>
-                                    <div class="help-icon">
-                                        ?
-                                        <div class="tooltip">
-                                            <p>Để vệ sinh khu vực nuôi thú cưng hiệu quả, nhân viên cần được trang bị dụng cụ và hóa chất đặc biệt. Do đó, khi chọn tùy chọn này, sẽ áp dụng thêm <strong>phí 30.000 VNĐ</strong>.</p>
-                                            <p>Một số lưu ý cho bạn:</p>
-                                            <ul>
-                                                <li>Một số nhân viên bị dị ứng với lông thú cưng và không thể thực hiện công việc. Vui lòng <strong>chỉ rõ loại thú cưng</strong> để được hỗ trợ tốt nhất.</li>
-                                                <li>Để đảm bảo an toàn cho cả nhân viên và thú cưng của bạn, vui lòng <strong>giữ thú cưng trong lồng hoặc khu vực riêng</strong> trong khi nhân viên đang làm việc.</li>
-                                            </ul>
+                                @foreach($surcharges as $surcharge)
+                                    @php
+                                        // Map ID_PT to option key for JavaScript
+                                        $optionKey = strtolower(str_replace(' ', '_', $surcharge->Ten_PT));
+                                        if ($surcharge->ID_PT === 'PT002') {
+                                            $optionKey = 'pets';
+                                        }
+                                    @endphp
+                                    <div class="option-item" data-option="{{ $optionKey }}" data-surcharge-id="{{ $surcharge->ID_PT }}" data-surcharge-price="{{ $surcharge->GiaCuoc }}">
+                                        @if($surcharge->ID_PT === 'PT002')
+                                            <img src="assets/pets.png" alt="Pets">
+                                        @else
+                                            <img src="assets/option-default.png" alt="{{ $surcharge->Ten_PT }}">
+                                        @endif
+                                        <div class="label">{{ $surcharge->Ten_PT }}</div>
+                                        <div class="help-icon">
+                                            ?
+                                            <div class="tooltip">
+                                                <p>Phụ thu <strong>{{ number_format($surcharge->GiaCuoc, 0, ',', '.') }} VNĐ</strong> sẽ được áp dụng khi chọn tùy chọn này.</p>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-
+                                @endforeach
                             </div>
                         </div>
+                        @endif
 
                         <div class="form-group" id="noteGroup">
                             <label>Chọn ngày bắt dầu:</label>
@@ -3474,7 +3479,7 @@
                         </div>
                         {{-- Ẩn chi tiết giờ cố định ở payment screen --}}
 
-                        <div class="price-row">
+                        <div class="price-row" id="surchargeRow" style="display: none;">
                             <div class="label">Tổng phụ thu</div>
                             <div class="value" id="otherCostsTotal">0VNĐ</div>
                         </div>
@@ -3539,11 +3544,11 @@
         let appliedVoucher = null;
         let voucherDiscount = 0;
 
-        // Surcharge System
+        // Surcharge System - giá trị 0 nếu phụ thu bị xoá mềm
         let surchargeAmounts = {
-            PT001: 30000,  // Peak hours - will be fetched from API
-            PT002: 30000,  // Pets - will be fetched from API
-            PT003: 30000   // Weekend - will be fetched from API
+            PT001: 0,  // Peak hours - will be fetched from API
+            PT002: 0,  // Pets - will be fetched from API
+            PT003: 0   // Weekend - will be fetched from API
         };
         
         let appliedSurcharges = {
@@ -3558,9 +3563,9 @@
                 const response = await fetch('{{ route("booking.surcharges") }}');
                 if (response.ok) {
                     const data = await response.json();
-                    surchargeAmounts.PT001 = data.PT001 || 30000;
-                    surchargeAmounts.PT002 = data.PT002 || 30000;
-                    surchargeAmounts.PT003 = data.PT003 || 30000;
+                    surchargeAmounts.PT001 = data.PT001 ?? 0;
+                    surchargeAmounts.PT002 = data.PT002 ?? 0;
+                    surchargeAmounts.PT003 = data.PT003 ?? 0;
                     console.log('Surcharge prices loaded:', surchargeAmounts);
                     
                     // Trigger surcharge detection after prices are loaded
@@ -3734,11 +3739,19 @@
 
         function renderSurchargeDetails(items) {
             const container = document.getElementById('surchargeDetails');
-            if (!container) return;
+            const surchargeRow = document.getElementById('surchargeRow');
+            
+            // Ẩn dòng Tổng phụ thu nếu không có items hoặc tổng = 0
             if (!items || items.length === 0) {
-                container.textContent = '';
+                if (container) container.textContent = '';
+                if (surchargeRow) surchargeRow.style.display = 'none';
                 return;
             }
+            
+            // Hiển thị dòng Tổng phụ thu
+            if (surchargeRow) surchargeRow.style.display = 'flex';
+            
+            if (!container) return;
             const html = items.map(item => {
                 const unit = formatVND(item.unit);
                 const total = formatVND(item.total);
@@ -3760,20 +3773,27 @@
             const { totalSessions, weekendSessions } = getSessionCountsFromState();
 
             const items = [];
+            // Chỉ hiển thị phụ thu nếu giá > 0 (không bị xoá mềm)
             if (appliedSurcharges.PT003) {
                 const qty = Math.max(weekendSessions || 0, 1);
                 const unit = Number(surchargeAmounts.PT003) || 0;
-                items.push({ label: 'Phụ thu cuối tuần', qty, unit, total: unit * qty });
+                if (unit > 0) {
+                    items.push({ label: 'Phụ thu cuối tuần', qty, unit, total: unit * qty });
+                }
             }
             if (appliedSurcharges.PT001) {
                 const qty = totalSessions;
                 const unit = Number(surchargeAmounts.PT001) || 0;
-                items.push({ label: 'Phụ thu ngoài giờ', qty, unit, total: unit * qty });
+                if (unit > 0) {
+                    items.push({ label: 'Phụ thu ngoài giờ', qty, unit, total: unit * qty });
+                }
             }
             if (appliedSurcharges.PT002) {
                 const qty = totalSessions;
                 const unit = Number(surchargeAmounts.PT002) || 0;
-                items.push({ label: 'Phụ thu thú cưng', qty, unit, total: unit * qty });
+                if (unit > 0) {
+                    items.push({ label: 'Phụ thu thú cưng', qty, unit, total: unit * qty });
+                }
             }
 
             const total = items.reduce((sum, i) => sum + (Number(i.total) || 0), 0);

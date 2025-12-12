@@ -55,19 +55,21 @@ class AdminPackageController extends Controller
 
     public function destroy(GoiThang $package)
     {
-        $isInUse = DonDat::where('ID_Goi', $package->ID_Goi)->exists();
-
-        if ($isInUse) {
-            return redirect()
-                ->route('admin.packages.index')
-                ->with('error', 'Không thể xóa gói tháng đang được dùng trong đơn đặt.');
-        }
-
-        $package->delete();
+        // Soft delete: chỉ đánh dấu is_delete = true
+        $package->update(['is_delete' => true]);
 
         return redirect()
             ->route('admin.packages.index')
             ->with('success', 'Đã xóa gói tháng.');
+    }
+
+    public function restore(GoiThang $package)
+    {
+        $package->update(['is_delete' => false]);
+
+        return redirect()
+            ->route('admin.packages.index')
+            ->with('success', 'Đã khôi phục gói tháng.');
     }
 
     private function validateData(Request $request, ?string $packageId = null): array

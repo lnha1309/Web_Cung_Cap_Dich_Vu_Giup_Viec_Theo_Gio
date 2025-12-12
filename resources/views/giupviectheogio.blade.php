@@ -267,8 +267,9 @@
 
     .hourly-pricing-grid {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
         gap: 30px;
+        justify-content: center;
     }
 
     .hourly-pricing-card {
@@ -585,58 +586,21 @@ Giải pháp lý tưởng cho những gia đình bận rộn cần sự hỗ tr�
 <section id="pricing" class="hourly-section hourly-pricing hourly-container">
     <h2>Bảng giá dịch vụ</h2>
     <p class="hourly-pricing-intro">Chúng tôi cam kết một mức giá minh bạch, không phát sinh phụ phí. Bạn chỉ trả tiền cho thời gian bạn sử dụng.</p>
-    @php
-        $packagesByDuration = collect($hourlyPackages ?? [])->keyBy('duration');
-        $packageContent = [
-            2 => [
-                'fallback_name' => 'Gói 2 giờ',
-                'fallback_price' => 192000,
-                'description' => 'Lý tưởng cho căn hộ studio hoặc 1 phòng ngủ.',
-                'features' => [
-                    'Dọn dẹp cơ bản',
-                    'Tập trung 1-2 khu vực',
-                ],
-            ],
-            3 => [
-                'fallback_name' => 'Gói 3 giờ',
-                'fallback_price' => 240000,
-                'description' => 'Phổ biến nhất! Phù hợp cho nhà 2 phòng ngủ.',
-                'features' => [
-                    'Dọn dẹp toàn diện',
-                    'Đủ thời gian cho các khu vực',
-                ],
-            ],
-            4 => [
-                'fallback_name' => 'Gói 4 giờ',
-                'fallback_price' => 320000,
-                'description' => 'Dành cho nhà lớn, hoặc cần dọn dẹp kỹ.',
-                'features' => [
-                    'Dọn dẹp sâu, chi tiết',
-                    'Bao quát toàn bộ nhà',
-                ],
-            ],
-        ];
-    @endphp
     <div class="hourly-pricing-grid">
-        @foreach($packageContent as $duration => $content)
-            @php
-                $data = $packagesByDuration->get($duration, []);
-                $name = $data['name'] ?? $content['fallback_name'];
-                $price = $data['price'] ?? $content['fallback_price'];
-                $description = $data['description'] ?? $content['description'];
-            @endphp
-            <div class="hourly-pricing-card" data-duration="{{ $duration }}">
-                <h3>{{ $name }}</h3>
-                <div class="hourly-price">{{ number_format((float) $price, 0, ',', '.') }}đ</div>
-                <p>{{ $description }}</p>
+        @forelse($hourlyPackages as $package)
+            <div class="hourly-pricing-card" data-duration="{{ $package['duration'] }}">
+                <h3>{{ $package['name'] }}</h3>
+                <div class="hourly-price">{{ number_format((float) $package['price'], 0, ',', '.') }}đ</div>
+                <p>{{ $package['description'] ?: 'Gói ' . $package['duration'] . ' giờ phù hợp cho nhiều nhu cầu dọn dẹp.' }}</p>
                 <ul>
-                    @foreach($content['features'] as $feature)
-                        <li>{{ $feature }}</li>
-                    @endforeach
+                    <li>Thời lượng: {{ $package['duration'] }} giờ</li>
+                    <li>Dọn dẹp toàn diện</li>
                 </ul>
-                <a href="{{ route('booking.selectAddress', ['duration' => $duration]) }}" class="hourly-btn hourly-btn-secondary" data-duration="{{ $duration }}">Chọn gói này</a>
+                <a href="{{ route('booking.selectAddress', ['duration' => $package['duration']]) }}" class="hourly-btn hourly-btn-secondary" data-duration="{{ $package['duration'] }}">Chọn gói này</a>
             </div>
-        @endforeach
+        @empty
+            <p class="text-muted">Chưa có gói dịch vụ nào.</p>
+        @endforelse
     </div>
 </section>
 @endsection

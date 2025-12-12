@@ -48,6 +48,10 @@
     .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
     .actions .btn { padding: 0.45rem 0.9rem; }
 
+    .badge-status { padding: 0.35rem 0.8rem; border-radius: 999px; font-weight: 600; font-size: 0.8rem; }
+    .badge-active { background: #e8f5e9; color: #2e7d32; }
+    .badge-deleted { background: #ffebee; color: #c62828; }
+
     .pagination { display: flex; gap: 0.45rem; align-items: center; list-style: none; margin-top: 1rem; }
     .pagination li a, .pagination li span { display: inline-block; padding: 0.5rem 0.85rem; border-radius: var(--border-radius-1); background: var(--color-white); border: 1px solid var(--color-light); color: var(--color-dark); }
     .pagination li.active span { background: var(--color-primary); color: var(--color-white); border-color: var(--color-primary); }
@@ -165,6 +169,7 @@
                             <th>ID_PT</th>
                             <th>Tên phụ thu</th>
                             <th>Giá cước</th>
+                            <th>Trạng thái</th>
                             <th>Thao tác</th>
                         </tr>
                     </thead>
@@ -174,6 +179,13 @@
                                 <td>{{ $surcharge->ID_PT }}</td>
                                 <td>{{ $surcharge->Ten_PT }}</td>
                                 <td>{{ number_format($surcharge->GiaCuoc, 0, ',', '.') }} đ</td>
+                                <td>
+                                    @if($surcharge->is_delete)
+                                        <span class="badge-status badge-deleted">Đã xoá</span>
+                                    @else
+                                        <span class="badge-status badge-active">Hoạt động</span>
+                                    @endif
+                                </td>
                                 <td>
                                     <div class="actions">
                                         <button
@@ -185,18 +197,27 @@
                                         >
                                             Sửa
                                         </button>
-                                        <form action="{{ route('admin.surcharges.destroy', $surcharge->ID_PT) }}" method="POST"
-                                            onsubmit="return confirm('Xóa phụ thu {{ $surcharge->Ten_PT }}?');">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn danger">Xóa</button>
-                                        </form>
+                                        @if($surcharge->is_delete)
+                                            <form action="{{ route('admin.surcharges.restore', $surcharge->ID_PT) }}" method="POST"
+                                                onsubmit="return confirm('Khôi phục phụ thu {{ $surcharge->Ten_PT }}?');">
+                                                @csrf
+                                                @method('PATCH')
+                                                <button type="submit" class="btn primary-btn">Khôi phục</button>
+                                            </form>
+                                        @else
+                                            <form action="{{ route('admin.surcharges.destroy', $surcharge->ID_PT) }}" method="POST"
+                                                onsubmit="return confirm('Xóa phụ thu {{ $surcharge->Ten_PT }}?');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn danger">Xóa</button>
+                                            </form>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="text-muted">Chưa có phụ thu nào.</td>
+                                <td colspan="5" class="text-muted">Chưa có phụ thu nào.</td>
                             </tr>
                         @endforelse
                     </tbody>

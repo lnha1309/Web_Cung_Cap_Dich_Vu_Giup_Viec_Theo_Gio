@@ -55,19 +55,21 @@ class AdminSurchargeController extends Controller
 
     public function destroy(PhuThu $surcharge)
     {
-        $inUse = ChiTietPhuThu::where('ID_PT', $surcharge->ID_PT)->exists();
-
-        if ($inUse) {
-            return redirect()
-                ->route('admin.surcharges.index')
-                ->with('error', 'Không thể xóa phụ thu đã được dùng trong chi tiết phụ thu.');
-        }
-
-        $surcharge->delete();
+        // Soft delete: chỉ đánh dấu is_delete = true
+        $surcharge->update(['is_delete' => true]);
 
         return redirect()
             ->route('admin.surcharges.index')
             ->with('success', 'Đã xóa phụ thu.');
+    }
+
+    public function restore(PhuThu $surcharge)
+    {
+        $surcharge->update(['is_delete' => false]);
+
+        return redirect()
+            ->route('admin.surcharges.index')
+            ->with('success', 'Đã khôi phục phụ thu.');
     }
 
     private function validateData(Request $request, ?string $surchargeId = null): array

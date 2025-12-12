@@ -73,19 +73,21 @@ class AdminServiceController extends Controller
 
     public function destroy(DichVu $service)
     {
-        $isInUse = DonDat::where('ID_DV', $service->ID_DV)->exists();
-
-        if ($isInUse) {
-            return redirect()
-                ->route('admin.services.index')
-                ->with('error', 'Không thể xóa dịch vụ đang được dùng trong đơn đặt.');
-        }
-
-        $service->delete();
+        // Soft delete: chỉ đánh dấu is_delete = true
+        $service->update(['is_delete' => true]);
 
         return redirect()
             ->route('admin.services.index')
             ->with('success', 'Đã xóa dịch vụ.');
+    }
+
+    public function restore(DichVu $service)
+    {
+        $service->update(['is_delete' => false]);
+
+        return redirect()
+            ->route('admin.services.index')
+            ->with('success', 'Đã khôi phục dịch vụ.');
     }
 
     private function validateData(Request $request, ?string $serviceId = null): array

@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use App\Models\DonDat;
 use App\Models\DichVu;
+use App\Models\GoiThang;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\BookingController;
@@ -108,9 +109,13 @@ Route::middleware('auth')->group(function () {
         Route::get('/revenue/export', [AdminController::class, 'exportRevenue'])->name('revenue.export');
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
         Route::resource('services', AdminServiceController::class)->except(['create', 'edit', 'show']);
+        Route::patch('services/{service}/restore', [AdminServiceController::class, 'restore'])->name('services.restore');
         Route::resource('packages', AdminPackageController::class)->except(['create', 'edit', 'show']);
+        Route::patch('packages/{package}/restore', [AdminPackageController::class, 'restore'])->name('packages.restore');
         Route::resource('surcharges', AdminSurchargeController::class)->except(['create', 'edit', 'show']);
+        Route::patch('surcharges/{surcharge}/restore', [AdminSurchargeController::class, 'restore'])->name('surcharges.restore');
         Route::resource('promotions', AdminPromotionController::class)->except(['create', 'edit', 'show']);
+        Route::patch('promotions/{promotion}/restore', [AdminPromotionController::class, 'restore'])->name('promotions.restore');
         Route::get('orders/export', [App\Http\Controllers\AdminOrderController::class, 'export'])->name('orders.export');
         Route::get('/orders', [App\Http\Controllers\AdminOrderController::class, 'index'])->name('orders.index');
         Route::get('/orders/{order}', [App\Http\Controllers\AdminOrderController::class, 'show'])->name('orders.show');
@@ -178,60 +183,51 @@ Route::get('/apply', function () {
 Route::post('/apply/register', [ApplyRegisterController::class, 'store'])->name('apply.register');
 
 Route::get('/giupviectheogio', function () {
-    $packages = [
-        2 => [
-            'duration' => 2,
-            'name' => 'Gói 2 giờ',
-            'price' => 192000,
-            'description' => 'Lý tưởng cho căn hộ studio hoặc 1 phòng ngủ.',
-            'id' => 'DV001',
-        ],
-        3 => [
-            'duration' => 3,
-            'name' => 'Gói 3 giờ',
-            'price' => 240000,
-            'description' => 'Phổ biến nhất! Phù hợp cho nhà 2 phòng ngủ.',
-            'id' => 'DV002',
-        ],
-        4 => [
-            'duration' => 4,
-            'name' => 'Gói 4 giờ',
-            'price' => 320000,
-            'description' => 'Dành cho nhà lớn, hoặc cần dọn dẹp kỹ.',
-            'id' => 'DV003',
-        ],
-    ];
+    // Load tất cả dịch vụ chưa bị xoá từ database
+    $services = DichVu::where('is_delete', false)
+        ->orderBy('ThoiLuong')
+        ->get();
 
-    $services = DichVu::whereIn('ID_DV', ['DV001', 'DV002', 'DV003'])->get();
-
-    foreach ($services as $service) {
-        $duration = (int) round($service->ThoiLuong ?? 0);
-        if (!isset($packages[$duration])) {
-            continue;
-        }
-
-        $packages[$duration]['name'] = $service->TenDV ?: $packages[$duration]['name'];
-        $packages[$duration]['price'] = (float) $service->GiaDV;
-        $packages[$duration]['id'] = $service->ID_DV;
-
-        if (!empty($service->MoTa)) {
-            $packages[$duration]['description'] = $service->MoTa;
-        }
-    }
-
-    ksort($packages);
+    $hourlyPackages = $services->map(function ($service) {
+        return [
+            'id' => $service->ID_DV,
+            'duration' => (int) round($service->ThoiLuong ?? 0),
+            'name' => $service->TenDV,
+            'price' => (float) $service->GiaDV,
+            'description' => $service->MoTa ?? '',
+        ];
+    })->toArray();
 
     return view('giupviectheogio', [
-        'hourlyPackages' => array_values($packages),
+        'hourlyPackages' => $hourlyPackages,
     ]);
 });
 
 Route::get('/giupviectheothang', function () {
-    return view('giupviectheothang');
+    // Load tất cả gói tháng chưa bị xoá từ database
+    $packages = GoiThang::where('is_delete', false)
+        ->orderBy('SoNgay')
+        ->get();
+
+    $monthlyPackages = $packages->map(function ($package) {
+        return [
+            'id' => $package->ID_Goi,
+            'name' => $package->TenGoi,
+            'days' => (int) $package->SoNgay,
+            'discount' => (float) $package->PhanTramGiam,
+            'description' => $package->Mota ?? '',
+        ];
+    })->toArray();
+
+    return view('giupviectheothang', [
+        'monthlyPackages' => $monthlyPackages,
+    ]);
 });
 
 Route::get('/dich-vu', function () {
-    $services = \App\Models\DichVu::orderBy('ThoiLuong')->get();
+    $services = \App\Models\DichVu::where('is_delete', false)
+        ->orderBy('ThoiLuong')
+        ->get();
 
     return view('services', [
         'services' => $services,

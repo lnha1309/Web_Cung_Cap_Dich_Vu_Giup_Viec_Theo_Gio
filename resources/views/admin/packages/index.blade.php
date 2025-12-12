@@ -48,6 +48,10 @@
     .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
     .actions .btn { padding: 0.45rem 0.9rem; }
 
+    .badge-status { padding: 0.35rem 0.8rem; border-radius: 999px; font-weight: 600; font-size: 0.8rem; }
+    .badge-active { background: #e8f5e9; color: #2e7d32; }
+    .badge-deleted { background: #ffebee; color: #c62828; }
+
     .pagination { display: flex; gap: 0.45rem; align-items: center; list-style: none; margin-top: 1rem; }
     .pagination li a, .pagination li span { display: inline-block; padding: 0.5rem 0.85rem; border-radius: var(--border-radius-1); background: var(--color-white); border: 1px solid var(--color-light); color: var(--color-dark); }
     .pagination li.active span { background: var(--color-primary); color: var(--color-white); border-color: var(--color-primary); }
@@ -180,6 +184,7 @@
                             <th>Số ngày</th>
                             <th>% giảm</th>
                             <th>Mô tả</th>
+                            <th>Trạng thái</th>
                             <th>Thao tác</th>
                         </tr>
                     </thead>
@@ -191,6 +196,13 @@
                                 <td>{{ $package->SoNgay }}</td>
                                 <td>{{ rtrim(rtrim(number_format($package->PhanTramGiam, 2, '.', ''), '0'), '.') }}%</td>
                                 <td>{{ $package->Mota ?? '—' }}</td>
+                                <td>
+                                    @if($package->is_delete)
+                                        <span class="badge-status badge-deleted">Đã xoá</span>
+                                    @else
+                                        <span class="badge-status badge-active">Hoạt động</span>
+                                    @endif
+                                </td>
                                 <td>
                                     <div class="actions">
                                         <button
@@ -204,18 +216,27 @@
                                         >
                                             Sửa
                                         </button>
-                                        <form action="{{ route('admin.packages.destroy', $package->ID_Goi) }}" method="POST"
-                                            onsubmit="return confirm('Xóa gói {{ $package->TenGoi }}?');">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn danger">Xóa</button>
-                                        </form>
+                                        @if($package->is_delete)
+                                            <form action="{{ route('admin.packages.restore', $package->ID_Goi) }}" method="POST"
+                                                onsubmit="return confirm('Khôi phục gói {{ $package->TenGoi }}?');">
+                                                @csrf
+                                                @method('PATCH')
+                                                <button type="submit" class="btn primary-btn">Khôi phục</button>
+                                            </form>
+                                        @else
+                                            <form action="{{ route('admin.packages.destroy', $package->ID_Goi) }}" method="POST"
+                                                onsubmit="return confirm('Xóa gói {{ $package->TenGoi }}?');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn danger">Xóa</button>
+                                            </form>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="text-muted">Chưa có gói tháng nào.</td>
+                                <td colspan="7" class="text-muted">Chưa có gói tháng nào.</td>
                             </tr>
                         @endforelse
                     </tbody>

@@ -20,5 +20,18 @@ class KhuyenMai extends Model
         'GiamToiDa',
         'TrangThai',
         'NgayHetHan',
+        'is_delete',
     ];
+
+    protected $casts = [
+        'is_delete' => 'boolean',
+    ];
+
+    /**
+     * Scope để lọc các khuyến mãi chưa bị xoá mềm
+     */
+    public function scopeNotDeleted($query)
+    {
+        return $query->where('is_delete', false);
+    }
 }

@@ -113,19 +113,21 @@ class AdminPromotionController extends Controller
 
     public function destroy(KhuyenMai $promotion)
     {
-        $inUse = ChiTietKhuyenMai::where('ID_KM', $promotion->ID_KM)->exists();
-
-        if ($inUse) {
-            return redirect()
-                ->route('admin.promotions.index')
-                ->with('error', 'Không thể xoá khuyến mãi đã được áp dụng.');
-        }
-
-        $promotion->delete();
+        // Soft delete: chỉ đánh dấu is_delete = true
+        $promotion->update(['is_delete' => true]);
 
         return redirect()
             ->route('admin.promotions.index')
             ->with('success', 'Đã xoá khuyến mãi.');
+    }
+
+    public function restore(KhuyenMai $promotion)
+    {
+        $promotion->update(['is_delete' => false]);
+
+        return redirect()
+            ->route('admin.promotions.index')
+            ->with('success', 'Đã khôi phục khuyến mãi.');
     }
 
     private function validateData(Request $request, ?string $id = null): array

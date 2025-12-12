@@ -49,7 +49,8 @@
     .actions .btn { padding: 0.45rem 0.9rem; }
     .badge-status { padding: 0.35rem 0.8rem; border-radius: 999px; font-weight: 600; font-size: 0.8rem; }
     .badge-activated { background: #e8f5e9; color: #2e7d32; }
-    .badge-deactivated { background: #ffebee; color: #c62828; }
+    .badge-deactivated { background: #fff3e0; color: #e65100; }
+    .badge-deleted { background: #ffebee; color: #c62828; }
 
     .pagination { display: flex; gap: 0.45rem; align-items: center; list-style: none; margin-top: 1rem; }
     .pagination li a, .pagination li span { display: inline-block; padding: 0.5rem 0.85rem; border-radius: var(--border-radius-1); background: var(--color-white); border: 1px solid var(--color-light); color: var(--color-dark); }
@@ -227,9 +228,13 @@
                                 <td>{{ number_format($promotion->GiamToiDa, 0, ',', '.') }} đ</td>
                                 <td>{{ $promotion->NgayHetHan ? \Carbon\Carbon::parse($promotion->NgayHetHan)->format('d/m/Y') : '-' }}</td>
                                 <td>
-                                    <span class="badge-status {{ $promotion->TrangThai === 'activated' ? 'badge-activated' : 'badge-deactivated' }}">
-                                        {{ $promotion->TrangThai === 'activated' ? 'Activated' : 'Deactivated' }}
-                                    </span>
+                                    @if($promotion->is_delete)
+                                        <span class="badge-status badge-deleted">Đã xoá</span>
+                                    @elseif($promotion->TrangThai === 'activated')
+                                        <span class="badge-status badge-activated">Activated</span>
+                                    @else
+                                        <span class="badge-status badge-deactivated">Deactivated</span>
+                                    @endif
                                 </td>
                                 <td>
                                     <div class="actions">
@@ -246,11 +251,19 @@
                                         >
                                             Sửa
                                         </button>
-                                        <form action="{{ route('admin.promotions.destroy', $promotion->ID_KM) }}" method="POST" onsubmit="return confirm('Xoá khuyến mãi {{ $promotion->Ten_KM }}?');">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn danger">Xoá</button>
-                                        </form>
+                                        @if($promotion->is_delete)
+                                            <form action="{{ route('admin.promotions.restore', $promotion->ID_KM) }}" method="POST" onsubmit="return confirm('Khôi phục khuyến mãi {{ $promotion->Ten_KM }}?');">
+                                                @csrf
+                                                @method('PATCH')
+                                                <button type="submit" class="btn primary-btn">Khôi phục</button>
+                                            </form>
+                                        @else
+                                            <form action="{{ route('admin.promotions.destroy', $promotion->ID_KM) }}" method="POST" onsubmit="return confirm('Xoá khuyến mãi {{ $promotion->Ten_KM }}?');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn danger">Xoá</button>
+                                            </form>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>

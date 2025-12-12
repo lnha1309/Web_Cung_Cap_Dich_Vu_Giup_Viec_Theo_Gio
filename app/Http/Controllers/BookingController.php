@@ -55,19 +55,43 @@ class BookingController extends Controller
     public function show(Request $request)
     {
         $addressText = $request->query('address');
-        $services = DichVu::orderBy('ThoiLuong')->get([
-            'ID_DV',
-            'TenDV',
-            'MoTa',
-            'GiaDV',
-            'DienTichToiDa',
-            'SoPhong',
-            'ThoiLuong',
-        ]);
+        $services = DichVu::where('is_delete', false)
+            ->orderBy('ThoiLuong')
+            ->get([
+                'ID_DV',
+                'TenDV',
+                'MoTa',
+                'GiaDV',
+                'DienTichToiDa',
+                'SoPhong',
+                'ThoiLuong',
+            ]);
+
+        // Load gói tháng chưa bị xoá mềm
+        $monthlyPackages = GoiThang::where('is_delete', false)
+            ->orderBy('SoNgay')
+            ->get([
+                'ID_Goi',
+                'TenGoi',
+                'SoNgay',
+                'PhanTramGiam',
+            ]);
+
+        // Load phụ thu thú cưng (PT002) - chỉ phụ thu này cho người dùng chọn
+        // Các phụ thu khác (giờ cao điểm, cuối tuần) tính tự động phía backend
+        $surcharges = PhuThu::where('is_delete', false)
+            ->where('ID_PT', 'PT002')
+            ->get([
+                'ID_PT',
+                'Ten_PT',
+                'GiaCuoc',
+            ]);
 
         return view('booking', [
             'selectedAddress' => $addressText,
             'services' => $services,
+            'monthlyPackages' => $monthlyPackages,
+            'surcharges' => $surcharges,
         ]);
     }
 
@@ -223,17 +247,19 @@ class BookingController extends Controller
 
     /**
      * Get surcharge prices (API endpoint)
+     * Trả về 0 nếu phụ thu bị xoá mềm (is_delete = true)
      */
     public function getSurcharges()
     {
-        $surcharges = PhuThu::whereIn('ID_PT', ['PT001', 'PT002', 'PT003'])
+        $surcharges = PhuThu::where('is_delete', false)
+            ->whereIn('ID_PT', ['PT001', 'PT002', 'PT003'])
             ->get()
             ->keyBy('ID_PT');
 
         return response()->json([
-            'PT001' => $surcharges->get('PT001')?->GiaCuoc ?? 30000,
-            'PT002' => $surcharges->get('PT002')?->GiaCuoc ?? 30000,
-            'PT003' => $surcharges->get('PT003')?->GiaCuoc ?? 30000,
+            'PT001' => $surcharges->get('PT001')?->GiaCuoc ?? 0,
+            'PT002' => $surcharges->get('PT002')?->GiaCuoc ?? 0,
+            'PT003' => $surcharges->get('PT003')?->GiaCuoc ?? 0,
         ]);
     }
 
@@ -256,6 +282,7 @@ class BookingController extends Controller
 
         $km = KhuyenMai::where('ID_KM', $code)
             ->where('TrangThai', 'activated')
+            ->where('is_delete', false)
             ->first();
 
         if (!$km) {
@@ -472,6 +499,7 @@ class BookingController extends Controller
             if ($amount === null) {
                 $km = KhuyenMai::where('ID_KM', $code)
                     ->where('TrangThai', 'activated')
+                    ->where('is_delete', false)
                     ->first();
 
                 if ($km) {

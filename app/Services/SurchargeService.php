@@ -63,7 +63,9 @@ class SurchargeService
 
         $ids = array_values(array_unique($ids));
 
+        // Chỉ lấy phụ thu chưa bị xoá mềm
         $surcharges = PhuThu::whereIn('ID_PT', $ids)
+            ->where('is_delete', false)
             ->get()
             ->keyBy('ID_PT');
 

@@ -30,6 +30,7 @@ class ApiVoucherController extends Controller
         $today = Carbon::today();
         
         $vouchers = KhuyenMai::where('TrangThai', 'activated')
+            ->where('is_delete', false)
             ->where(function ($query) use ($today) {
                 $query->whereNull('NgayBatDau')
                     ->orWhere('NgayBatDau', '<=', $today);
@@ -96,6 +97,7 @@ class ApiVoucherController extends Controller
 
         $km = KhuyenMai::where('ID_KM', $code)
             ->where('TrangThai', 'activated')
+            ->where('is_delete', false)
             ->first();
 
         if (!$km) {

@@ -209,8 +209,9 @@
     }
     .monthly-pricing-grid {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
         gap: 30px;
+        justify-content: center;
     }
     .monthly-pricing-card {
         border: 1px solid var(--border-color);
@@ -515,65 +516,20 @@ document.addEventListener('DOMContentLoaded', function() {
         </p>
 
         <div class="monthly-pricing-grid">
-
-    {{-- Gói 1 tháng --}}
-    <div class="monthly-pricing-card">
-        <span class="monthly-discount-badge">Giảm 5%</span>
-        <h3>Gói 1 tháng</h3>
-        <p>
-            Phù hợp gia đình muốn trải nghiệm dịch vụ hoặc cần hỗ trợ trong thời gian ngắn.
-        </p>
-        <ul>
-            <li>Hợp đồng 1 tháng, linh hoạt gia hạn.</li>
-            <li>Nhân viên cố định trong suốt thời gian sử dụng.</li>
-            <li>Ưu đãi giảm <strong>5%</strong> trên tổng phí dịch vụ tháng đầu.</li>
-        </ul>
-    </div>
-
-    {{-- Gói 2 tháng --}}
-    <div class="monthly-pricing-card">
-        <span class="monthly-discount-badge">Giảm 10%</span>
-        <h3>Gói 2 tháng</h3>
-        <p>
-            Lựa chọn tối ưu cho gia đình muốn ổn định nhân sự trong thời gian trung hạn.
-        </p>
-        <ul>
-            <li>Hợp đồng 2 tháng, có thể tiếp tục gia hạn.</li>
-            <li>Nhân viên gắn bó, quen nếp sinh hoạt gia đình.</li>
-            <li>Ưu đãi giảm <strong>10%</strong> trên tổng phí dịch vụ.</li>
-        </ul>
-    </div>
-
-    {{-- Gói 3 tháng --}}
-    <div class="monthly-pricing-card">
-        <span class="monthly-discount-badge">Giảm 15%</span>
-        <h3>Gói 3 tháng</h3>
-        <p>
-            Gói được nhiều gia đình lựa chọn với mức tiết kiệm rõ rệt và tính ổn định cao.
-        </p>
-        <ul>
-            <li>Hợp đồng 3 tháng, ưu tiên bố trí nhân sự lâu dài.</li>
-            <li>Theo dõi chất lượng định kỳ và hỗ trợ thay thế khi cần.</li>
-            <li>Ưu đãi giảm <strong>15%</strong> trên tổng phí dịch vụ.</li>
-        </ul>
-    </div>
-
-    {{-- Gói 6 tháng --}}
-    <div class="monthly-pricing-card">
-        <span class="monthly-discount-badge">Giảm 20%</span>
-        <h3>Gói 6 tháng</h3>
-        <p>
-            Giải pháp dài hạn, tối ưu chi phí cho gia đình cần người hỗ trợ ổn định lâu dài.
-        </p>
-        <ul>
-            <li>Hợp đồng 6 tháng, cam kết nhân sự ổn định.</li>
-            <li>Được ưu tiên hỗ trợ trong mọi phát sinh về nhân sự.</li>
-            <li>Ưu đãi giảm <strong>20%</strong> trên tổng phí dịch vụ.</li>
-        </ul>
-    </div>
-
-</div>
-
+            @forelse ($monthlyPackages as $package)
+                <div class="monthly-pricing-card" data-package-id="{{ $package['id'] }}">
+                    <span class="monthly-discount-badge">Giảm {{ rtrim(rtrim(number_format($package['discount'], 2, '.', ''), '0'), '.') }}%</span>
+                    <h3>{{ $package['name'] }}</h3>
+                    <p>{{ $package['description'] ?: 'Gói ' . $package['days'] . ' ngày với ưu đãi giảm ' . $package['discount'] . '% trên tổng phí dịch vụ.' }}</p>
+                    <ul>
+                        <li>Hợp đồng {{ $package['days'] }} ngày, linh hoạt gia hạn.</li>
+                        <li>Nhân viên cố định trong suốt thời gian sử dụng.</li>
+                        <li>Ưu đãi giảm <strong>{{ rtrim(rtrim(number_format($package['discount'], 2, '.', ''), '0'), '.') }}%</strong> trên tổng phí dịch vụ.</li>
+                    </ul>
+                </div>
+            @empty
+                <p class="text-muted">Chưa có gói tháng nào.</p>
+            @endforelse
         </div>
     </section>
 
