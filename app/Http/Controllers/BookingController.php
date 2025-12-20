@@ -2296,7 +2296,13 @@ HTML;
             ]);
         }
 
-        return response()->json(['success' => true, 'message' => 'Hủy buổi làm thành công.']);
+        // Build appropriate message based on refund status
+        $message = 'Hủy buổi làm thành công.';
+        if ($refundResult['pending_refund'] ?? false) {
+            $message .= '';
+        }
+
+        return response()->json(['success' => true, 'message' => $message]);
     }
 
     }

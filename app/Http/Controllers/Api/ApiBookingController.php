@@ -352,7 +352,7 @@ class ApiBookingController extends Controller
             if (empty($repeatDays)) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Vui long chon thu lap lai.',
+                    'error' => 'Vui lòng chọn thứ lặp lại.',
                 ], 422);
             }
 
@@ -371,7 +371,7 @@ class ApiBookingController extends Controller
             if ($idGoi === null) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Goi thang khong hop le.',
+                    'error' => 'Gói tháng không hợp lệ.',
                 ], 422);
             }
 
@@ -382,7 +382,7 @@ class ApiBookingController extends Controller
             if ($soNgay <= 0) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'So ngay hieu luc goi khong hop le.',
+                    'error' => 'Số ngày hiệu lực gói không hợp lệ.',
                 ], 422);
             }
 
@@ -560,7 +560,7 @@ class ApiBookingController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Tao don dat thanh cong.',
+            'message' => 'Tạo đơn đặt thành công.',
             'data' => [
                 'booking_id' => $idDon,
                 'status' => $trangThaiDon,
@@ -583,7 +583,7 @@ class ApiBookingController extends Controller
         if (!$khachHang) {
             return response()->json([
                 'success' => false,
-                'error' => 'Khong tim thay thong tin khach hang.'
+                'error' => 'Không tìm thấy thông tin khách hàng.'
             ], 403);
         }
 
@@ -594,21 +594,21 @@ class ApiBookingController extends Controller
         if (!$booking) {
             return response()->json([
                 'success' => false,
-                'error' => 'Khong tim thay don dat.'
+                'error' => 'Không tìm thấy đơn đặt.'
             ], 404);
         }
 
         if (!in_array($booking->TrangThaiDon, ['completed', 'done'], true)) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi danh gia khi don da hoan tat.'
+                'error' => 'Chỉ đánh giá khi đơn đã hoàn tất.'
             ], 422);
         }
 
         if (DanhGiaNhanVien::where('ID_DD', $booking->ID_DD)->exists()) {
             return response()->json([
                 'success' => false,
-                'error' => 'Ban da danh gia don nay.'
+                'error' => 'Bạn đã đánh giá đơn này.'
             ], 422);
         }
 
@@ -644,7 +644,7 @@ class ApiBookingController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Da luu danh gia.',
+            'message' => 'Đã lưu đánh giá.',
             'data' => [
                 'rating' => [
                     'score' => (int) $validated['rating'],
@@ -667,7 +667,7 @@ class ApiBookingController extends Controller
         if (!$khachHang) {
             return response()->json([
                 'success' => false,
-                'error' => 'Vui long dang nhap khach hang.',
+                'error' => 'Vui lòng đăng nhập khách hàng.',
             ], 403);
         }
 
@@ -679,21 +679,21 @@ class ApiBookingController extends Controller
         if (!$booking) {
             return response()->json([
                 'success' => false,
-                'error' => 'Khong tim thay don dat.',
+                'error' => 'Không tìm thấy đơn đặt.',
             ], 404);
         }
 
         if ($booking->LoaiDon !== 'hour' || $booking->TrangThaiDon !== 'finding_staff') {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi ho tro don theo gio dang tim nhan vien.',
+                'error' => 'Chỉ hỗ trợ đơn theo giờ đang tìm nhân viên.',
             ], 422);
         }
 
         if (($booking->RescheduleCount ?? 0) >= 1) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi duoc doi thoi gian 1 lan.',
+                'error' => 'Chỉ được thay đổi thời gian 1 lần.',
             ], 422);
         }
 
@@ -712,7 +712,7 @@ class ApiBookingController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Da ghi nhan ban tiep tuc cho.',
+                'message' => 'Đã ghi nhận bạn tiếp tục chờ.',
             ]);
         }
 
@@ -723,14 +723,14 @@ class ApiBookingController extends Controller
         if ($newStart->hour < 7 || $newStart->hour > 17) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi cho phep doi trong khung 07:00 - 17:00.',
+                'error' => 'Chỉ chấp nhận thay đổi trong khung 07:00 - 17:00.',
             ], 422);
         }
 
         if ($newStart->lessThanOrEqualTo(Carbon::now())) {
             return response()->json([
                 'success' => false,
-                'error' => 'Thoi gian moi phai lon hon hien tai.',
+                'error' => 'Thời gian mới phải lớn hơn hiện tại.',
             ], 422);
         }
 
@@ -757,7 +757,7 @@ class ApiBookingController extends Controller
             \App\Models\ChiTietPhuThu::create([
                 'ID_PT' => 'PT001',
                 'ID_DD' => $booking->ID_DD,
-                'Ghichu' => 'Phu thu doi gio 7h/17h',
+                'Ghichu' => 'Phụ thu đổi giờ 7h/17h',
             ]);
 
             $booking->TongTien = ($booking->TongTien ?? 0) + $surchargeAmount;
@@ -815,8 +815,8 @@ class ApiBookingController extends Controller
             'requires_payment' => $paymentUrl !== null,
             'payment_url' => $paymentUrl,
             'message' => $needsSurcharge
-                ? 'Da cap nhat thoi gian va them phu thu 30,000d.'
-                : 'Da cap nhat thoi gian bat dau don.',
+                ? 'Đã cập nhật thời gian và thêm phụ thu 30,000d.'
+                : 'Đã cập nhật thời gian bắt đầu đơn.',
         ]);
     }
 
@@ -831,7 +831,7 @@ class ApiBookingController extends Controller
         if (!$khachHang) {
             return response()->json([
                 'success' => false,
-                'error' => 'Vui long dang nhap khach hang.',
+                'error' => 'Vui lòng đăng nhập khách hàng.',
             ], 403);
         }
 
@@ -843,14 +843,14 @@ class ApiBookingController extends Controller
         if (!$booking) {
             return response()->json([
                 'success' => false,
-                'error' => 'Khong tim thay don dat.',
+                'error' => 'Không tìm thấy đơn đặt.',
             ], 404);
         }
 
         if ($booking->LoaiDon !== 'hour' || $booking->TrangThaiDon !== 'finding_staff') {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi ho tro don theo gio dang tim nhan vien.',
+                'error' => 'Chỉ hỗ trợ đơn theo giờ đang tìm nhân viên.',
             ], 422);
         }
 
@@ -873,7 +873,7 @@ class ApiBookingController extends Controller
         if (!$khachHang) {
             return response()->json([
                 'success' => false,
-                'error' => 'Vui long dang nhap khach hang.',
+                'error' => 'Vui lòng đăng nhập khách hàng.',
             ], 403);
         }
 
@@ -885,21 +885,21 @@ class ApiBookingController extends Controller
         if (!$booking) {
             return response()->json([
                 'success' => false,
-                'error' => 'Khong tim thay don dat.',
+                'error' => 'Không tìm thấy đơn đặt.',
             ], 404);
         }
 
         if ($booking->LoaiDon !== 'hour' || $booking->TrangThaiDon !== 'finding_staff') {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi ho tro don theo gio dang tim nhan vien.',
+                'error' => 'Chỉ hỗ trợ đơn theo giờ đang tìm nhân viên.',
             ], 422);
         }
 
         if (($booking->RescheduleCount ?? 0) >= 1) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi duoc doi thoi gian 1 lan.',
+                'error' => 'Chỉ được thay đổi thời gian 1 lần.',
             ], 422);
         }
 
@@ -917,14 +917,14 @@ class ApiBookingController extends Controller
         if ($newStart->hour < 7 || $newStart->hour > 17) {
             return response()->json([
                 'success' => false,
-                'error' => 'Gio bat dau phai trong khung 07:00 - 17:00',
+                'error' => 'Giờ bắt đầu phải trong khung 07:00 - 17:00',
             ], 422);
         }
 
         if ($newStart->lessThanOrEqualTo(Carbon::now())) {
             return response()->json([
                 'success' => false,
-                'error' => 'Thoi gian phai lon hon hien tai.',
+                'error' => 'Thời gian phải lớn hơn hiện tại.',
             ], 422);
         }
 
@@ -1020,8 +1020,8 @@ class ApiBookingController extends Controller
             'requires_payment' => $paymentUrl !== null,
             'payment_url' => $paymentUrl,
             'message' => $needsSurcharge
-                ? 'Da cap nhat don va them phu thu 30,000d.'
-                : 'Da cap nhat don va gan nhan vien.',
+                ? 'Đã cập nhật đơn và thêm phụ thu 30,000d.'
+                : 'Đã cập nhật đơn và gán nhân viên.',
             'data' => [
                 'new_date' => $newStart->format('d/m/Y'),
                 'new_time' => $newStart->format('H:i'),
@@ -1232,7 +1232,7 @@ class ApiBookingController extends Controller
         if (!$khachHang) {
             return response()->json([
                 'success' => false,
-                'error' => 'Khong tim thay thong tin khach hang.'
+                'error' => 'Không tìm thấy thông tin khách hàng.'
             ], 404);
         }
 
@@ -1243,14 +1243,14 @@ class ApiBookingController extends Controller
         if (!$booking) {
             return response()->json([
                 'success' => false,
-                'error' => 'Khong tim thay don dat.'
+                'error' => 'Không tìm thấy đơn đặt.'
             ], 404);
         }
 
         if (in_array($booking->TrangThaiDon, ['done', 'cancelled', 'completed', 'confirmed'])) {
             return response()->json([
                 'success' => false,
-                'error' => 'Khong the huy don dat nay.'
+                'error' => 'Không thể hủy đơn đặt này.'
             ], 422);
         }
 
@@ -1273,9 +1273,9 @@ class ApiBookingController extends Controller
 
             DB::commit();
 
-            $message = 'Huy don dat thanh cong.';
+            $message = 'Hủy đơn đặt thành công.';
             if (!empty($refundResult['amount'])) {
-                $message .= ' Hoan ' . number_format($refundResult['amount']) . ' VND.';
+                $message .= ' Hoàn ' . number_format($refundResult['amount']) . ' VND.';
             }
 
             return response()->json([
@@ -1287,7 +1287,7 @@ class ApiBookingController extends Controller
             DB::rollBack();
             return response()->json([
                 'success' => false,
-                'error' => 'Khong the huy don: ' . $e->getMessage(),
+                'error' => 'Không thể hủy đơn: ' . $e->getMessage(),
             ], 500);
         }
     }

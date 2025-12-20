@@ -113,9 +113,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/bookings/{id}/reject', [ApiStaffBookingController::class, 'reject']);
         Route::post('/bookings/{id}/claim', [ApiStaffBookingController::class, 'claim']);
         Route::post('/bookings/{id}/complete', [ApiStaffBookingController::class, 'complete']);
+        Route::get('/month-sessions', [ApiStaffBookingController::class, 'monthSessions']);
         Route::get('/month-sessions/available', [ApiStaffBookingController::class, 'availableMonthSessions']);
+        Route::get('/month-sessions/{id}', [ApiStaffBookingController::class, 'showMonthSession']);
+        Route::post('/month-sessions/{id}/confirm', [ApiStaffBookingController::class, 'confirmMonthSession']);
         Route::post('/month-sessions/{id}/claim', [ApiStaffBookingController::class, 'claimMonthSession']);
         Route::post('/month-sessions/{id}/reject', [ApiStaffBookingController::class, 'rejectMonthSession']);
+        Route::post('/month-sessions/{id}/complete', [ApiStaffBookingController::class, 'completeMonthSession']);
         Route::get('/earnings', [ApiStaffBookingController::class, 'earnings']);
         Route::get('/weekly-report', [ApiStaffBookingController::class, 'weeklyReport']);
     });

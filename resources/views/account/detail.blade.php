@@ -381,12 +381,18 @@
                                                     <small class="text-muted">({{ $duration }}h)</small>
                                                 </td>
                                                 <td>
-                                                    @if($session->TrangThaiBuoi == 'scheduled')
-                                                        <span class="badge bg-info"><i class="bi bi-clock-history"></i> Đã lên lịch</span>
+                                                    @if($session->TrangThaiBuoi == 'finding_staff')
+                                                        <span class="badge bg-info"><i class="bi bi-clock-history"></i> Đang tìm nhân viên</span>
+                                                    @elseif($session->TrangThaiBuoi == 'assigned')
+                                                        <span class="badge bg-info"><i class="bi bi-check-circle"></i> Đã có nhân viên</span>
+                                                    @elseif($session->TrangThaiBuoi == 'confirmed')
+                                                        <span class="badge bg-info"><i class="bi bi-clock-history"></i> Đã xác nhận</span>
                                                     @elseif($session->TrangThaiBuoi == 'completed')
                                                         <span class="badge bg-success"><i class="bi bi-check-circle"></i> Hoàn thành</span>
                                                     @elseif($session->TrangThaiBuoi == 'cancelled')
                                                         <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Đã hủy</span>
+                                                    @elseif($session->TrangThaiBuoi == 'rejected')
+                                                        <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Đã từ chối</span>
                                                     @else
                                                         <span class="badge bg-secondary">{{ $session->TrangThaiBuoi }}</span>
                                                     @endif

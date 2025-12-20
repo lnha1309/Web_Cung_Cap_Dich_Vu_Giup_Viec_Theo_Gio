@@ -51,7 +51,7 @@ class ApiAuthController extends Controller
         if (!$cachedOtp || $cachedOtp !== $request->otp) {
             return response()->json([
                 'success' => false,
-                'error' => 'OTP khong hop le hoac da het han.',
+                'error' => 'OTP không hợp lệ hoặc đã hết hạn.',
             ], 422);
         }
 
@@ -87,7 +87,7 @@ class ApiAuthController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Dang ky thanh cong.',
+                'message' => 'Đăng ký thành công.',
                 'data' => [
                     'user' => [
                         'id' => $taiKhoan->ID_TK,
@@ -104,7 +104,7 @@ class ApiAuthController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'error' => 'Loi he thong: ' . $e->getMessage(),
+                'error' => 'Lỗi hệ thống: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -137,21 +137,21 @@ class ApiAuthController extends Controller
             if ($accountType === 'admin') {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Tai khoan khong duoc phep dang nhap tu ung dung.',
+                    'error' => 'Tài khoản không được phép đăng nhập từ ứng dụng.',
                 ], 403);
             }
 
             if ($role === 'customer' && $accountType !== 'customer') {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Chi dang nhap bang tai khoan khach hang.',
+                    'error' => 'Chi đăng nhập bằng tài khoản khách hàng.',
                 ], 403);
             }
 
             if ($role === 'staff' && $accountType !== 'staff') {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Chi dang nhap bang tai khoan nhan vien.',
+                    'error' => 'Chi đăng nhập bằng tài khoản nhân viên.',
                 ], 403);
             }
         }
@@ -169,21 +169,21 @@ class ApiAuthController extends Controller
         if (!$taiKhoan || !$validPassword) {
             return response()->json([
                 'success' => false,
-                'error' => 'Ten dang nhap hoac mat khau khong dung.',
+                'error' => 'Tên đăng nhập hoặc mật khẩu không đúng.',
             ], 401);
         }
 
         if (in_array($taiKhoan->TrangThaiTK, ['banned', 'locked'], true)) {
             return response()->json([
                 'success' => false,
-                'error' => 'Tai khoan cua ban da bi khoa. Vui long lien he tong dai.',
+                'error' => 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ tổng đài.',
             ], 403);
         }
 
         if ($taiKhoan->TrangThaiTK === 'inactive') {
             return response()->json([
                 'success' => false,
-                'error' => 'Tai khoan cua ban dang cho kich hoat. Vui long lien he tong dai.',
+                'error' => 'Tài khoản của bạn đang chờ kích hoạt. Vui lòng liên hệ tổng đài.',
             ], 403);
         }
 
@@ -194,7 +194,7 @@ class ApiAuthController extends Controller
 
             return response()->json([
                 'success' => false,
-                'error' => 'Tai khoan cua ban da bi khoa do khong dang ky lich 2 tuan lien tiep. Vui long lien he tong dai.',
+                'error' => 'Tài khoản của bạn đã bị khóa do không đăng ký lịch 2 tuần liên tiếp. Vui lòng liên hệ tổng đài.',
             ], 403);
         }
 
@@ -235,7 +235,7 @@ class ApiAuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Dang nhap thanh cong.',
+            'message' => 'Đăng nhập thành công.',
             'data' => [
                 'user' => $userData,
                 'token' => $token,
@@ -253,7 +253,7 @@ class ApiAuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Dang xuat thanh cong.'
+            'message' => 'Đăng xuất thành công.'
         ]);
     }
 
@@ -280,7 +280,7 @@ class ApiAuthController extends Controller
         if (!$taiKhoan) {
             return response()->json([
                 'success' => false,
-                'error' => 'Khong xac thuc duoc nguoi dung.',
+                'error' => 'Không xác thực được người dùng.',
             ], 401);
         }
 
@@ -294,7 +294,7 @@ class ApiAuthController extends Controller
         if (!$currentOk) {
             return response()->json([
                 'success' => false,
-                'error' => 'Mat khau hien tai khong dung.',
+                'error' => 'Mật khẩu hiện tại không đúng.',
             ], 400);
         }
 
@@ -306,7 +306,7 @@ class ApiAuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Doi mat khau thanh cong.',
+            'message' => 'Đổi mật khẩu thành công.',
         ]);
     }
 
@@ -332,7 +332,7 @@ class ApiAuthController extends Controller
         if (!$account) {
             return response()->json([
                 'success' => false,
-                'error' => 'Khong tim thay tai khoan voi ten dang nhap va email nay.',
+                'error' => 'Không tìm thấy tài khoản với tên đăng nhập và email này.',
             ], 404);
         }
 
@@ -351,13 +351,13 @@ class ApiAuthController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Da gui ma OTP toi email cua ban. Ma co hieu luc trong 10 phut.',
+                'message' => 'Đã gửi mã OTP tới email của bạn. Mã có hiệu lực trong 10 phút.',
                 'debug_otp' => config('app.debug') ? $otp : null,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'error' => 'Khong the gui OTP. Vui long thu lai.',
+                'error' => 'Không thể gửi OTP. Vui lòng thử lại.',
                 'debug_error' => config('app.debug') ? $e->getMessage() : null,
             ], 500);
         }
@@ -389,14 +389,14 @@ class ApiAuthController extends Controller
         if (!$cached) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chua gui OTP hoac OTP da het han. Vui long gui lai.',
+                'error' => 'Chưa gửi OTP hoặc OTP đã hết hạn. Vui lòng gửi lại.',
             ], 422);
         }
 
         if (($cached['otp'] ?? null) !== $request->otp) {
             return response()->json([
                 'success' => false,
-                'error' => 'OTP khong dung hoac thong tin khong khop.',
+                'error' => 'OTP không đúng hoặc thông tin không khớp.',
             ], 422);
         }
 
@@ -404,7 +404,7 @@ class ApiAuthController extends Controller
             Cache::forget($cacheKey);
             return response()->json([
                 'success' => false,
-                'error' => 'OTP da het han. Vui long gui lai.',
+                'error' => 'OTP đã hết hạn. Vui lòng gửi lại.',
             ], 422);
         }
 
@@ -412,7 +412,7 @@ class ApiAuthController extends Controller
         if (!$account) {
             return response()->json([
                 'success' => false,
-                'error' => 'Khong tim thay tai khoan voi ten dang nhap va email nay.',
+                'error' => 'Không tìm thấy tài khoản với tên đăng nhập và email này.',
             ], 404);
         }
 
@@ -423,7 +423,7 @@ class ApiAuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Dat lai mat khau thanh cong. Vui long dang nhap bang mat khau moi.',
+            'message' => 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập bằng mật khẩu mới.',
         ]);
     }
 
@@ -513,7 +513,7 @@ class ApiAuthController extends Controller
             if (!$nhanVien) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Khong tim thay thong tin nhan vien.'
+                    'error' => 'Không tìm thấy thông tin nhân viên.'
                 ], 404);
             }
 
@@ -543,7 +543,7 @@ class ApiAuthController extends Controller
 
             return response()->json([
                     'success' => true,
-                    'message' => 'Cap nhat thong tin thanh cong.',
+                    'message' => 'Cập nhật thông tin thành công.',
                     'data' => [
                     'id' => $taiKhoan->ID_TK,
                     'username' => $taiKhoan->TenDN ?? '',
@@ -573,7 +573,7 @@ class ApiAuthController extends Controller
             if (!$khachHang) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Khong tim thay thong tin khach hang.'
+                    'error' => 'Không tìm thấy thông tin khách hàng.'
                 ], 404);
             }
 
@@ -589,7 +589,7 @@ class ApiAuthController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Cap nhat thong tin thanh cong.',
+                'message' => 'Cập nhật thông tin thành công.',
                 'data' => [
                     'id' => $taiKhoan->ID_TK,
                     'username' => $taiKhoan->TenDN ?? '',
@@ -624,7 +624,7 @@ class ApiAuthController extends Controller
         if ($existingCustomer) {
             return response()->json([
                 'success' => false,
-                'error' => 'So dien thoai da duoc su dung.'
+                'error' => 'Số điện thoại đã được sử dụng.'
             ], 422);
         }
 
@@ -633,7 +633,7 @@ class ApiAuthController extends Controller
         if ($existingEmail) {
             return response()->json([
                 'success' => false,
-                'error' => 'Email da duoc su dung.'
+                'error' => 'Email đã được sử dụng.'
             ], 422);
         }
 
@@ -650,13 +650,13 @@ class ApiAuthController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'OTP da duoc gui den email cua ban.',
+                'message' => 'OTP đã được gửi đến email của bạn.',
                 'debug_otp' => config('app.debug') ? $otp : null, // Only in debug mode
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'error' => 'Khong the gui OTP. Vui long thu lai.',
+                'error' => 'Không thể gửi OTP. Vui lòng thử lại.',
                 'debug_error' => config('app.debug') ? $e->getMessage() : null,
             ], 500);
         }
@@ -686,13 +686,13 @@ class ApiAuthController extends Controller
         if (!$cachedOtp || $cachedOtp !== $request->otp) {
             return response()->json([
                 'success' => false,
-                'error' => 'OTP khong hop le hoac da het han.'
+                'error' => 'OTP không hợp lệ hoặc đã hết hạn.'
             ], 422);
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'OTP hop le.'
+            'message' => 'OTP hợp lệ.'
         ]);
     }
 
@@ -718,7 +718,7 @@ class ApiAuthController extends Controller
         return response()->json([
             'success' => true,
             'available' => !$exists,
-            'message' => $exists ? 'Ten dang nhap da ton tai.' : 'Ten dang nhap kha dung.'
+            'message' => $exists ? 'Tên đăng nhập đã tồn tại.' : 'Tên đăng nhập khả dụng.'
         ]);
     }
 
@@ -744,7 +744,7 @@ class ApiAuthController extends Controller
         return response()->json([
             'success' => true,
             'available' => !$exists,
-            'message' => $exists ? 'So dien thoai da duoc su dung.' : 'So dien thoai kha dung.'
+            'message' => $exists ? 'Số điện thoại đã được sử dụng.' : 'Số điện thoại khả dụng.'
         ]);
     }
 
@@ -770,7 +770,7 @@ class ApiAuthController extends Controller
         return response()->json([
             'success' => true,
             'available' => !$exists,
-            'message' => $exists ? 'Email da duoc su dung.' : 'Email kha dung.'
+            'message' => $exists ? 'Email đã được sử dụng.' : 'Email khả dụng.'
         ]);
     }
 
@@ -784,7 +784,7 @@ class ApiAuthController extends Controller
         if (!$user) {
             return response()->json([
                 'success' => false,
-                'error' => 'Khong xac thuc duoc nguoi dung.',
+                'error' => 'Không xác thực được người dùng.',
             ], 401);
         }
 
@@ -792,7 +792,7 @@ class ApiAuthController extends Controller
         if (!$playerId || !is_string($playerId)) {
             return response()->json([
                 'success' => false,
-                'error' => 'player_id khong hop le.',
+                'error' => 'player_id không hợp lệ.',
             ], 422);
         }
 
@@ -801,7 +801,7 @@ class ApiAuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Da cap nhat push token.',
+            'message' => 'Đã cập nhật push token.',
         ]);
     }
 
@@ -817,7 +817,7 @@ class ApiAuthController extends Controller
         if (!$user || $user->ID_LoaiTK !== 'staff' || !$nhanVien) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi nhan vien moi duoc cap nhat anh dai dien.',
+                'error' => 'Chỉ nhân viên mới được cập nhật ảnh đại diện.',
             ], 403);
         }
 
@@ -836,7 +836,7 @@ class ApiAuthController extends Controller
         if (!$file) {
             return response()->json([
                 'success' => false,
-                'error' => 'Tep khong hop le.',
+                'error' => 'File không hợp lệ.',
             ], 422);
         }
 
@@ -848,7 +848,7 @@ class ApiAuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Da cap nhat anh dai dien.',
+            'message' => 'Đã cập nhật ảnh đại diện.',
             'data' => [
                 'avatar_url' => $this->avatarUrl($path),
                 'id' => $user->ID_TK,

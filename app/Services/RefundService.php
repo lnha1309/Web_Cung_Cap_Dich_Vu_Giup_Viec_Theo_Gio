@@ -249,13 +249,14 @@ class RefundService
         ]);
     }
     /**
-     * Refund a single monthly session
+     * Mark a single monthly session as pending refund (deferred refund)
+     * Refund will NOT be processed immediately. It will be processed after the last actual session is completed.
      * 
      * @param LichBuoiThang $session
      * @param string $reason
      * @return array
      */
-    public function refundSession($session, $reason = 'auto_cancel_session')
+    public function refundSession($session, $reason = 'user_cancel_session')
     {
         $booking = $session->donDat;
         if (!$booking) {
@@ -273,13 +274,14 @@ class RefundService
                 'success' => true,
                 'amount' => 0,
                 'message' => 'Không tìm thấy giao dịch thanh toán',
-                'payment_method' => 'unknown'
+                'payment_method' => 'unknown',
+                'pending_refund' => false
             ];
         }
 
         $paymentMethod = $payment->PhuongThucThanhToan;
         
-        // Calculate refund amount for one session
+        // Calculate refund amount for one session (for display purposes only)
         // Formula: (Total Amount / Total Sessions) * 80%
         $totalSessions = $booking->lichBuoiThang->count();
         $refundAmount = 0;
@@ -287,6 +289,102 @@ class RefundService
         if ($totalSessions > 0) {
             $refundAmount = ($booking->TongTienSauGiam / $totalSessions) * 0.8;
         }
+
+        // For VNPay payments: DON'T process refund immediately
+        // Refund will be processed after the last actual session is completed
+        if (strcasecmp($paymentMethod, 'VNPay') === 0 && $payment->MaGiaoDichVNPAY && $refundAmount > 0) {
+            Log::info('Session cancellation - refund deferred', [
+                'session_id' => $session->ID_Buoi,
+                'booking_id' => $booking->ID_DD,
+                'estimated_refund_amount' => $refundAmount,
+                'reason' => $reason
+            ]);
+
+            return [
+                'success' => true,
+                'amount' => $refundAmount,
+                'message' => 'Buổi đã huỷ. Tiền sẽ được hoàn sau khi nhân viên hoàn thành buổi cuối cùng.',
+                'payment_method' => $paymentMethod,
+                'pending_refund' => true
+            ];
+        }
+
+        // Cash payment or no refund needed
+        return [
+            'success' => true,
+            'amount' => 0,
+            'message' => $paymentMethod === 'TienMat' ? 'Thanh toán bằng tiền mặt - không hoàn tiền' : 'Không cần hoàn tiền',
+            'payment_method' => $paymentMethod,
+            'pending_refund' => false
+        ];
+    }
+
+    /**
+     * Process pending refunds for all cancelled sessions of a monthly order
+     * Called after the last actual (non-cancelled) session is completed
+     * 
+     * @param DonDat $booking
+     * @param string $reason
+     * @return array
+     */
+    public function processPendingRefunds($booking, $reason = 'last_session_completed')
+    {
+        if ($booking->LoaiDon !== 'month') {
+            return [
+                'success' => true,
+                'amount' => 0,
+                'message' => 'Chỉ áp dụng cho đơn theo tháng',
+                'cancelled_sessions' => 0
+            ];
+        }
+
+        // Find successful payment transaction
+        $payment = LichSuThanhToan::where('ID_DD', $booking->ID_DD)
+            ->where('TrangThai', 'ThanhCong')
+            ->where('LoaiGiaoDich', 'payment')
+            ->first();
+
+        if (!$payment) {
+            return [
+                'success' => true,
+                'amount' => 0,
+                'message' => 'Không tìm thấy giao dịch thanh toán',
+                'payment_method' => 'unknown',
+                'cancelled_sessions' => 0
+            ];
+        }
+
+        $paymentMethod = $payment->PhuongThucThanhToan;
+
+        // Count cancelled sessions
+        $allSessions = $booking->lichBuoiThang;
+        $totalSessions = $allSessions->count();
+        $cancelledSessions = $allSessions->where('TrangThaiBuoi', 'cancelled')->count();
+
+        if ($cancelledSessions === 0) {
+            return [
+                'success' => true,
+                'amount' => 0,
+                'message' => 'Không có buổi nào bị huỷ cần hoàn tiền',
+                'payment_method' => $paymentMethod,
+                'cancelled_sessions' => 0
+            ];
+        }
+
+        // Calculate total refund amount for all cancelled sessions
+        // Formula: (Total Amount / Total Sessions) * Number of Cancelled Sessions * 80%
+        $refundAmount = 0;
+        if ($totalSessions > 0) {
+            $refundAmount = ($booking->TongTienSauGiam / $totalSessions) * $cancelledSessions * 0.8;
+        }
+
+        Log::info('Processing pending refunds for cancelled sessions', [
+            'booking_id' => $booking->ID_DD,
+            'total_sessions' => $totalSessions,
+            'cancelled_sessions' => $cancelledSessions,
+            'refund_amount' => $refundAmount,
+            'payment_method' => $paymentMethod
+        ]);
 
         // Only process VNPay refunds
         if (strcasecmp($paymentMethod, 'VNPay') === 0 && $payment->MaGiaoDichVNPAY && $refundAmount > 0) {
@@ -297,24 +395,26 @@ class RefundService
                     'success' => false,
                     'amount' => 0,
                     'message' => $refundResult['message'],
-                    'payment_method' => $paymentMethod
+                    'payment_method' => $paymentMethod,
+                    'cancelled_sessions' => $cancelledSessions
                 ];
             }
 
-            // Log refund transaction (lưu mã giao dịch hoàn tiền nếu có)
+            // Log refund transaction
             $this->logRefundTransaction(
                 $booking,
                 $payment,
                 $refundAmount,
-                $reason,
+                $reason . '_' . $cancelledSessions . '_sessions',
                 $refundResult['transaction_no'] ?? null
             );
 
             return [
                 'success' => true,
                 'amount' => $refundAmount,
-                'message' => 'Hoàn tiền buổi làm thành công qua VNPay',
-                'payment_method' => $paymentMethod
+                'message' => 'Hoàn tiền ' . $cancelledSessions . ' buổi đã huỷ thành công qua VNPay',
+                'payment_method' => $paymentMethod,
+                'cancelled_sessions' => $cancelledSessions
             ];
         }
 
@@ -323,7 +423,8 @@ class RefundService
             'success' => true,
             'amount' => 0,
             'message' => $paymentMethod === 'TienMat' ? 'Thanh toán bằng tiền mặt' : 'Không cần hoàn tiền',
-            'payment_method' => $paymentMethod
+            'payment_method' => $paymentMethod,
+            'cancelled_sessions' => $cancelledSessions
         ];
     }
 }

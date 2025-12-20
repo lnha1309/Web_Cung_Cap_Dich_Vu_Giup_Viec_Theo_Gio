@@ -19,7 +19,7 @@ class ApiStaffWalletController extends Controller
         if (!$staff) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi nhan vien moi xem duoc vi.',
+                'error' => 'Chỉ nhân viên mới được xem ví.',
             ], 403);
         }
 
@@ -35,7 +35,7 @@ class ApiStaffWalletController extends Controller
         if (!$staff) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi nhan vien moi xem duoc vi.',
+                'error' => 'Chỉ nhân viên mới được xem lịch sử ví.',
             ], 403);
         }
 
@@ -61,7 +61,7 @@ class ApiStaffWalletController extends Controller
         if (!$staff) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi nhan vien moi xem duoc vi.',
+                'error' => 'Chỉ nhân viên mới được xem giao dịch ví.',
             ], 403);
         }
 
@@ -91,7 +91,7 @@ class ApiStaffWalletController extends Controller
         if (!$staff) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi nhan vien moi nap duoc vi.',
+                'error' => 'Chỉ nhân viên mới được nạp ví.',
             ], 403);
         }
 
@@ -114,7 +114,7 @@ class ApiStaffWalletController extends Controller
         if (($currentBalance + $amount) < $minRequired) {
             return response()->json([
                 'success' => false,
-                'error' => 'So du sau nap phai it nhat 400.000d de mo khoa nhan don.',
+                'error' => 'Số dư sau nạp phải ít nhất 400.000đ để mở khóa nhận đơn.',
             ], 422);
         }
 

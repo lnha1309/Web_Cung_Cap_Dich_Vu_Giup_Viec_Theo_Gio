@@ -15,6 +15,7 @@ use App\Models\DanhGiaNhanVien;
 use App\Models\TaiKhoan;
 use App\Services\NotificationService;
 use App\Services\StaffWalletService;
+use App\Services\RefundService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -270,6 +271,156 @@ class ApiStaffBookingController extends Controller
         return response()->json([
             'success' => true,
             'data' => $sessions,
+        ]);
+    }
+
+    /**
+     * List month sessions assigned to staff
+     * GET /api/staff/month-sessions
+     */
+    public function monthSessions(Request $request)
+    {
+        $nhanVien = $this->requireStaff($request);
+        if (!$nhanVien) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Chỉ nhân viên mới xem được buổi tháng.',
+            ], 403);
+        }
+
+        $statusFilter = $request->query('status');
+        $statuses = match ($statusFilter) {
+            'rejected' => ['rejected'],
+            'completed', 'done' => ['completed'],
+            'cancelled' => ['cancelled'],
+            'history' => ['completed', 'rejected', 'cancelled'],
+            'all' => ['assigned', 'confirmed', 'completed', 'rejected', 'cancelled', 'finding_staff'],
+            default => ['assigned', 'confirmed', 'completed'],
+        };
+
+        $sessions = LichBuoiThang::where('ID_NV', $nhanVien->ID_NV)
+            ->whereIn('TrangThaiBuoi', $statuses)
+            ->with(['donDat.khachHang', 'donDat.diaChi'])
+            ->orderByDesc('NgayLam')
+            ->get()
+            ->filter(function (LichBuoiThang $session) {
+                return $session->donDat && $session->donDat->LoaiDon === 'month';
+            })
+            ->map(function (LichBuoiThang $session) {
+                $booking = $session->donDat;
+                $durationHours = (float) ($booking?->ThoiLuongGio ?? 0);
+                $startTime = $session->GioBatDau;
+                $end = null;
+                if ($startTime && $durationHours > 0) {
+                    $end = Carbon::createFromFormat('H:i:s', $startTime)
+                        ->addHours($durationHours)
+                        ->format('H:i');
+                }
+                $kh = $booking?->khachHang;
+                $address = $booking?->diaChi;
+
+                return [
+                    'id' => $session->ID_Buoi,
+                    'item_type' => 'month_session',
+                    'booking_id' => $session->ID_DD,
+                    'work_date' => $session->NgayLam,
+                    'start_time' => $startTime ? substr($startTime, 0, 5) : null,
+                    'duration_hours' => $durationHours,
+                    'end_time' => $end,
+                    'status' => $session->TrangThaiBuoi,
+                    'note' => $booking?->GhiChu,
+                    'customer_name' => $kh?->Ten_KH,
+                    'customer_phone' => $kh?->SDT,
+                    'address' => $address ? [
+                        'id' => $address->ID_DC,
+                        'unit' => $address->CanHo,
+                        'full_address' => $address->DiaChiDayDu,
+                    ] : null,
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'success' => true,
+            'data' => $sessions,
+        ]);
+    }
+
+    /**
+     * Month session detail for staff
+     * GET /api/staff/month-sessions/{id}
+     */
+    public function showMonthSession(Request $request, string $id)
+    {
+        $nhanVien = $this->requireStaff($request);
+        if (!$nhanVien) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Chỉ nhân viên mới xem được buổi tháng.',
+            ], 403);
+        }
+
+        $session = LichBuoiThang::where('ID_Buoi', $id)
+            ->where('ID_NV', $nhanVien->ID_NV)
+            ->with(['donDat.khachHang'])
+            ->first();
+
+        if (!$session || !$session->donDat || $session->donDat->LoaiDon !== 'month') {
+            return response()->json([
+                'success' => false,
+                'error' => 'Không tìm thấy buổi tháng phù hợp.',
+            ], 404);
+        }
+
+        $booking = $session->donDat;
+        $service = DichVu::find($booking->ID_DV);
+        $address = DiaChi::find($booking->ID_DC);
+        $kh = $booking->khachHang;
+        $end = null;
+        $durationHours = (float) ($booking->ThoiLuongGio ?? 0);
+
+        if ($session->GioBatDau && $durationHours > 0) {
+            $end = Carbon::createFromFormat('H:i:s', $session->GioBatDau)
+                ->addHours($durationHours)
+                ->format('H:i');
+        }
+
+        $sessionCount = LichBuoiThang::where('ID_DD', $booking->ID_DD)->count();
+        $sessionCount = max(1, $sessionCount);
+        $totalAmount = (float) ($booking->TongTien ?? 0) / $sessionCount;
+        $discountedAmount = (float) ($booking->TongTienSauGiam ?? $booking->TongTien ?? 0) / $sessionCount;
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $booking->ID_DD,
+                'session_id' => $session->ID_Buoi,
+                'item_type' => 'month_session',
+                'order_type' => $booking->LoaiDon,
+                'service' => [
+                    'id' => $service?->ID_DV,
+                    'name' => $service?->TenDV,
+                    'price' => $service ? (float) $service->GiaDV : 0,
+                ],
+                'address' => $address ? [
+                    'id' => $address->ID_DC,
+                    'unit' => $address->CanHo,
+                    'full_address' => $address->DiaChiDayDu,
+                ] : null,
+                'note' => $booking->GhiChu,
+                'work_date' => $session->NgayLam,
+                'start_time' => $session->GioBatDau ? substr($session->GioBatDau, 0, 5) : null,
+                'duration_hours' => $durationHours,
+                'end_time' => $end,
+                'status' => $session->TrangThaiBuoi,
+                'total_amount' => $totalAmount,
+                'discounted_amount' => $discountedAmount,
+                'created_at' => $booking->NgayTao,
+                'customer' => [
+                    'name' => $kh?->Ten_KH,
+                    'phone' => $kh?->SDT,
+                ],
+            ],
         ]);
     }
 
@@ -1076,6 +1227,66 @@ class ApiStaffBookingController extends Controller
     }
 
     /**
+     * Staff confirms an assigned monthly session -> confirmed
+     * POST /api/staff/month-sessions/{id}/confirm
+     */
+    public function confirmMonthSession(Request $request, string $id)
+    {
+        $nhanVien = $this->requireStaff($request);
+        if (!$nhanVien) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Chỉ nhân viên mới xác nhận được buổi tháng.',
+            ], 403);
+        }
+
+        $session = LichBuoiThang::where('ID_Buoi', $id)
+            ->where('ID_NV', $nhanVien->ID_NV)
+            ->with('donDat')
+            ->first();
+
+        if (!$session || !$session->donDat || $session->donDat->LoaiDon !== 'month') {
+            return response()->json([
+                'success' => false,
+                'error' => 'Không tìm thấy buổi tháng phù hợp.',
+            ], 404);
+        }
+
+        if ($session->TrangThaiBuoi !== 'assigned') {
+            return response()->json([
+                'success' => false,
+                'error' => 'Chỉ xác nhận khi trạng thái là assigned.',
+            ], 422);
+        }
+
+        if (!$session->NgayLam || !$session->GioBatDau) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Buổi tháng thiếu thông tin thời gian.',
+            ], 422);
+        }
+
+        $session->TrangThaiBuoi = 'confirmed';
+        $session->save();
+
+        $booking = $session->donDat;
+        if ($booking) {
+            if (!$booking->ID_NV) {
+                $booking->ID_NV = $nhanVien->ID_NV;
+            }
+            if (in_array($booking->TrangThaiDon, ['finding_staff', 'assigned'], true)) {
+                $booking->TrangThaiDon = 'confirmed';
+            }
+            $booking->save();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Đã xác nhận buổi tháng.',
+        ]);
+    }
+
+    /**
      * Staff rejects an assigned monthly session -> rejected
      * POST /api/staff/month-sessions/{id}/reject
      */
@@ -1139,6 +1350,162 @@ class ApiStaffBookingController extends Controller
                 ? 'Đã từ chối buổi tháng và tài khoản bị khóa (banned) do từ chối quá 2 lần/tuan.'
                 : 'Đã từ chối buổi tháng.',
             'locked' => $locked,
+        ]);
+    }
+
+    /**
+     * Staff marks a monthly session as completed
+     * When this is the last actual (non-cancelled) session, process pending refunds for cancelled sessions
+     * POST /api/staff/month-sessions/{id}/complete
+     */
+    public function completeMonthSession(Request $request, string $id)
+    {
+        $nhanVien = $this->requireStaff($request);
+        if (!$nhanVien) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Chỉ nhân viên mới hoàn thành được buổi.',
+            ], 403);
+        }
+
+        $session = LichBuoiThang::where('ID_Buoi', $id)
+            ->where('ID_NV', $nhanVien->ID_NV)
+            ->with('donDat')
+            ->first();
+
+        if (!$session || !$session->donDat || $session->donDat->LoaiDon !== 'month') {
+            return response()->json([
+                'success' => false,
+                'error' => 'Không tìm thấy buổi tháng phù hợp.',
+            ], 404);
+        }
+
+        if (!in_array($session->TrangThaiBuoi, ['assigned', 'confirmed'], true)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Chỉ hoàn thành buổi đang làm (assigned/confirmed).',
+            ], 422);
+        }
+
+        $booking = $session->donDat;
+
+        // Verify the session time is passed
+        if ($session->NgayLam && $session->GioBatDau) {
+            $durationHours = (float) ($booking->ThoiLuongGio ?? 2);
+            $start = Carbon::createFromFormat('H:i:s', $session->GioBatDau);
+            $sessionEnd = Carbon::parse($session->NgayLam)
+                ->setTime($start->hour, $start->minute, $start->second)
+                ->addHours($durationHours);
+
+            if (Carbon::now()->lt($sessionEnd)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Chỉ hoàn thành sau khi kết thúc buổi.',
+                ], 422);
+            }
+        }
+
+        // Mark session as completed
+        $session->TrangThaiBuoi = 'completed';
+        $session->save();
+
+        // Calculate wallet credit for this session
+        $orderAmount = (float) ($booking->TongTien ?? $booking->TongTienSauGiam ?? 0);
+        $sessionCount = LichBuoiThang::where('ID_DD', $booking->ID_DD)->count();
+        $sessionCount = max(1, $sessionCount);
+        $sessionAmount = $orderAmount / $sessionCount;
+
+        if ($sessionAmount > 0) {
+            $walletService = app(StaffWalletService::class);
+            
+            // Find payment method
+            $payment = LichSuThanhToan::where('ID_DD', $booking->ID_DD)
+                ->where('TrangThai', 'ThanhCong')
+                ->where('LoaiGiaoDich', 'payment')
+                ->first();
+            
+            $paymentMethod = $payment?->PhuongThucThanhToan ?? 'TienMat';
+            $normalizedMethod = $paymentMethod === 'TienMat' ? 'cash' : 'online';
+
+            // Use session ID to track to avoid duplicate credits
+            $transactionRef = $booking->ID_DD . '_' . $session->ID_Buoi;
+            
+            if (!$walletService->hasOrderTransaction($transactionRef, ['cash_commission', 'order_credit'])) {
+                if ($normalizedMethod === 'cash') {
+                    $commission = -1 * round($sessionAmount * 0.2, 2);
+                    $walletService->applyChange($nhanVien, $commission, 'cash_commission', [
+                        'description' => 'Trừ 20% buổi tiền mặt ' . $session->ID_Buoi,
+                        'order_id' => $transactionRef,
+                        'source' => 'cash',
+                    ]);
+                } else {
+                    $credit = round($sessionAmount * 0.8, 2);
+                    $walletService->applyChange($nhanVien, $credit, 'order_credit', [
+                        'description' => 'Cộng 80% buổi thanh toán online ' . $session->ID_Buoi,
+                        'order_id' => $transactionRef,
+                        'source' => strtolower((string) $paymentMethod),
+                    ]);
+                }
+            }
+        }
+
+        // Check if this is the last actual (non-cancelled) session
+        $allSessions = LichBuoiThang::where('ID_DD', $booking->ID_DD)->get();
+        $remainingActiveSessions = $allSessions
+            ->whereNotIn('TrangThaiBuoi', ['cancelled', 'completed'])
+            ->count();
+
+        $refundProcessed = false;
+        $refundResult = null;
+
+        if ($remainingActiveSessions === 0) {
+            // This was the last actual session -> Process pending refunds for cancelled sessions
+            Log::info('Last actual session completed, processing pending refunds', [
+                'booking_id' => $booking->ID_DD,
+                'session_id' => $session->ID_Buoi,
+            ]);
+
+            $refundService = app(RefundService::class);
+            $refundResult = $refundService->processPendingRefunds($booking, 'last_session_completed');
+            $refundProcessed = true;
+
+            // Update order status to completed/done
+            $booking->TrangThaiDon = 'done';
+            $booking->save();
+
+            // Notify customer about completion and refund
+            try {
+                $notificationService = app(NotificationService::class);
+                $notificationService->notifyOrderStatusChanged($booking, 'confirmed', 'done');
+                
+                // If there were cancelled sessions and refund was processed
+                if ($refundResult && $refundResult['cancelled_sessions'] > 0 && $refundResult['amount'] > 0) {
+                    // Send additional notification about refund
+                    Log::info('Pending refunds processed', [
+                        'booking_id' => $booking->ID_DD,
+                        'refund_amount' => $refundResult['amount'],
+                        'cancelled_sessions' => $refundResult['cancelled_sessions'],
+                    ]);
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to send completion notification', [
+                    'booking_id' => $booking->ID_DD,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $message = 'Đã hoàn thành buổi làm.';
+        if ($refundProcessed && $refundResult && $refundResult['cancelled_sessions'] > 0) {
+            $message .= ' Đã hoàn tiền ' . number_format($refundResult['amount']) . 'đ cho ' . $refundResult['cancelled_sessions'] . ' buổi đã huỷ trước đó.';
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'is_last_session' => $remainingActiveSessions === 0,
+            'refund_processed' => $refundProcessed,
+            'refund_amount' => $refundResult['amount'] ?? 0,
         ]);
     }
 

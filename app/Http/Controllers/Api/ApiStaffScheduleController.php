@@ -23,7 +23,7 @@ class ApiStaffScheduleController extends Controller
         if (!$taiKhoan || $taiKhoan->ID_LoaiTK !== 'staff' || !$nhanVien) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi nhan vien moi xem duoc lich.',
+                'error' => 'Chỉ nhân viên mới xem được lịch.',
             ], 403);
         }
 
@@ -79,7 +79,7 @@ class ApiStaffScheduleController extends Controller
         if (!$taiKhoan || $taiKhoan->ID_LoaiTK !== 'staff' || !$nhanVien) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi nhan vien moi sua duoc lich.',
+                'error' => 'Chỉ nhân viên mới sửa được lịch.',
             ], 403);
         }
 
@@ -103,7 +103,7 @@ class ApiStaffScheduleController extends Controller
         if ($this->shouldBlockCurrentWeekRegistration($nhanVien->ID_NV, $request->input('schedules', []))) {
             return response()->json([
                 'success' => false,
-                'error' => 'Da qua han dang ky lich tuan nay. Vui long lien he tong dai.',
+                'error' => 'Đã qua hạn đăng ký lịch tuần này. Vui lòng liên hệ tổng đài.',
             ], 422);
         }
 
@@ -118,14 +118,14 @@ class ApiStaffScheduleController extends Controller
             if ($end->lessThanOrEqualTo($start)) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Gio ket thuc phai lon hon gio bat dau.',
+                    'error' => 'Giờ kết thúc phải lớn hơn giờ bắt đầu.',
                 ], 422);
             }
 
             if ($startMinutes < 7 * 60 || $endMinutes > 17 * 60 || ($endMinutes - $startMinutes) < 240) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Moi ca phai trong 07:00-17:00 va it nhat 4 gio.',
+                    'error' => 'Mỗi ca phải trong 07:00-17:00 và ít nhất 4 giờ.',
                 ], 422);
             }
 
@@ -150,7 +150,7 @@ class ApiStaffScheduleController extends Controller
         if ($lockedDays->isNotEmpty()) {
             return response()->json([
                 'success' => false,
-                'error' => 'Khong the sua ngay da duoc nhan don: ' . $lockedDays->implode(', '),
+                'error' => 'Không thể sửa ngày đã được nhận đơn: ' . $lockedDays->implode(', '),
             ], 422);
         }
 
@@ -189,7 +189,7 @@ class ApiStaffScheduleController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Da cap nhat lich lam viec.',
+            'message' => 'Đã cập nhật lịch làm việc.',
             'data' => [
                 'staff_id' => $nhanVien->ID_NV,
                 'schedules' => $results,
@@ -209,7 +209,7 @@ class ApiStaffScheduleController extends Controller
         if (!$taiKhoan || $taiKhoan->ID_LoaiTK !== 'staff' || !$nhanVien) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chi nhan vien moi duoc dang ky lich.',
+                'error' => 'Chỉ nhân viên mới được đăng ký lịch.',
             ], 403);
         }
 
@@ -231,7 +231,7 @@ class ApiStaffScheduleController extends Controller
         if (count($input) < 5) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chon it nhat 5 ngay trong tuan.',
+                'error' => 'Chọn ít nhất 5 ngày trong tuần.',
             ], 422);
         }
 
@@ -241,7 +241,7 @@ class ApiStaffScheduleController extends Controller
         if ($this->shouldBlockCurrentWeekRegistration($nhanVien->ID_NV, $request->input('schedules', []))) {
             return response()->json([
                 'success' => false,
-                'error' => 'Da qua han dang ky lich tuan nay. Vui long lien he tong dai.',
+                'error' => 'Đã qua hạn đăng ký lịch tuần này. Vui lòng liên hệ tổng đài.',
             ], 422);
         }
 
@@ -256,14 +256,14 @@ class ApiStaffScheduleController extends Controller
             if ($end->lessThanOrEqualTo($start)) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Gio ket thuc phai lon hon gio bat dau.',
+                    'error' => 'Giờ kết thúc phải lớn hơn giờ bắt đầu.',
                 ], 422);
             }
 
             if ($startMinutes < 7 * 60 || $endMinutes > 17 * 60 || ($endMinutes - $startMinutes) < 240) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Moi ca phai trong 07:00-17:00 va it nhat 4 gio.',
+                    'error' => 'Mỗi ca phải trong 07:00-17:00 và ít nhất 4 giờ.',
                 ], 422);
             }
 
@@ -288,7 +288,7 @@ class ApiStaffScheduleController extends Controller
         if ($lockedDays->isNotEmpty()) {
             return response()->json([
                 'success' => false,
-                'error' => 'Khong the sua ngay da duoc nhan don: ' . $lockedDays->implode(', '),
+                'error' => 'Không thể sửa ngày đã được nhận đơn: ' . $lockedDays->implode(', '),
             ], 422);
         }
 
@@ -326,7 +326,7 @@ class ApiStaffScheduleController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Da luu lich lam viec.',
+            'message' => 'Đã lưu lịch làm việc.',
             'data' => [
                 'staff_id' => $nhanVien->ID_NV,
                 'schedules' => $results,
