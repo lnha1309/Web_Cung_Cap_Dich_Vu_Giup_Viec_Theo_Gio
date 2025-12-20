@@ -1470,7 +1470,7 @@ class ApiStaffBookingController extends Controller
             $refundProcessed = true;
 
             // Update order status to completed/done
-            $booking->TrangThaiDon = 'done';
+            $booking->TrangThaiDon = 'completed';
             $booking->save();
 
             // Notify customer about completion and refund
