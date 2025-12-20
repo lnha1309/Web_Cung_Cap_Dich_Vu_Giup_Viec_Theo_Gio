@@ -427,6 +427,7 @@ class ApiStaffBookingController extends Controller
     /**
      * Thu thap nhan vien theo don hoan thanh
      * GET /api/staff/earnings
+     * Lay du lieu tu LichSuViNhanVien (giao dich vi) thay vi DonDat
      */
     public function earnings(Request $request)
     {
@@ -434,7 +435,7 @@ class ApiStaffBookingController extends Controller
         if (!$nhanVien) {
             return response()->json([
                 'success' => false,
-                'error' => 'Chỉ nhân viên mới xem được thu thập.',
+                'error' => 'Chỉ nhân viên mới xem được thu nhập.',
             ], 403);
         }
 
@@ -442,70 +443,108 @@ class ApiStaffBookingController extends Controller
         $to = $request->query('to');
         $method = $request->query('method');
 
-        $methodFilters = match ($method) {
-            'cash' => ['TienMat'],
-            'wallet', 'online', 'vnpay' => ['VNPay', 'Momo'],
-            default => null,
-        };
+        // Lay cac giao dich lien quan den don hang tu vi nhan vien
+        // order_credit = don VNPay thanh cong (cong 80%)
+        // cash_commission = don tien mat (tru 20%)
+        $query = \App\Models\LichSuViNhanVien::where('ID_NV', $nhanVien->ID_NV)
+            ->whereIn('LoaiGiaoDich', ['order_credit', 'cash_commission'])
+            ->where('TrangThai', 'success')
+            ->whereNotNull('ID_DD');
 
-        $bookings = DonDat::where('ID_NV', $nhanVien->ID_NV)
-            ->where('TrangThaiDon', 'done')
-            ->when($from, fn($q) => $q->whereDate('NgayLam', '>=', $from))
-            ->when($to, fn($q) => $q->whereDate('NgayLam', '<=', $to))
-            ->orderByDesc('NgayLam')
-            ->get();
+        if ($from) {
+            $query->whereDate('created_at', '>=', $from);
+        }
+        if ($to) {
+            $query->whereDate('created_at', '<=', $to);
+        }
+
+        // Loc theo phuong thuc thanh toan
+        if ($method === 'cash') {
+            $query->where('LoaiGiaoDich', 'cash_commission');
+        } elseif (in_array($method, ['wallet', 'online', 'vnpay'])) {
+            $query->where('LoaiGiaoDich', 'order_credit');
+        }
+
+        $transactions = $query->orderByDesc('created_at')->get();
 
         $items = [];
         $total = 0.0;
         $totalCash = 0.0;
         $totalWallet = 0.0;
 
-        foreach ($bookings as $booking) {
-            $payment = LichSuThanhToan::where('ID_DD', $booking->ID_DD)
-                ->orderByDesc('ThoiGian')
-                ->first();
-
-            if ($payment && $payment->TrangThai !== 'ThanhCong') {
-                continue;
+        foreach ($transactions as $tx) {
+            $orderId = $tx->ID_DD;
+            $sessionId = null;
+            $workDate = null;
+            $startTime = null;
+            $durationHours = 0;
+            
+            // Kiem tra xem ID_DD co chua ID buoi thang khong (format: DD_xxx_LBT_yyy)
+            if (preg_match('/^(.+)_(LBT_.+)$/', $orderId, $matches)) {
+                $bookingId = $matches[1]; // DD_xxx
+                $sessionId = $matches[2]; // LBT_yyy
+                
+                $booking = DonDat::find($bookingId);
+                $session = LichBuoiThang::where('ID_Buoi', $sessionId)->first();
+                
+                if ($session) {
+                    $workDate = $session->NgayLam;
+                    $startTime = $session->GioBatDau ? substr($session->GioBatDau, 0, 5) : null;
+                }
+                $durationHours = (float) ($booking?->ThoiLuongGio ?? 0);
+            } else {
+                // Don theo gio binh thuong
+                $booking = DonDat::find($orderId);
+                $workDate = $booking?->NgayLam;
+                $startTime = $booking?->GioBatDau ? substr($booking->GioBatDau, 0, 5) : null;
+                $durationHours = (float) ($booking?->ThoiLuongGio ?? 0);
+            }
+            
+            // Tinh so tien thuc nhan tu don
+            // order_credit = 80% (da cong vao vi)
+            // cash_commission = -20% (da tru tu vi), tuc nhan vien nhan 80% tien mat
+            $isCash = $tx->LoaiGiaoDich === 'cash_commission';
+            
+            // Tinh nguoc lai tong tien don tu giao dich vi
+            // order_credit = 80% => tong don = SoTien / 0.8
+            // cash_commission = -20% => tong don = |SoTien| / 0.2
+            if ($isCash) {
+                $orderAmount = abs((float) $tx->SoTien) / 0.2; // Tong tien don
+                $netAmount = $orderAmount * 0.8; // Nhan vien nhan 80% tien mat
+            } else {
+                $netAmount = (float) $tx->SoTien; // 80% da duoc cong
+                $orderAmount = $netAmount / 0.8; // Tong tien don
             }
 
-            $paymentMethodRaw = $payment?->PhuongThucThanhToan;
-            if ($methodFilters !== null && !in_array($paymentMethodRaw, $methodFilters, true)) {
-                continue;
+            if ($isCash) {
+                $totalCash += $orderAmount;
+            } else {
+                $totalWallet += $orderAmount;
             }
-
-            $normalizedMethod = match ($paymentMethodRaw) {
-                'TienMat' => 'cash',
-                'VNPay', 'Momo', 'Refund' => 'wallet',
-                default => 'unknown',
-            };
-
-            $amount = (float) ($booking->TongTienSauGiam ?? $booking->TongTien ?? 0);
-            if ($normalizedMethod === 'cash') {
-                $totalCash += $amount;
-            } elseif ($normalizedMethod === 'wallet') {
-                $totalWallet += $amount;
-            }
-            $total += $amount;
+            $total += $orderAmount;
 
             $items[] = [
-                'id' => $booking->ID_DD,
-                'work_date' => $booking->NgayLam,
-                'start_time' => $booking->GioBatDau ? substr($booking->GioBatDau, 0, 5) : null,
-                'duration_hours' => (float) $booking->ThoiLuongGio,
-                'amount' => $amount,
-                'payment_method' => $normalizedMethod,
-                'payment_status' => $payment?->TrangThai,
+                'id' => $orderId,
+                'work_date' => $workDate,
+                'start_time' => $startTime,
+                'duration_hours' => $durationHours,
+                'amount' => round($orderAmount, 0),
+                'net_amount' => round($netAmount, 0),
+                'payment_method' => $isCash ? 'cash' : 'wallet',
+                'payment_status' => 'ThanhCong',
                 'status' => 'completed',
+                'transaction_id' => $tx->ID_LSV,
+                'transaction_date' => $tx->created_at?->toDateTimeString(),
+                'is_month_session' => $sessionId !== null,
             ];
         }
 
         return response()->json([
             'success' => true,
             'data' => [
-                'total' => round($total, 2),
-                'total_cash' => round($totalCash, 2),
-                'total_wallet' => round($totalWallet, 2),
+                'total' => round($total, 0),
+                'total_cash' => round($totalCash, 0),
+                'total_wallet' => round($totalWallet, 0),
                 'items' => $items,
             ],
         ]);
@@ -514,6 +553,7 @@ class ApiStaffBookingController extends Controller
     /**
      * Bao cao tuan cho nhan vien
      * GET /api/staff/weekly-report?start=YYYY-MM-DD&end=YYYY-MM-DD
+     * Lay du lieu tu LichSuViNhanVien (giao dich vi), loc theo ngay lam viec thuc te
      */
     public function weeklyReport(Request $request)
     {
@@ -540,48 +580,67 @@ class ApiStaffBookingController extends Controller
         $methodFilter = $request->query('method');
         $methodFilter = in_array($methodFilter, ['cash', 'wallet'], true) ? $methodFilter : null;
 
-        // Cong viec hoan thanh
-        $bookings = DonDat::where('ID_NV', $nhanVien->ID_NV)
-            ->whereIn('TrangThaiDon', ['done', 'completed'])
-            ->whereBetween('NgayLam', [$startDate->toDateString(), $endDate->toDateString()])
-            ->get();
+        // Lay tat ca giao dich lien quan den don hang tu vi nhan vien
+        $query = \App\Models\LichSuViNhanVien::where('ID_NV', $nhanVien->ID_NV)
+            ->whereIn('LoaiGiaoDich', ['order_credit', 'cash_commission'])
+            ->where('TrangThai', 'success')
+            ->whereNotNull('ID_DD');
 
-        $completedCount = $bookings->count();
+        // Loc theo phuong thuc thanh toan
+        if ($methodFilter === 'cash') {
+            $query->where('LoaiGiaoDich', 'cash_commission');
+        } elseif ($methodFilter === 'wallet') {
+            $query->where('LoaiGiaoDich', 'order_credit');
+        }
+
+        $allTransactions = $query->get();
+
+        $completedCount = 0;
         $incomeTotal = 0.0;
         $incomeCash = 0.0;
         $incomeOnline = 0.0;
 
-        foreach ($bookings as $booking) {
-            $amount = (float) ($booking->TongTienSauGiam ?? $booking->TongTien ?? 0);
-
-            $payment = LichSuThanhToan::where('ID_DD', $booking->ID_DD)
-                ->where('TrangThai', 'ThanhCong')
-                ->orderByDesc('ThoiGian')
-                ->first();
-
-            $normalizedMethod = null;
-            if ($payment) {
-                $method = $payment->PhuongThucThanhToan;
-                if ($method === 'TienMat') {
-                    $normalizedMethod = 'cash';
-                    $incomeCash += $amount;
-                } else {
-                    // VNPay / Momo / others
-                    $normalizedMethod = 'wallet';
-                    $incomeOnline += $amount;
-                }
+        foreach ($allTransactions as $tx) {
+            $orderId = $tx->ID_DD;
+            $workDate = null;
+            
+            // Parse ID_DD de lay ngay lam viec thuc te
+            if (preg_match('/^(.+)_(LBT_.+)$/', $orderId, $matches)) {
+                // Don thang: format DD_xxx_LBT_yyy
+                $sessionId = $matches[2];
+                $session = LichBuoiThang::where('ID_Buoi', $sessionId)->first();
+                $workDate = $session?->NgayLam;
             } else {
-                // Khong co lich su thanh toan -> coi nhu tien mat
-                $normalizedMethod = 'cash';
-                $incomeCash += $amount;
+                // Don theo gio binh thuong
+                $booking = DonDat::find($orderId);
+                $workDate = $booking?->NgayLam;
             }
-
-            // Neu UI yeu cau loc theo hinh thuc thanh toan thi bo qua cac don khong khop
-            if ($methodFilter !== null && $normalizedMethod !== $methodFilter) {
+            
+            // Chi tinh neu ngay lam viec nam trong khoang thoi gian
+            if (!$workDate) {
                 continue;
             }
-
-            $incomeTotal += $amount;
+            
+            $workDateCarbon = Carbon::parse($workDate);
+            if ($workDateCarbon->lt($startDate) || $workDateCarbon->gt($endDate)) {
+                continue;
+            }
+            
+            $completedCount++;
+            
+            $isCash = $tx->LoaiGiaoDich === 'cash_commission';
+            
+            // Tinh nguoc lai tong tien don tu giao dich vi
+            if ($isCash) {
+                $orderAmount = abs((float) $tx->SoTien) / 0.2;
+                $incomeCash += $orderAmount;
+            } else {
+                $netAmount = (float) $tx->SoTien;
+                $orderAmount = $netAmount / 0.8;
+                $incomeOnline += $orderAmount;
+            }
+            
+            $incomeTotal += $orderAmount;
         }
 
         // Danh gia trong tuan
@@ -613,9 +672,9 @@ class ApiStaffBookingController extends Controller
                 'start_date' => $startDate->toDateString(),
                 'end_date' => $endDate->toDateString(),
                 'completed_jobs' => $completedCount,
-                'income_total' => round($incomeTotal, 2),
-                'income_cash' => round($incomeCash, 2),
-                'income_online' => round($incomeOnline, 2),
+                'income_total' => round($incomeTotal, 0),
+                'income_cash' => round($incomeCash, 0),
+                'income_online' => round($incomeOnline, 0),
                 'rating_avg' => $ratingAvg,
                 'rating_count' => $ratingCount,
                 'rating_breakdown' => $breakdown,

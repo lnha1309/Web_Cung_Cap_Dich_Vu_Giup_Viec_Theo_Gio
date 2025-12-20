@@ -2,23 +2,20 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
-use App\Models\TaiKhoan;
-use App\Models\KhachHang;
-use App\Models\NhanVien;
-use App\Models\LichLamViec;
-use App\Models\DanhGiaNhanVien;
-use App\Support\IdGenerator;
-use Carbon\Carbon;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+use App\Models\TaiKhoan;
+use App\Models\KhachHang;
+use App\Models\NhanVien;
 use App\Mail\OtpMail;
 use App\Mail\ResetPasswordOtpMail;
+use Haruncpi\LaravelIdGenerator\IdGenerator;
 
 class ApiAuthController extends Controller
 {
@@ -144,14 +141,14 @@ class ApiAuthController extends Controller
             if ($role === 'customer' && $accountType !== 'customer') {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Chi đăng nhập bằng tài khoản khách hàng.',
+                    'error' => 'Chỉ đăng nhập bằng tài khoản khách hàng.',
                 ], 403);
             }
 
             if ($role === 'staff' && $accountType !== 'staff') {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Chi đăng nhập bằng tài khoản nhân viên.',
+                    'error' => 'Chỉ đăng nhập bằng tài khoản nhân viên.',
                 ], 403);
             }
         }
@@ -173,65 +170,37 @@ class ApiAuthController extends Controller
             ], 401);
         }
 
-        if (in_array($taiKhoan->TrangThaiTK, ['banned', 'locked'], true)) {
+        // Check if account is active
+        if ($taiKhoan->TrangThaiTK !== 'active') {
             return response()->json([
                 'success' => false,
                 'error' => 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ tổng đài.',
             ], 403);
         }
 
-        if ($taiKhoan->TrangThaiTK === 'inactive') {
-            return response()->json([
-                'success' => false,
-                'error' => 'Tài khoản của bạn đang chờ kích hoạt. Vui lòng liên hệ tổng đài.',
-            ], 403);
-        }
-
-        // Lock if vi pham 2 tuan lien tiep khong dang ky lich (khong can cron)
-        if ($taiKhoan->ID_LoaiTK === 'staff' && $this->shouldLockForMissingSchedules($taiKhoan)) {
-            $taiKhoan->TrangThaiTK = 'locked';
-            $taiKhoan->save();
-
-            return response()->json([
-                'success' => false,
-                'error' => 'Tài khoản của bạn đã bị khóa do không đăng ký lịch 2 tuần liên tiếp. Vui lòng liên hệ tổng đài.',
-            ], 403);
-        }
-
-        $token = $taiKhoan->createToken('mobile-app')->plainTextToken;
-        $khachHang = $taiKhoan->khachHang;
-        $nhanVien = $taiKhoan->nhanVien;
-
+        // Get user data
         $userData = [
             'id' => $taiKhoan->ID_TK,
             'username' => $taiKhoan->TenDN,
-            'account_type' => $taiKhoan->ID_LoaiTK ?? null,
+            'account_type' => $taiKhoan->ID_LoaiTK,
         ];
 
-        if ($taiKhoan->ID_LoaiTK === 'staff' && $nhanVien) {
-            $userData['full_name'] = $nhanVien->Ten_NV ?? '';
-            $userData['email'] = $nhanVien->Email ?? '';
-            $userData['phone'] = $nhanVien->SDT ?? '';
-            $ratingStats = $this->staffRatingStats($nhanVien);
-            $userData['avg_rating'] = $ratingStats['avg_rating'];
-            $userData['rating_count'] = $ratingStats['rating_count'];
-            $userData['staff'] = [
-                'ID_NV' => $nhanVien->ID_NV,
-                'Ten_NV' => $nhanVien->Ten_NV,
-                'SDT' => $nhanVien->SDT,
-                'Email' => $nhanVien->Email,
-                'GioiTinh' => $nhanVien->GioiTinh,
-                'NgaySinh' => $nhanVien->NgaySinh,
-                'KhuVucLamViec' => $nhanVien->KhuVucLamViec,
-                'HinhAnh' => $this->avatarUrl($nhanVien->HinhAnh),
-                'SoDu' => $nhanVien->SoDu,
-                'ID_Quan' => $nhanVien->ID_Quan,
-            ];
-        } else {
-            $userData['full_name'] = $khachHang?->Ten_KH ?? '';
-            $userData['email'] = $khachHang?->Email ?? '';
-            $userData['phone'] = $khachHang?->SDT ?? '';
+        if ($role === 'customer') {
+            $khachHang = KhachHang::where('ID_TK', $taiKhoan->ID_TK)->first();
+            if ($khachHang) {
+                $userData['full_name'] = $khachHang->Ten_KH;
+                $userData['email'] = $khachHang->Email;
+                $userData['phone'] = $khachHang->SDT;
+            }
+        } elseif ($role === 'staff') {
+            // Assuming staff data is in a different model, adjust accordingly
+            // For now, placeholder
+            $userData['full_name'] = $taiKhoan->name ?? $taiKhoan->TenDN;
+            $userData['email'] = $taiKhoan->email ?? null;
+            // Add staff specific data if needed
         }
+
+        $token = $taiKhoan->createToken('mobile-app')->plainTextToken;
 
         return response()->json([
             'success' => true,
@@ -240,589 +209,93 @@ class ApiAuthController extends Controller
                 'user' => $userData,
                 'token' => $token,
             ]
-        ]);
+        ], 200);
     }
 
     /**
-     * Logout user
-     * POST /api/auth/logout
-     */
-    public function logout(Request $request)
-    {
-        $request->user()->currentAccessToken()->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Đăng xuất thành công.'
-        ]);
-    }
-
-    /**
-     * Change password for authenticated user
-     * POST /api/auth/change-password
-     */
-    public function changePassword(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'current_password' => ['required', 'string'],
-            'new_password' => ['required', 'string', 'min:6'],
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        /** @var \App\Models\TaiKhoan|null $taiKhoan */
-        $taiKhoan = $request->user();
-        if (!$taiKhoan) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Không xác thực được người dùng.',
-            ], 401);
-        }
-
-        $currentOk = false;
-        try {
-            $currentOk = Hash::check($request->current_password, $taiKhoan->MatKhau);
-        } catch (\RuntimeException $e) {
-            $currentOk = $request->current_password === $taiKhoan->MatKhau;
-        }
-
-        if (!$currentOk) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Mật khẩu hiện tại không đúng.',
-            ], 400);
-        }
-
-        $taiKhoan->MatKhau = Hash::make($request->new_password);
-        $taiKhoan->save();
-
-        // (Optional) revoke all other tokens and keep current token alive
-        $request->user()->tokens()->where('id', '!=', $request->user()->currentAccessToken()->id)->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Đổi mật khẩu thành công.',
-        ]);
-    }
-
-    /**
-     * Send OTP for password reset
-     * POST /api/auth/password/send-otp
-     */
-    public function sendResetOtp(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'username' => ['required', 'string'],
-            'email' => ['required', 'email'],
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        $account = $this->findAccountByUsernameAndEmail($request->username, $request->email);
-        if (!$account) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Không tìm thấy tài khoản với tên đăng nhập và email này.',
-            ], 404);
-        }
-
-        $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        $cacheKey = $this->resetOtpCacheKey($request->username, $request->email);
-
-        Cache::put($cacheKey, [
-            'otp' => $otp,
-            'username' => $request->username,
-            'email' => $request->email,
-            'expires_at' => Carbon::now()->addMinutes(10)->timestamp,
-        ], now()->addMinutes(10));
-
-        try {
-            Mail::to($request->email)->send(new ResetPasswordOtpMail($otp));
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Đã gửi mã OTP tới email của bạn. Mã có hiệu lực trong 10 phút.',
-                'debug_otp' => config('app.debug') ? $otp : null,
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Không thể gửi OTP. Vui lòng thử lại.',
-                'debug_error' => config('app.debug') ? $e->getMessage() : null,
-            ], 500);
-        }
-    }
-
-    /**
-     * Reset password with OTP
-     * POST /api/auth/password/reset
-     */
-    public function resetPasswordWithOtp(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'username' => ['required', 'string'],
-            'email' => ['required', 'email'],
-            'otp' => ['required', 'string'],
-            'password' => ['required', 'string', 'min:8'],
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        $cacheKey = $this->resetOtpCacheKey($request->username, $request->email);
-        $cached = Cache::get($cacheKey);
-
-        if (!$cached) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Chưa gửi OTP hoặc OTP đã hết hạn. Vui lòng gửi lại.',
-            ], 422);
-        }
-
-        if (($cached['otp'] ?? null) !== $request->otp) {
-            return response()->json([
-                'success' => false,
-                'error' => 'OTP không đúng hoặc thông tin không khớp.',
-            ], 422);
-        }
-
-        if (Carbon::now()->timestamp > ($cached['expires_at'] ?? 0)) {
-            Cache::forget($cacheKey);
-            return response()->json([
-                'success' => false,
-                'error' => 'OTP đã hết hạn. Vui lòng gửi lại.',
-            ], 422);
-        }
-
-        $account = $this->findAccountByUsernameAndEmail($request->username, $request->email);
-        if (!$account) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Không tìm thấy tài khoản với tên đăng nhập và email này.',
-            ], 404);
-        }
-
-        $account->MatKhau = Hash::make($request->password);
-        $account->save();
-
-        Cache::forget($cacheKey);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập bằng mật khẩu mới.',
-        ]);
-    }
-
-    /**
-     * Get user profile
+     * Get authenticated user profile
      * GET /api/auth/profile
      */
     public function profile(Request $request)
     {
-        /** @var \App\Models\TaiKhoan|null $taiKhoan */
         $taiKhoan = $request->user();
-        $khachHang = $taiKhoan?->khachHang;
-        $nhanVien = $taiKhoan?->nhanVien;
+
+        if (!$taiKhoan) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Không tìm thấy người dùng.',
+            ], 401);
+        }
+
+        $accountType = $taiKhoan->ID_LoaiTK;
 
         $userData = [
-            'id' => $taiKhoan->ID_TK ?? null,
-            'username' => $taiKhoan->TenDN ?? '',
-            'account_type' => $taiKhoan->ID_LoaiTK ?? null,
+            'id' => $taiKhoan->ID_TK,
+            'username' => $taiKhoan->TenDN,
+            'account_type' => $accountType,
         ];
 
-        if ($taiKhoan && $taiKhoan->ID_LoaiTK === 'staff' && $nhanVien) {
-            $userData['full_name'] = $nhanVien->Ten_NV ?? '';
-            $userData['email'] = $nhanVien->Email ?? '';
-            $userData['phone'] = $nhanVien->SDT ?? '';
-            $ratingStats = $this->staffRatingStats($nhanVien);
-            $userData['avg_rating'] = $ratingStats['avg_rating'];
-            $userData['rating_count'] = $ratingStats['rating_count'];
-            $userData['staff'] = [
-                'ID_NV' => $nhanVien->ID_NV,
-                'Ten_NV' => $nhanVien->Ten_NV,
-                'SDT' => $nhanVien->SDT,
-                'Email' => $nhanVien->Email,
-                'GioiTinh' => $nhanVien->GioiTinh,
-                'NgaySinh' => $nhanVien->NgaySinh,
-                'KhuVucLamViec' => $nhanVien->KhuVucLamViec,
-                'HinhAnh' => $this->avatarUrl($nhanVien->HinhAnh),
-                'SoDu' => $nhanVien->SoDu,
-                'ID_Quan' => $nhanVien->ID_Quan,
-            ];
-        } else {
-            $userData['full_name'] = $khachHang?->Ten_KH ?? '';
-            $userData['email'] = $khachHang?->Email ?? '';
-            $userData['phone'] = $khachHang?->SDT ?? '';
+        if ($accountType === 'customer') {
+            $khachHang = KhachHang::where('ID_TK', $taiKhoan->ID_TK)->first();
+            if ($khachHang) {
+                $userData['ID_KH'] = $khachHang->ID_KH;
+                $userData['full_name'] = $khachHang->Ten_KH;
+                $userData['email'] = $khachHang->Email;
+                $userData['phone'] = $khachHang->SDT;
+                $userData['HinhAnh'] = $khachHang->HinhAnh ?? null;
+            }
+        } elseif ($accountType === 'staff') {
+            $nhanVien = NhanVien::where('ID_TK', $taiKhoan->ID_TK)->first();
+            if ($nhanVien) {
+                $userData['ID_NV'] = $nhanVien->ID_NV;
+                $userData['Ten_NV'] = $nhanVien->Ten_NV;
+                $userData['full_name'] = $nhanVien->Ten_NV;
+                $userData['email'] = $nhanVien->Email;
+                $userData['SDT'] = $nhanVien->SDT;
+                $userData['phone'] = $nhanVien->SDT;
+                $userData['NgaySinh'] = $nhanVien->NgaySinh;
+                $userData['GioiTinh'] = $nhanVien->GioiTinh;
+                $userData['ID_Quan'] = $nhanVien->ID_Quan;
+                $userData['KhuVucLamViec'] = $nhanVien->KhuVucLamViec;
+                
+                // Build full URL for avatar image
+                $avatarPath = $nhanVien->HinhAnh;
+                if ($avatarPath) {
+                    // Check if it's already a full URL
+                    if (filter_var($avatarPath, FILTER_VALIDATE_URL)) {
+                        $userData['HinhAnh'] = $avatarPath;
+                    } else {
+                        $userData['HinhAnh'] = url('storage/' . $avatarPath);
+                    }
+                } else {
+                    $userData['HinhAnh'] = null;
+                }
+                
+                $userData['SoDu'] = $nhanVien->SoDu;
+                $userData['TrangThai'] = $nhanVien->TrangThai;
+
+                // Calculate average rating
+                $avgRating = $nhanVien->danhGias()->avg('Diem') ?? 0;
+                $userData['avg_rating'] = round($avgRating, 1);
+            }
         }
 
         return response()->json([
             'success' => true,
-            'data' => $userData,
-        ]);
+            'data' => [
+                'user' => $userData,
+            ]
+        ], 200);
     }
 
     /**
-     * Update user profile
-     * PUT /api/auth/profile
-     */
-    public function updateProfile(Request $request)
-    {
-        $rules = [
-            'full_name' => ['nullable', 'string', 'max:255'],
-            'email' => ['nullable', 'email', 'max:255'],
-        ];
-
-        /** @var \App\Models\TaiKhoan|null $taiKhoan */
-        $taiKhoan = $request->user();
-
-        if ($taiKhoan && $taiKhoan->ID_LoaiTK === 'staff') {
-            $rules = array_merge($rules, [
-                'phone' => ['nullable', 'string', 'max:15'],
-                'gender' => ['nullable', 'in:male,female,nam,nu,nữ'],
-                'birth_date' => ['nullable', 'date'],
-                'khu_vuc_lam_viec' => ['nullable', 'string', 'max:255'],
-                'id_quan' => ['nullable', 'string', 'max:50'],
-            ]);
-        }
-
-        $validator = Validator::make($request->all(), $rules);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        if ($taiKhoan && $taiKhoan->ID_LoaiTK === 'staff') {
-            $nhanVien = $taiKhoan->nhanVien;
-            if (!$nhanVien) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Không tìm thấy thông tin nhân viên.'
-                ], 404);
-            }
-
-            if ($request->has('full_name')) {
-                $nhanVien->Ten_NV = $request->full_name;
-            }
-            if ($request->has('email')) {
-                $nhanVien->Email = $request->email;
-            }
-            if ($request->has('phone')) {
-                $nhanVien->SDT = $request->phone;
-            }
-            if ($request->has('gender')) {
-                $nhanVien->GioiTinh = $request->gender;
-            }
-            if ($request->has('birth_date')) {
-                $nhanVien->NgaySinh = $request->birth_date;
-            }
-            if ($request->has('khu_vuc_lam_viec')) {
-                $nhanVien->KhuVucLamViec = $request->khu_vuc_lam_viec;
-            }
-            if ($request->has('id_quan')) {
-                $nhanVien->ID_Quan = $request->id_quan;
-            }
-            $nhanVien->save();
-            $ratingStats = $this->staffRatingStats($nhanVien);
-
-            return response()->json([
-                    'success' => true,
-                    'message' => 'Cập nhật thông tin thành công.',
-                    'data' => [
-                    'id' => $taiKhoan->ID_TK,
-                    'username' => $taiKhoan->TenDN ?? '',
-                    'account_type' => $taiKhoan->ID_LoaiTK ?? null,
-                    'full_name' => $nhanVien->Ten_NV ?? '',
-                    'email' => $nhanVien->Email ?? '',
-                    'phone' => $nhanVien->SDT ?? '',
-                    'avg_rating' => $ratingStats['avg_rating'],
-                    'rating_count' => $ratingStats['rating_count'],
-                    'staff' => [
-                        'ID_NV' => $nhanVien->ID_NV,
-                        'Ten_NV' => $nhanVien->Ten_NV,
-                        'SDT' => $nhanVien->SDT,
-                        'Email' => $nhanVien->Email,
-                        'GioiTinh' => $nhanVien->GioiTinh,
-                        'NgaySinh' => $nhanVien->NgaySinh,
-                        'KhuVucLamViec' => $nhanVien->KhuVucLamViec,
-                        'HinhAnh' => $this->avatarUrl($nhanVien->HinhAnh),
-                        'SoDu' => $nhanVien->SoDu,
-                        'ID_Quan' => $nhanVien->ID_Quan,
-                    ],
-                ]
-            ]);
-        } else {
-            $khachHang = $taiKhoan?->khachHang;
-
-            if (!$khachHang) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Không tìm thấy thông tin khách hàng.'
-                ], 404);
-            }
-
-            if ($request->has('full_name')) {
-                $khachHang->Ten_KH = $request->full_name;
-            }
-
-            if ($request->has('email')) {
-                $khachHang->Email = $request->email;
-            }
-
-            $khachHang->save();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Cập nhật thông tin thành công.',
-                'data' => [
-                    'id' => $taiKhoan->ID_TK,
-                    'username' => $taiKhoan->TenDN ?? '',
-                    'full_name' => $khachHang->Ten_KH,
-                    'email' => $khachHang->Email,
-                    'phone' => $khachHang->SDT,
-                ]
-            ]);
-        }
-    }
-
-    /**
-     * Send OTP for registration
-     * POST /api/auth/send-otp
-     */
-    public function sendOtp(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'phone' => ['required', 'string', 'max:15'],
-            'email' => ['required', 'email', 'max:255'],
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        // Check if phone already exists
-        $existingCustomer = KhachHang::where('SDT', $request->phone)->first();
-        if ($existingCustomer) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Số điện thoại đã được sử dụng.'
-            ], 422);
-        }
-
-        // Check if email already exists
-        $existingEmail = KhachHang::where('Email', $request->email)->first();
-        if ($existingEmail) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Email đã được sử dụng.'
-            ], 422);
-        }
-
-        // Generate OTP
-        $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-
-        // Store OTP in cache for 5 minutes
-        $cacheKey = 'register_otp_' . $request->phone;
-        Cache::put($cacheKey, $otp, now()->addMinutes(5));
-
-        // Send OTP via email
-        try {
-            Mail::to($request->email)->send(new OtpMail($otp));
-
-            return response()->json([
-                'success' => true,
-                'message' => 'OTP đã được gửi đến email của bạn.',
-                'debug_otp' => config('app.debug') ? $otp : null, // Only in debug mode
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Không thể gửi OTP. Vui lòng thử lại.',
-                'debug_error' => config('app.debug') ? $e->getMessage() : null,
-            ], 500);
-        }
-    }
-
-    /**
-     * Verify OTP
-     * POST /api/auth/verify-otp
-     */
-    public function verifyOtp(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'phone' => ['required', 'string'],
-            'otp' => ['required', 'string'],
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        $cacheKey = 'register_otp_' . $request->phone;
-        $cachedOtp = Cache::get($cacheKey);
-
-        if (!$cachedOtp || $cachedOtp !== $request->otp) {
-            return response()->json([
-                'success' => false,
-                'error' => 'OTP không hợp lệ hoặc đã hết hạn.'
-            ], 422);
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'OTP hợp lệ.'
-        ]);
-    }
-
-    /**
-     * Check if username is available
-     * POST /api/auth/check-username
-     */
-    public function checkUsername(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'username' => ['required', 'string', 'max:255'],
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        $exists = TaiKhoan::where('TenDN', $request->username)->exists();
-
-        return response()->json([
-            'success' => true,
-            'available' => !$exists,
-            'message' => $exists ? 'Tên đăng nhập đã tồn tại.' : 'Tên đăng nhập khả dụng.'
-        ]);
-    }
-
-    /**
-     * Check if phone is available
-     * POST /api/auth/check-phone
-     */
-    public function checkPhone(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'phone' => ['required', 'string', 'max:15'],
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        $exists = KhachHang::where('SDT', $request->phone)->exists();
-
-        return response()->json([
-            'success' => true,
-            'available' => !$exists,
-            'message' => $exists ? 'Số điện thoại đã được sử dụng.' : 'Số điện thoại khả dụng.'
-        ]);
-    }
-
-    /**
-     * Check if email is available
-     * POST /api/auth/check-email
-     */
-    public function checkEmail(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'email' => ['required', 'email', 'max:255'],
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        $exists = KhachHang::where('Email', $request->email)->exists();
-
-        return response()->json([
-            'success' => true,
-            'available' => !$exists,
-            'message' => $exists ? 'Email đã được sử dụng.' : 'Email khả dụng.'
-        ]);
-    }
-
-    /**
-     * Save OneSignal player ID for current user
+     * Save push notification token (OneSignal player_id)
      * POST /api/auth/push-token
      */
     public function savePushToken(Request $request)
     {
-        $user = $request->user();
-        if (!$user) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Không xác thực được người dùng.',
-            ], 401);
-        }
-
-        $playerId = $request->input('player_id');
-        if (!$playerId || !is_string($playerId)) {
-            return response()->json([
-                'success' => false,
-                'error' => 'player_id không hợp lệ.',
-            ], 422);
-        }
-
-        $user->onesignal_player_id = $playerId;
-        $user->save();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Đã cập nhật push token.',
-        ]);
-    }
-
-    /**
-     * Upload avatar for staff
-     * POST /api/auth/profile/avatar
-     */
-    public function uploadAvatar(Request $request)
-    {
-        $user = $request->user();
-        $nhanVien = $user?->nhanVien;
-
-        if (!$user || $user->ID_LoaiTK !== 'staff' || !$nhanVien) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Chỉ nhân viên mới được cập nhật ảnh đại diện.',
-            ], 403);
-        }
-
         $validator = Validator::make($request->all(), [
-            'avatar' => ['required', 'image', 'max:2048'], // 2MB
+            'player_id' => ['required', 'string'],
         ]);
 
         if ($validator->fails()) {
@@ -832,139 +305,60 @@ class ApiAuthController extends Controller
             ], 422);
         }
 
-        $file = $request->file('avatar');
-        if (!$file) {
+        $taiKhoan = $request->user();
+
+        if (!$taiKhoan) {
             return response()->json([
                 'success' => false,
-                'error' => 'File không hợp lệ.',
-            ], 422);
+                'error' => 'Không tìm thấy người dùng.',
+            ], 401);
         }
 
-        $path = $file->store('avatars', 'public'); // returns relative path inside disk
-        $nhanVien->HinhAnh = $path; // store relative, easier to change domain later
-        $nhanVien->save();
+        try {
+            // Store push token in TaiKhoan
+            $taiKhoan->onesignal_player_id = $request->player_id;
+            $taiKhoan->save();
 
-        $ratingStats = $this->staffRatingStats($nhanVien);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Đã cập nhật ảnh đại diện.',
-            'data' => [
-                'avatar_url' => $this->avatarUrl($path),
-                'id' => $user->ID_TK,
-                'username' => $user->TenDN,
-                'account_type' => $user->ID_LoaiTK,
-                'full_name' => $nhanVien->Ten_NV ?? '',
-                'email' => $nhanVien->Email ?? '',
-                'phone' => $nhanVien->SDT ?? '',
-                'avg_rating' => $ratingStats['avg_rating'],
-                'rating_count' => $ratingStats['rating_count'],
-                'staff' => [
-                    'ID_NV' => $nhanVien->ID_NV,
-                    'Ten_NV' => $nhanVien->Ten_NV,
-                    'SDT' => $nhanVien->SDT,
-                    'Email' => $nhanVien->Email,
-                    'GioiTinh' => $nhanVien->GioiTinh,
-                    'NgaySinh' => $nhanVien->NgaySinh,
-                    'KhuVucLamViec' => $nhanVien->KhuVucLamViec,
-                    'HinhAnh' => $this->avatarUrl($nhanVien->HinhAnh),
-                    'SoDu' => $nhanVien->SoDu,
-                    'ID_Quan' => $nhanVien->ID_Quan,
-                ],
-            ],
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Đã lưu push token.',
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Lỗi khi lưu push token: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
-    private function resetOtpCacheKey(string $username, string $email): string
+    /**
+     * Logout user - revoke current token
+     * POST /api/auth/logout
+     */
+    public function logout(Request $request)
     {
-        $normalized = strtolower(trim($username)) . '|' . strtolower(trim($email));
-        return 'reset_otp_' . md5($normalized);
-    }
+        $user = $request->user();
 
-    private function findAccountByUsernameAndEmail(string $username, string $email): ?TaiKhoan
-    {
-        return TaiKhoan::where('TenDN', $username)
-            ->where(function ($query) use ($email) {
-                $query->whereHas('khachHang', function ($sub) use ($email) {
-                    $sub->where('Email', $email);
-                })->orWhereHas('nhanVien', function ($sub) use ($email) {
-                    $sub->where('Email', $email);
-                });
-            })
-            ->first();
-    }
-
-    private function staffRatingStats(?NhanVien $nhanVien): array
-    {
-        if (!$nhanVien) {
-            return [
-                'avg_rating' => 0.0,
-                'rating_count' => 0,
-            ];
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Không tìm thấy người dùng.',
+            ], 401);
         }
 
-        $ratingsQuery = DanhGiaNhanVien::where('ID_NV', $nhanVien->ID_NV);
-        $avg = (float) $ratingsQuery->avg('Diem');
-        $count = (int) $ratingsQuery->count();
+        try {
+            // Revoke the current access token
+            $user->currentAccessToken()->delete();
 
-        return [
-            'avg_rating' => $count > 0 ? round($avg, 2) : 0.0,
-            'rating_count' => $count,
-        ];
-    }
-
-    private function avatarUrl(?string $stored): ?string
-    {
-        if (!$stored || trim($stored) === '') {
-            return null;
+            return response()->json([
+                'success' => true,
+                'message' => 'Đăng xuất thành công.',
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Lỗi khi đăng xuất: ' . $e->getMessage(),
+            ], 500);
         }
-
-        if (Str::startsWith($stored, ['http://', 'https://'])) {
-            return $stored;
-        }
-
-        $relative = Storage::url($stored); // usually /storage/...
-
-        // Ưu tiên host theo request hiện tại (phù hợp khi app dùng 10.0.2.2)
-        $host = request()->getSchemeAndHttpHost();
-        if (!$host || $host === 'http://localhost') {
-          $host = config('app.url') ?: url('/');
-        }
-        $host = rtrim($host, '/');
-        return $host . $relative;
-    }
-
-    private function shouldLockForMissingSchedules(TaiKhoan $taiKhoan): bool
-    {
-        $nhanVien = $taiKhoan->nhanVien;
-        if (!$nhanVien) {
-            return false;
-        }
-
-        $now = Carbon::now();
-        $currentWeekStart = $now->copy()->startOfWeek(Carbon::MONDAY);
-        $currentWeekEnd = $currentWeekStart->copy()->endOfWeek(Carbon::SUNDAY);
-        $cutoff = $currentWeekStart->copy()->addDays(3)->startOfDay(); // Thursday 00:00
-
-        if ($now->lt($cutoff)) {
-            return false;
-        }
-
-        $hasCurrent = $this->hasScheduleInRange($nhanVien->ID_NV, $currentWeekStart, $currentWeekEnd);
-        $previousWeekStart = $currentWeekStart->copy()->subWeek();
-        $previousWeekEnd = $previousWeekStart->copy()->endOfWeek(Carbon::SUNDAY);
-        $hasPrevious = $this->hasScheduleInRange($nhanVien->ID_NV, $previousWeekStart, $previousWeekEnd);
-
-        return !$hasCurrent && !$hasPrevious;
-    }
-
-    private function hasScheduleInRange(string $staffId, Carbon $start, Carbon $end): bool
-    {
-        return LichLamViec::where('ID_NV', $staffId)
-            ->whereBetween('NgayLam', [
-                $start->format('Y-m-d'),
-                $end->format('Y-m-d'),
-            ])
-            ->exists();
     }
 }

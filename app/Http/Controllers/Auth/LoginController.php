@@ -62,19 +62,19 @@ class LoginController extends Controller
             }
 
             return back()
-                ->withErrors(['login' => 'Ten dang nhap hoac mat khau khong dung.'])
+                ->withErrors(['login' => 'Tên đăng nhập hoặc mật khẩu không đúng.'])
                 ->withInput($request->only('TenDN'));
         }
 
         if ($account->TrangThaiTK === 'banned') {
             return back()
-                ->withErrors(['login' => 'Tai khoan cua ban da bi khoa.'])
+                ->withErrors(['login' => 'Tài khoản của bạn đã bị khóa.'])
                 ->withInput($request->only('TenDN'));
         }
 
         if ($account->TrangThaiTK === 'inactive') {
             return back()
-                ->withErrors(['login' => 'Tai khoan cua ban dang cho kich hoat. Vui long lien he quan tri vien.'])
+                ->withErrors(['login' => 'Tài khoản của bạn đang chờ kích hoạt. Vui lòng liên hệ quản trị viên.'])
                 ->withInput($request->only('TenDN'));
         }
 
@@ -118,7 +118,7 @@ class LoginController extends Controller
 
         if (!$account) {
             return response()->json([
-                'message' => 'Khong tim thay tai khoan voi ten dang nhap va email nay.',
+                'message' => 'Không tìm thấy tài khoản với tên đăng nhập và email này.',
             ], 404);
         }
 
@@ -134,7 +134,7 @@ class LoginController extends Controller
         Mail::to($email)->send(new ResetPasswordOtpMail($otp));
 
         return response()->json([
-            'message' => 'Da gui ma OTP toi email cua ban. Ma co hieu luc trong 10 phut.',
+            'message' => 'Đã gửi mã OTP tới email của bạn. Mã có hiệu lực trong 10 phút.',
         ]);
     }
 
@@ -150,7 +150,7 @@ class LoginController extends Controller
         $sessionOtp = $request->session()->get('password_reset_otp');
         if (!$sessionOtp) {
             return response()->json([
-                'message' => 'Chua gui OTP hoac OTP da het han, vui long gui lai.',
+                'message' => 'Chưa gửi OTP hoặc OTP đã hết hạn, vui lòng gửi lại.',
             ], 422);
         }
 
@@ -160,21 +160,21 @@ class LoginController extends Controller
             $sessionOtp['code'] !== $data['otp']
         ) {
             return response()->json([
-                'message' => 'OTP khong dung hoac thong tin khong khop.',
+                'message' => 'OTP không đúng hoặc thông tin không khớp.',
             ], 422);
         }
 
         if (Carbon::now()->timestamp > ($sessionOtp['expires_at'] ?? 0)) {
             $request->session()->forget('password_reset_otp');
             return response()->json([
-                'message' => 'OTP da het han, vui long gui lai.',
+                'message' => 'OTP đã hết hạn, vui lòng gửi lại.',
             ], 422);
         }
 
         $account = $this->findAccountByUsernameAndEmail($data['username'], $data['email']);
         if (!$account) {
             return response()->json([
-                'message' => 'Khong tim thay tai khoan voi ten dang nhap va email nay.',
+                'message' => 'Không tìm thấy tài khoản với tên đăng nhập và email này.',
             ], 404);
         }
 
@@ -184,7 +184,7 @@ class LoginController extends Controller
         $request->session()->forget('password_reset_otp');
 
         return response()->json([
-            'message' => 'Dat lai mat khau thanh cong. Vui long dang nhap voi mat khau moi.',
+            'message' => 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập với mật khẩu mới.',
         ]);
     }
 

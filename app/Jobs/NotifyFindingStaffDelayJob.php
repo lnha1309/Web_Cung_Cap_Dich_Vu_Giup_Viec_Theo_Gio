@@ -36,21 +36,48 @@ class NotifyFindingStaffDelayJob implements ShouldQueue
                 $createdAt = $order->NgayTao ? Carbon::parse($order->NgayTao) : null;
                 $startAt = Carbon::parse($order->NgayLam . ' ' . $order->GioBatDau);
 
+                Log::info('NotifyFindingStaffDelayJob - Checking order', [
+                    'order_id' => $order->ID_DD,
+                    'createdAt' => $createdAt ? $createdAt->toDateTimeString() : 'NULL',
+                    'startAt' => $startAt->toDateTimeString(),
+                    'now' => $now->toDateTimeString(),
+                ]);
+
                 if (!$createdAt || $startAt->lessThanOrEqualTo($createdAt)) {
+                    Log::info('NotifyFindingStaffDelayJob - Skipped: invalid dates', [
+                        'order_id' => $order->ID_DD,
+                        'reason' => !$createdAt ? 'createdAt is null' : 'startAt <= createdAt',
+                    ]);
                     continue;
                 }
 
                 // Calculate threshold: notify when 1/3 of time has passed (min 60s to avoid 0p)
                 // Example: Created at 14:52, Start at 20:52 (6 hours) -> threshold = 16:52
-                $diffSeconds = $startAt->diffInSeconds($createdAt);
+                $diffSeconds = $createdAt->diffInSeconds($startAt);
                 if ($diffSeconds <= 0) {
+                    Log::info('NotifyFindingStaffDelayJob - Skipped: diffSeconds <= 0', [
+                        'order_id' => $order->ID_DD,
+                        'diffSeconds' => $diffSeconds,
+                    ]);
                     continue;
                 }
                 $thresholdSeconds = max(60, (int) ceil($diffSeconds / 3));
                 $thresholdAt = $createdAt->copy()->addSeconds($thresholdSeconds);
 
+                Log::info('NotifyFindingStaffDelayJob - Threshold check', [
+                    'order_id' => $order->ID_DD,
+                    'diffSeconds' => $diffSeconds,
+                    'thresholdSeconds' => $thresholdSeconds,
+                    'thresholdAt' => $thresholdAt->toDateTimeString(),
+                    'now' => $now->toDateTimeString(),
+                    'nowLessThanThreshold' => $now->lessThan($thresholdAt),
+                ]);
+
                 // Only notify if current time has reached the threshold
                 if ($now->lessThan($thresholdAt)) {
+                    Log::info('NotifyFindingStaffDelayJob - Skipped: not time yet', [
+                        'order_id' => $order->ID_DD,
+                    ]);
                     continue; // Not time yet
                 }
 

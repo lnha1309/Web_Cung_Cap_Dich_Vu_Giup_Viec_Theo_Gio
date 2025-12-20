@@ -319,6 +319,7 @@ class NotificationService
             'user_cancel' => 'Khách hàng tự hủy',
             'auto_cancel_2h' => 'Hệ thống tự động hủy do không tìm được nhân viên trong 2 giờ trước giờ bắt đầu',
             'payment_failed' => 'Thanh toán VNPay thất bại',
+            'payment_timeout' => 'Không hoàn tất thanh toán VNPay trong 5 phút',
         ];
 
         return $reasonMap[$cancelType] ?? 'Không xác định';

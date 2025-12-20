@@ -66,6 +66,40 @@ class AutoCancelOrdersJob implements ShouldQueue
 
     foreach ($orders as $order) {
         try {
+            // Skip orders that have pending surcharge payments (waiting for VNPay surcharge)
+            $hasPendingSurcharge = \App\Models\LichSuThanhToan::where('ID_DD', $order->ID_DD)
+                ->where('TrangThai', 'ChoXuLy')
+                ->where('LoaiGiaoDich', 'payment')
+                ->where(function ($q) {
+                    $q->where('GhiChu', 'like', '%phu thu%')
+                      ->orWhere('GhiChu', 'like', '%Phu thu%');
+                })
+                ->exists();
+
+            if ($hasPendingSurcharge) {
+                \Log::info('DEBUG AUTO-CANCEL SKIP - Has pending surcharge payment', [
+                    'order_id' => $order->ID_DD,
+                ]);
+                continue; // Skip this order, let CancelPendingSurchargePaymentsJob handle it
+            }
+
+            // Skip orders where user received FindingStaffDelay notification 
+            // but hasn't responded yet - give them 1 hour to respond
+            if ($order->FindingStaffPromptSentAt && 
+                in_array($order->FindingStaffResponse, [null, 'pending'], true)) {
+                $promptSentAt = \Carbon\Carbon::parse($order->FindingStaffPromptSentAt);
+                $responseDeadline = $promptSentAt->copy()->addHour();
+                
+                if (now()->lessThan($responseDeadline)) {
+                    \Log::info('DEBUG AUTO-CANCEL SKIP - User has 1h to respond to reschedule prompt', [
+                        'order_id' => $order->ID_DD,
+                        'prompt_sent_at' => $promptSentAt->toDateTimeString(),
+                        'response_deadline' => $responseDeadline->toDateTimeString(),
+                    ]);
+                    continue; // Give user time to respond
+                }
+            }
+
             $startTime = \Carbon\Carbon::parse($order->NgayLam.' '.$order->GioBatDau);
             $cancelCheckTime = $startTime->copy()->subHours(2);
             $now = now();

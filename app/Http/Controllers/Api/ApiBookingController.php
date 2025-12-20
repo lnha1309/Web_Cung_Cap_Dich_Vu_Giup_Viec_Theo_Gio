@@ -112,27 +112,41 @@ class ApiBookingController extends Controller
         $service = DichVu::find($booking->ID_DV);
         $address = DiaChi::find($booking->ID_DC);
         $staff = $booking->ID_NV ? NhanVien::find($booking->ID_NV) : null;
-        // Chỉ xét giao dịch thanh toán (bỏ qua giao dịch hoàn tiền) để tránh hiển thị trạng thái chờ sai
+        
+        // Tìm giao dịch thanh toán MỚI NHẤT (bao gồm cả reschedule_surcharge)
         $paymentRecord = LichSuThanhToan::where('ID_DD', $id)
-            ->where('LoaiGiaoDich', 'payment')
+            ->whereIn('LoaiGiaoDich', ['payment', 'reschedule_surcharge'])
             ->orderByDesc('ThoiGian')
             ->first();
         $rating = DanhGiaNhanVien::where('ID_DD', $id)->first();
         $paymentStatus = 'unknown';
         $paymentDeadline = null;
+        $pendingSurchargePayment = false;
+        
         if ($paymentRecord && $paymentRecord->PhuongThucThanhToan === 'VNPay') {
             $createdAt = $paymentRecord->ThoiGian ?: $booking->NgayTao;
             $paymentDeadline = $createdAt ? Carbon::parse($createdAt)->addMinutes(5) : null;
+            
             if (empty($paymentRecord->MaGiaoDichVNPAY) || $paymentRecord->TrangThai === 'ChoXuLy') {
                 if ($paymentDeadline && Carbon::now()->greaterThanOrEqualTo($paymentDeadline)) {
-                    // Auto cancel booking if payment expired
-                    $booking->TrangThaiDon = 'cancelled';
-                    $booking->save();
-                    $paymentRecord->TrangThai = 'ThatBai';
-                    $paymentRecord->save();
-                    $paymentStatus = 'failed';
+                    // Payment expired
+                    if ($paymentRecord->LoaiGiaoDich === 'reschedule_surcharge') {
+                        // CHỈ hủy giao dịch phụ thu, KHÔNG hủy đơn
+                        $paymentRecord->TrangThai = 'ThatBai';
+                        $paymentRecord->GhiChu = ($paymentRecord->GhiChu ?? '') . ' - Timeout, cho chon lai';
+                        $paymentRecord->save();
+                        $paymentStatus = 'surcharge_expired';
+                    } else {
+                        // Hủy đơn cho thanh toán đơn mới
+                        $booking->TrangThaiDon = 'cancelled';
+                        $booking->save();
+                        $paymentRecord->TrangThai = 'ThatBai';
+                        $paymentRecord->save();
+                        $paymentStatus = 'failed';
+                    }
                 } else {
                     $paymentStatus = 'pending';
+                    $pendingSurchargePayment = ($paymentRecord->LoaiGiaoDich === 'reschedule_surcharge');
                 }
             } elseif ($paymentRecord->MaGiaoDichVNPAY && $paymentRecord->TrangThai === 'ThanhCong') {
                 $paymentStatus = 'success';
@@ -237,8 +251,9 @@ class ApiBookingController extends Controller
                 'finding_staff_prompt_sent_at' => $booking->FindingStaffPromptSentAt,
                 'finding_staff_response' => $booking->FindingStaffResponse,
                 'reschedule_count' => (int) ($booking->RescheduleCount ?? 0),
-                'can_reschedule' => $canRescheduleFindingStaff,
+                'can_reschedule' => $canRescheduleFindingStaff || $paymentStatus === 'surcharge_expired',
                 'suggested_time' => $suggestedNearestTime,
+                'pending_surcharge_payment' => $pendingSurchargePayment,
             ]
         ]);
     }
@@ -440,9 +455,14 @@ class ApiBookingController extends Controller
         $tongTien += $surchargeResult['total'];
         $tongSauGiam += $surchargeResult['total'];
 
-        // Giu trang thai theo logic nhan vien, khong them trang thai moi
         $trangThaiDon = $request->staff_id ? 'assigned' : 'finding_staff';
 
+        // ===========================================
+        // Tạo DonDat cho cả VNPay và Cash
+        // VNPay: Không gửi thông báo, chờ thanh toán xong mới gửi
+        // Cash: Gửi thông báo ngay
+        // Nếu VNPay chưa thanh toán sau 5 phút → scheduled job sẽ hủy đơn
+        // ===========================================
         $booking = DonDat::create([
             'ID_DD' => $idDon,
             'LoaiDon' => $request->order_type,
@@ -523,7 +543,8 @@ class ApiBookingController extends Controller
             }
         }
 
-        // Create payment record and generate VNPay URL if needed
+        // Tạo LichSuThanhToan và VNPay URL nếu cần
+        $paymentUrl = null;
         if ($paymentMethod === 'vnpay') {
             $baseReturnUrl = config('vnpay.return_url');
             $returnUrl = $baseReturnUrl;
@@ -550,17 +571,21 @@ class ApiBookingController extends Controller
             'ID_DD' => $idDon,
         ]);
 
-        // Notify customer about new booking
-        try {
-            $notificationService = app(NotificationService::class);
-            $notificationService->notifyOrderCreated($booking);
-        } catch (\Exception $e) {
-            // ignore notification errors
+        // Chỉ gửi thông báo cho Cash - VNPay sẽ gửi khi thanh toán thành công (trong vnpayReturn)
+        if ($paymentMethod === 'cash') {
+            try {
+                $notificationService = app(NotificationService::class);
+                $notificationService->notifyOrderCreated($booking);
+            } catch (\Exception $e) {
+                // ignore notification errors
+            }
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'Tạo đơn đặt thành công.',
+            'message' => $paymentMethod === 'vnpay' 
+                ? 'Vui lòng hoàn tất thanh toán VNPay trong 5 phút.' 
+                : 'Tạo đơn đặt thành công.',
             'data' => [
                 'booking_id' => $idDon,
                 'status' => $trangThaiDon,
@@ -701,6 +726,7 @@ class ApiBookingController extends Controller
             'action' => ['required', 'in:wait,reschedule'],
             'new_date' => ['required_if:action,reschedule', 'date'],
             'new_time' => ['required_if:action,reschedule', 'date_format:H:i'],
+            'return_url' => ['nullable', 'string'], // For app redirect after VNPay payment
         ]);
 
         if ($validated['action'] === 'wait') {
@@ -748,26 +774,20 @@ class ApiBookingController extends Controller
 
         $paymentUrl = null;
 
-        $booking->NgayLam = $newDate;
-        $booking->GioBatDau = $newStart->format('H:i:s');
-        $booking->FindingStaffResponse = 'reschedule';
-        $booking->RescheduleCount = ($booking->RescheduleCount ?? 0) + 1;
-
         if ($needsSurcharge) {
-            \App\Models\ChiTietPhuThu::create([
-                'ID_PT' => 'PT001',
-                'ID_DD' => $booking->ID_DD,
-                'Ghichu' => 'Phụ thu đổi giờ 7h/17h',
-            ]);
-
-            $booking->TongTien = ($booking->TongTien ?? 0) + $surchargeAmount;
-            $booking->TongTienSauGiam = ($booking->TongTienSauGiam ?? $booking->TongTien ?? 0) + $surchargeAmount;
-
             $payment = $booking->lichSuThanhToan->first();
             $paymentMethod = $payment?->PhuongThucThanhToan ?? 'TienMat';
 
             if ($paymentMethod === 'VNPay') {
+                // Tạo giao dịch phụ thu VNPay - KHÔNG cập nhật đơn ngay
+                // Lưu thông tin giờ mới vào GhiChu để VNPay callback xử lý sau
                 $paymentId = IdGenerator::next('LichSuThanhToan', 'ID_LSTT', 'LSTT_');
+                $rescheduleInfo = json_encode([
+                    'new_date' => $newDate,
+                    'new_time' => $newTime,
+                    'old_date' => $booking->NgayLam,
+                    'old_time' => $booking->GioBatDau,
+                ]);
 
                 LichSuThanhToan::create([
                     'ID_LSTT' => $paymentId,
@@ -775,17 +795,47 @@ class ApiBookingController extends Controller
                     'TrangThai' => 'ChoXuLy',
                     'SoTienThanhToan' => $surchargeAmount,
                     'ID_DD' => $booking->ID_DD,
-                    'LoaiGiaoDich' => 'payment',
-                    'GhiChu' => 'Phu thu doi gio cao diem (truoc 8h hoac 17h)',
+                    'LoaiGiaoDich' => 'reschedule_surcharge', // Loại giao dịch riêng cho phụ thu đổi giờ
+                    'GhiChu' => 'Phu thu doi gio cao diem|' . $rescheduleInfo,
                     'ThoiGian' => now(),
                 ]);
+
+                // Tạo return URL với app_redirect để quay về app sau khi thanh toán
+                $baseReturnUrl = config('vnpay.return_url');
+                $returnUrl = $baseReturnUrl;
+                $returnUrlOverride = $validated['return_url'] ?? null;
+                if ($returnUrlOverride) {
+                    $separator = str_contains($baseReturnUrl, '?') ? '&' : '?';
+                    $returnUrl = $baseReturnUrl . $separator . 'app_redirect=' . urlencode($returnUrlOverride);
+                }
 
                 $paymentUrl = $vnPay->createPaymentUrl([
                     'txn_ref' => $paymentId,
                     'amount' => $surchargeAmount,
                     'order_info' => 'Phu thu doi gio don ' . $booking->ID_DD,
+                    'return_url' => $returnUrl,
+                ]);
+
+                // KHÔNG cập nhật đơn, KHÔNG gửi thông báo
+                // Chờ VNPay callback thành công mới xử lý
+
+                return response()->json([
+                    'success' => true,
+                    'requires_payment' => true,
+                    'payment_url' => $paymentUrl,
+                    'message' => 'Vui lòng thanh toán phụ thu 30,000đ để hoàn tất đổi giờ.',
                 ]);
             } else {
+                // Thanh toán tiền mặt - cập nhật đơn ngay và tạo giao dịch phụ thu
+                \App\Models\ChiTietPhuThu::create([
+                    'ID_PT' => 'PT001',
+                    'ID_DD' => $booking->ID_DD,
+                    'Ghichu' => 'Phụ thu đổi giờ 7h/17h',
+                ]);
+
+                $booking->TongTien = ($booking->TongTien ?? 0) + $surchargeAmount;
+                $booking->TongTienSauGiam = ($booking->TongTienSauGiam ?? $booking->TongTien ?? 0) + $surchargeAmount;
+
                 LichSuThanhToan::create([
                     'ID_LSTT' => IdGenerator::next('LichSuThanhToan', 'ID_LSTT', 'LSTT_'),
                     'PhuongThucThanhToan' => 'TienMat',
@@ -799,6 +849,11 @@ class ApiBookingController extends Controller
             }
         }
 
+        // Cập nhật đơn (chỉ khi không cần VNPay hoặc thanh toán tiền mặt)
+        $booking->NgayLam = $newDate;
+        $booking->GioBatDau = $newStart->format('H:i:s');
+        $booking->FindingStaffResponse = 'reschedule';
+        $booking->RescheduleCount = ($booking->RescheduleCount ?? 0) + 1;
         $booking->save();
 
         try {
@@ -812,10 +867,10 @@ class ApiBookingController extends Controller
 
         return response()->json([
             'success' => true,
-            'requires_payment' => $paymentUrl !== null,
-            'payment_url' => $paymentUrl,
+            'requires_payment' => false,
+            'payment_url' => null,
             'message' => $needsSurcharge
-                ? 'Đã cập nhật thời gian và thêm phụ thu 30,000d.'
+                ? 'Đã cập nhật thời gian và thêm phụ thu 30,000đ (tiền mặt).'
                 : 'Đã cập nhật thời gian bắt đầu đơn.',
         ]);
     }

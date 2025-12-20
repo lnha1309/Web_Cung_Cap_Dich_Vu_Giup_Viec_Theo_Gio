@@ -874,28 +874,71 @@ class BookingController extends Controller
                 } else {
                     $paymentRecord = LichSuThanhToan::find($txnRef);
                     if ($paymentRecord && $paymentRecord->ID_DD) {
-                    $handledOrder = true;
-                    $paymentRecord->TrangThai = 'ThanhCong';
-                    $paymentRecord->MaGiaoDichVNPAY = $transactionNo;
-                    $paymentRecord->save();
-                    $message = 'Thanh toan phu thu thanh cong.';
-                    
-                    $booking = DonDat::find($paymentRecord->ID_DD);
-                    if ($booking) {
-                        try {
-                            $notificationService = app(NotificationService::class);
-                            $notificationService->notifyOrderRescheduled($booking);
-                        } catch (\Exception $e) {
-                            Log::error('Failed to send reschedule notification after surcharge success', [
-                                'booking_id' => $booking->ID_DD,
-                                'error' => $e->getMessage(),
-                            ]);
+                        $handledOrder = true;
+                        $paymentRecord->TrangThai = 'ThanhCong';
+                        $paymentRecord->MaGiaoDichVNPAY = $transactionNo;
+                        $paymentRecord->save();
+                        
+                        // ===========================================
+                        // Xử lý reschedule_surcharge
+                        // ===========================================
+                        if ($paymentRecord->LoaiGiaoDich === 'reschedule_surcharge') {
+                            $message = 'Thanh toan phu thu thanh cong.';
+                            
+                            $booking = DonDat::find($paymentRecord->ID_DD);
+                            if ($booking) {
+                                // GhiChu format: "Phu thu doi gio cao diem|{json}"
+                                $ghiChuParts = explode('|', $paymentRecord->GhiChu ?? '', 2);
+                                if (count($ghiChuParts) >= 2) {
+                                    $rescheduleInfo = json_decode($ghiChuParts[1], true);
+                                    if (is_array($rescheduleInfo)) {
+                                        // Cập nhật đơn với giờ mới
+                                        $booking->NgayLam = $rescheduleInfo['new_date'] ?? $booking->NgayLam;
+                                        $booking->GioBatDau = ($rescheduleInfo['new_time'] ?? '') . ':00';
+                                        $booking->FindingStaffResponse = 'reschedule';
+                                        $booking->RescheduleCount = ($booking->RescheduleCount ?? 0) + 1;
+                                        
+                                        // Thêm phụ thu vào tổng tiền
+                                        $surchargeAmount = $paymentRecord->SoTienThanhToan ?? 30000;
+                                        $booking->TongTien = ($booking->TongTien ?? 0) + $surchargeAmount;
+                                        $booking->TongTienSauGiam = ($booking->TongTienSauGiam ?? $booking->TongTien ?? 0) + $surchargeAmount;
+                                        $booking->save();
+                                        
+                                        // Tạo record phụ thu
+                                        ChiTietPhuThu::firstOrCreate([
+                                            'ID_PT' => 'PT001',
+                                            'ID_DD' => $booking->ID_DD,
+                                        ], [
+                                            'Ghichu' => 'Phụ thu đổi giờ cao điểm (trước 8h hoặc 17h)',
+                                        ]);
+                                        
+                                        Log::info('Reschedule surcharge payment success - order updated', [
+                                            'booking_id' => $booking->ID_DD,
+                                            'new_date' => $booking->NgayLam,
+                                            'new_time' => $booking->GioBatDau,
+                                        ]);
+                                    }
+                                }
+                                
+                                try {
+                                    $notificationService = app(NotificationService::class);
+                                    $notificationService->notifyOrderRescheduled($booking);
+                                } catch (\Exception $e) {
+                                    Log::error('Failed to send reschedule notification after surcharge success', [
+                                        'booking_id' => $booking->ID_DD,
+                                        'error' => $e->getMessage(),
+                                    ]);
+                                }
+                            }
+                            
+                            // Redirect to booking detail page after surcharge payment
+                            $appRedirect = $request->query('app_redirect');
+                            if ($appRedirect) {
+                                return redirect()->away($appRedirect . '?booking_id=' . $paymentRecord->ID_DD . '&status=success');
+                            }
+                            return redirect()->route('bookings.detail', $paymentRecord->ID_DD)
+                                ->with('success', 'Đã thanh toán phụ thu thành công. Đơn hàng đã được cập nhật.');
                         }
-                    }
-                    
-                    // Redirect to booking detail page after surcharge payment
-                    return redirect()->route('bookings.detail', $paymentRecord->ID_DD)
-                        ->with('success', 'Đã thanh toán phụ thu thành công. Đơn hàng đã được cập nhật.');
                 } else {
                         $walletTx = app(StaffWalletService::class)
                             ->finalizeTopup($txnRef, true, $transactionNo, $responseCode);
@@ -908,50 +951,51 @@ class BookingController extends Controller
             }
         } elseif ($isValidSignature && $txnRef) {
             // Mark payment as failed when VNPay returns non-00
-            $order = DonDat::find($txnRef);
+            $order = DonDat::with('dichVu', 'khachHang')->find($txnRef);
             if ($order) {
                 $handledOrder = true;
                 
-                // Nếu mã lỗi là 24 (khách hàng hủy thanh toán), XÓA đơn hàng luôn
-                if ($responseCode === '24') {
-                    // Xóa payment history
-                    LichSuThanhToan::where('ID_DD', $order->ID_DD)->delete();
-                    
-                    // Xóa voucher details
-                    ChiTietKhuyenMai::where('ID_DD', $order->ID_DD)->delete();
-                    
-                    // Xóa surcharges
-                    ChiTietPhuThu::where('ID_DD', $order->ID_DD)->delete();
-                    
-                    // Nếu là đơn tháng, xóa lịch theo tuần và lịch buổi tháng
-                    if ($order->LoaiDon === 'month') {
-                        LichTheoTuan::where('ID_DD', $order->ID_DD)->delete();
-                        LichBuoiThang::where('ID_DD', $order->ID_DD)->delete();
-                    }
-                    
-                    // Xóa đơn hàng
-                    $order->delete();
-                    
-                    $message = 'Đã huỷ thanh toán';
-                    
-                    Log::info('Order deleted due to payment cancellation', [
-                        'order_id' => $txnRef,
-                        'response_code' => $responseCode,
-                    ]);
-                } else {
-                    // Các mã lỗi khác thì chỉ đánh dấu payment là thất bại
-                    $payment = LichSuThanhToan::where('ID_DD', $order->ID_DD)
-                        ->where('PhuongThucThanhToan', 'VNPay')
-                        ->orderByDesc('ThoiGian')
-                        ->first();
-                    if ($payment) {
-                        $payment->TrangThai = 'ThatBai';
-                        $payment->MaGiaoDichVNPAY = $transactionNo;
-                        $payment->save();
-                    }
-                    $message = 'Thanh toan khong thanh cong. Ma: ' . $responseCode;
+                // Đánh dấu payment là thất bại
+                $payment = LichSuThanhToan::where('ID_DD', $order->ID_DD)
+                    ->where('PhuongThucThanhToan', 'VNPay')
+                    ->orderByDesc('ThoiGian')
+                    ->first();
+                if ($payment) {
+                    $payment->TrangThai = 'ThatBai';
+                    $payment->MaGiaoDichVNPAY = $transactionNo;
+                    $payment->save();
                 }
-                $message = 'Thanh toan khong thanh cong. Ma: ' . $responseCode;
+                
+                // Đổi trạng thái đơn thành cancelled
+                $order->TrangThaiDon = 'cancelled';
+                $order->save();
+                
+                // Xác định lý do hủy
+                $cancelType = $responseCode === '24' ? 'user_cancel' : 'payment_failed';
+                
+                // Gửi notification cho khách hàng
+                try {
+                    $notificationService = app(NotificationService::class);
+                    $notificationService->notifyOrderCancelled($order, $cancelType, [
+                        'payment_method' => 'VNPay',
+                        'amount' => 0, // Không có hoàn tiền vì chưa thanh toán
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to send cancellation notification', [
+                        'order_id' => $order->ID_DD,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+                
+                Log::info('Order cancelled due to VNPay payment failure', [
+                    'order_id' => $txnRef,
+                    'response_code' => $responseCode,
+                    'cancel_type' => $cancelType,
+                ]);
+                
+                $message = $responseCode === '24' 
+                    ? 'Đã huỷ thanh toán' 
+                    : 'Thanh toán không thành công. Mã: ' . $responseCode;
             } else {
                 $paymentRecord = LichSuThanhToan::find($txnRef);
                 if ($paymentRecord && $paymentRecord->ID_DD) {
@@ -975,6 +1019,10 @@ class BookingController extends Controller
                             ->delete();
                     }
 
+                    $appRedirect = $request->query('app_redirect');
+                    if ($appRedirect) {
+                        return redirect()->away($appRedirect . '?booking_id=' . $paymentRecord->ID_DD . '&status=failed');
+                    }
                     return redirect()->route('bookings.detail', $paymentRecord->ID_DD)
                         ->with('error', $message);
                 }
