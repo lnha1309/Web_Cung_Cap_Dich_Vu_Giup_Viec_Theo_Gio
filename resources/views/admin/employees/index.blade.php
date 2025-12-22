@@ -526,7 +526,7 @@
                             <td>{{ $employee->KhuVucLamViec }}</td>
                             <td>{{ number_format($employee->SoDu) }} đ</td>
                             <td style="font-weight: bold; color: var(--color-primary-orange);">
-                                {{ number_format($employee->donDat->sum('TongTienSauGiam')) }} đ
+                                {{ number_format($employeeRevenues[$employee->ID_NV] ?? 0) }} đ
                             </td>
                             <td>
                                 @php

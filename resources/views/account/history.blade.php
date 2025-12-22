@@ -360,9 +360,15 @@
                                         ? $doneSessions . '/' . $totalSessions . ' đã xong/hủy'
                                         : 'Chưa có buổi';
                                     $isCancelled = $booking->TrangThaiDon === 'cancelled';
-                                    $monthBadge = $isCancelled
-                                        ? ['label' => 'Đã hủy', 'class' => 'bg-secondary text-white', 'icon' => 'bi-x-circle']
-                                        : ['label' => 'Hoạt động', 'class' => 'bg-success bg-opacity-10 text-success border border-success', 'icon' => 'bi-play-circle'];
+                                    $allSessionsDone = $totalSessions > 0 && $doneSessions >= $totalSessions;
+                                    
+                                    if ($isCancelled) {
+                                        $monthBadge = ['label' => 'Đã hủy', 'class' => 'bg-secondary text-white', 'icon' => 'bi-x-circle'];
+                                    } elseif ($allSessionsDone) {
+                                        $monthBadge = ['label' => 'Hoàn thành', 'class' => 'bg-success text-white', 'icon' => 'bi-check-circle'];
+                                    } else {
+                                        $monthBadge = ['label' => 'Hoạt động', 'class' => 'bg-success bg-opacity-10 text-success border border-success', 'icon' => 'bi-play-circle'];
+                                    }
                                 @endphp
                                 <details class="booking-accordion mb-3">
                                     <summary class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">

@@ -36,37 +36,97 @@
                 
                 <div class="card-body p-4">
                     <div class="text-center mb-4">
-                        @if($booking->TrangThaiDon == 'finding_staff')
+                        @php
+                            // Đối với đơn tháng, lấy trạng thái buổi gần nhất
+                            $displayStatus = $booking->TrangThaiDon;
+                            $displaySessionInfo = null;
+                            
+                            if ($booking->LoaiDon === 'month' && isset($sessions) && count($sessions) > 0) {
+                                $today = \Carbon\Carbon::today();
+                                $nearestSession = null;
+                                $minDiff = PHP_INT_MAX;
+                                
+                                // Tìm buổi gần nhất (ưu tiên buổi sắp tới hoặc hôm nay)
+                                foreach ($sessions as $session) {
+                                    $sessionDate = \Carbon\Carbon::parse($session->NgayLam);
+                                    $diff = abs($sessionDate->diffInDays($today, false));
+                                    
+                                    // Ưu tiên buổi hôm nay hoặc sắp tới
+                                    if ($sessionDate->gte($today)) {
+                                        if ($diff < $minDiff) {
+                                            $minDiff = $diff;
+                                            $nearestSession = $session;
+                                        }
+                                    }
+                                }
+                                
+                                // Nếu không có buổi sắp tới, lấy buổi gần nhất đã qua
+                                if (!$nearestSession) {
+                                    foreach ($sessions as $session) {
+                                        $sessionDate = \Carbon\Carbon::parse($session->NgayLam);
+                                        $diff = abs($sessionDate->diffInDays($today, false));
+                                        if ($diff < $minDiff) {
+                                            $minDiff = $diff;
+                                            $nearestSession = $session;
+                                        }
+                                    }
+                                }
+                                
+                                if ($nearestSession) {
+                                    $displayStatus = $nearestSession->TrangThaiBuoi;
+                                    $displaySessionInfo = \Carbon\Carbon::parse($nearestSession->NgayLam)->format('d/m/Y');
+                                }
+                            }
+                        @endphp
+
+                        @if($displayStatus == 'finding_staff')
                             <div class="alert alert-info d-inline-block px-4 py-2 rounded-pill border-0 shadow-sm">
                                 <i class="bi bi-search me-2"></i>Trạng thái: <strong>Đang tìm nhân viên</strong>
+                                @if($displaySessionInfo)
+                                    <small class="d-block mt-1">(Buổi {{ $displaySessionInfo }})</small>
+                                @endif
                             </div>
-                        @elseif($booking->TrangThaiDon == 'assigned')
+                        @elseif($displayStatus == 'assigned')
                             <div class="alert alert-primary d-inline-block px-4 py-2 rounded-pill border-0 shadow-sm">
                                 <i class="bi bi-person-check me-2"></i>Trạng thái: <strong>Đã có nhân viên nhận</strong>
+                                @if($displaySessionInfo)
+                                    <small class="d-block mt-1">(Buổi {{ $displaySessionInfo }})</small>
+                                @endif
                             </div>
-                        @elseif($booking->TrangThaiDon == 'confirmed')
+                        @elseif($displayStatus == 'confirmed')
                             <div class="alert alert-success d-inline-block px-4 py-2 rounded-pill border-0 shadow-sm">
-                                <i class="bi bi-check2-circle me-2"></i>Trạng thái: <strong>Đơn đã được xác nhận bởi nhân viên</strong>
+                                <i class="bi bi-check2-circle me-2"></i>Trạng thái: <strong>Đã xác nhận</strong>
+                                @if($displaySessionInfo)
+                                    <small class="d-block mt-1">(Buổi {{ $displaySessionInfo }})</small>
+                                @endif
                             </div>
-                        @elseif($booking->TrangThaiDon == 'rejected')
+                        @elseif($displayStatus == 'rejected')
                             <div class="alert alert-danger d-inline-block px-4 py-2 rounded-pill border-0 shadow-sm">
                                 <i class="bi bi-exclamation-octagon me-2"></i>Trạng thái: <strong>Đơn bị từ chối - Đang tìm nhân viên khác</strong>
+                                @if($displaySessionInfo)
+                                    <small class="d-block mt-1">(Buổi {{ $displaySessionInfo }})</small>
+                                @endif
                             </div>
-                        @elseif($booking->TrangThaiDon == 'done')
+                        @elseif($displayStatus == 'done' || $displayStatus == 'completed')
                             <div class="alert alert-success d-inline-block px-4 py-2 rounded-pill border-0 shadow-sm">
                                 <i class="bi bi-check-circle-fill me-2"></i>Trạng thái: <strong>Hoàn thành</strong>
+                                @if($displaySessionInfo)
+                                    <small class="d-block mt-1">(Buổi {{ $displaySessionInfo }})</small>
+                                @endif
                             </div>
-                        @elseif($booking->TrangThaiDon == 'completed')
-                            <div class="alert alert-success d-inline-block px-4 py-2 rounded-pill border-0 shadow-sm">
-                                <i class="bi bi-clipboard-check me-2"></i>Trạng thái: <strong>Đã hoàn thành - chờ đánh giá</strong>
-                            </div>
-                        @elseif($booking->TrangThaiDon == 'cancelled')
+                        @elseif($displayStatus == 'cancelled')
                             <div class="alert alert-danger d-inline-block px-4 py-2 rounded-pill border-0 shadow-sm">
                                 <i class="bi bi-x-circle-fill me-2"></i>Trạng thái: <strong>Đã hủy</strong>
+                                @if($displaySessionInfo)
+                                    <small class="d-block mt-1">(Buổi {{ $displaySessionInfo }})</small>
+                                @endif
                             </div>
                         @else
                             <div class="alert alert-secondary d-inline-block px-4 py-2 rounded-pill border-0 shadow-sm">
-                                Trạng thái: <strong>{{ $booking->TrangThaiDon }}</strong>
+                                Trạng thái: <strong>{{ $displayStatus }}</strong>
+                                @if($displaySessionInfo)
+                                    <small class="d-block mt-1">(Buổi {{ $displaySessionInfo }})</small>
+                                @endif
                             </div>
                         @endif
                     </div>
@@ -361,6 +421,7 @@
                                                 <th><i class="bi bi-calendar3"></i> Ngày làm</th>
                                                 <th><i class="bi bi-clock"></i> Giờ làm</th>
                                                 <th><i class="bi bi-info-circle"></i> Trạng thái</th>
+                                                <th><i class="bi bi-star"></i> Đánh giá</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -403,6 +464,45 @@
                                                         </button>
                                                     @endif
                                                 </td>
+                                                <td>
+                                                    @php
+                                                        // Check if this session is already rated
+                                                        $sessionMarker = '[SESSION:' . $session->ID_Buoi . ']';
+                                                        $sessionRating = \App\Models\DanhGiaNhanVien::where('ID_DD', $booking->ID_DD)
+                                                            ->where('NhanXet', 'like', $sessionMarker . '%')
+                                                            ->first();
+                                                    @endphp
+                                                    
+                                                    @if($session->TrangThaiBuoi == 'completed')
+                                                        @if($sessionRating)
+                                                            {{-- Already rated - show stars (clickable to view details) --}}
+                                                            @php
+                                                                $sessionComment = $sessionRating->NhanXet;
+                                                                if ($sessionComment && preg_match('/^\[SESSION:[^\]]+\](.*)$/s', $sessionComment, $matches)) {
+                                                                    $sessionComment = trim($matches[1]);
+                                                                }
+                                                            @endphp
+                                                            <button type="button" class="btn btn-link p-0 text-warning text-decoration-none" 
+                                                                    onclick="viewSessionRating('{{ \Carbon\Carbon::parse($session->NgayLam)->format('d/m/Y') }}', {{ (int)$sessionRating->Diem }}, '{{ addslashes($sessionComment ?: '') }}')"
+                                                                    title="Xem chi tiết đánh giá">
+                                                                @for($i = 1; $i <= 5; $i++)
+                                                                    <i class="bi {{ $i <= $sessionRating->Diem ? 'bi-star-fill' : 'bi-star' }}"></i>
+                                                                @endfor
+                                                            </button>
+                                                        @else
+                                                            {{-- Not rated yet - show rating button --}}
+                                                            <button class="btn btn-sm btn-outline-warning" 
+                                                                    onclick="openSessionRatingModal('{{ $session->ID_Buoi }}', '{{ \Carbon\Carbon::parse($session->NgayLam)->format('d/m/Y') }}')"
+                                                                    title="Đánh giá buổi này">
+                                                                <i class="bi bi-star me-1"></i>Đánh giá
+                                                            </button>
+                                                        @endif
+                                                    @elseif($session->TrangThaiBuoi == 'cancelled')
+                                                        <span class="text-muted small">-</span>
+                                                    @else
+                                                        <span class="text-muted small">Chờ hoàn thành</span>
+                                                    @endif
+                                                </td>
                                             </tr>
                                             @endforeach
                                         </tbody>
@@ -429,7 +529,8 @@
                         @endif
 
                         
-                        @if(in_array($booking->TrangThaiDon, ['completed','done']) && !$existingRating)
+                        {{-- Form đánh giá cho đơn theo giờ (đơn tháng đánh giá theo buổi trong bảng) --}}
+                        @if($booking->LoaiDon === 'hour' && in_array($booking->TrangThaiDon, ['completed','done']) && !$existingRating)
                             <hr class="my-4 text-muted opacity-25">
                             <div class="card border-0 shadow-sm text-start">
                                 <div class="card-body">
@@ -456,7 +557,10 @@
                                     </form>
                                 </div>
                             </div>
-                        @elseif($existingRating)
+                        @endif
+
+                        {{-- Hiển thị đánh giá đã có cho đơn theo giờ --}}
+                        @if($booking->LoaiDon === 'hour' && $existingRating)
                             <hr class="my-4 text-muted opacity-25">
                             <div class="card border-0 shadow-sm text-start">
                                 <div class="card-body">
@@ -467,8 +571,15 @@
                                         @endfor
                                         <span class="ms-2 fw-semibold">{{ number_format($existingRating->Diem, 1) }}/5</span>
                                     </div>
-                                    @if($existingRating->NhanXet)
-                                        <p class="mb-0 text-muted fst-italic">"{{ $existingRating->NhanXet }}"</p>
+                                    @php
+                                        // Strip session marker if present
+                                        $displayComment = $existingRating->NhanXet;
+                                        if ($displayComment && preg_match('/^\[SESSION:[^\]]+\](.*)$/s', $displayComment, $matches)) {
+                                            $displayComment = trim($matches[1]);
+                                        }
+                                    @endphp
+                                    @if($displayComment)
+                                        <p class="mb-0 text-muted fst-italic">"{{ $displayComment }}"</p>
                                     @else
                                         <p class="mb-0 text-muted">Bạn chưa để lại nhận xét.</p>
                                     @endif
@@ -476,7 +587,22 @@
                             </div>
                         @endif
 
-                        @if(in_array($booking->TrangThaiDon, ['finding_staff', 'assigned', 'confirmed']))
+                        @php
+                            // Kiểm tra xem đơn tháng đã hoàn thành tất cả buổi chưa
+                            $canCancelOrder = in_array($booking->TrangThaiDon, ['finding_staff', 'assigned', 'confirmed']);
+                            
+                            if ($canCancelOrder && $booking->LoaiDon === 'month' && isset($sessions) && count($sessions) > 0) {
+                                // Nếu tất cả buổi đã completed hoặc cancelled thì không cho hủy
+                                $allSessionsDone = collect($sessions)->every(function ($session) {
+                                    return in_array($session->TrangThaiBuoi, ['completed', 'cancelled']);
+                                });
+                                if ($allSessionsDone) {
+                                    $canCancelOrder = false;
+                                }
+                            }
+                        @endphp
+
+                        @if($canCancelOrder)
                             <hr class="my-4 text-muted opacity-25">
                             <p class="text-muted small mb-3">Nếu bạn muốn thay đổi ý định, bạn có thể hủy đơn hàng này.</p>
                             
@@ -514,6 +640,83 @@
                                     <button type="button" class="btn btn-danger" onclick="document.getElementById('cancelForm').submit();">
                                         <i class="bi bi-check-circle me-1"></i>Có, hủy đơn hàng
                                     </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Session Rating Modal --}}
+                    <div class="modal fade" id="sessionRatingModal" tabindex="-1" aria-labelledby="sessionRatingModalLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content">
+                                <div class="modal-header bg-warning text-dark">
+                                    <h5 class="modal-title" id="sessionRatingModalLabel">
+                                        <i class="bi bi-star-fill me-2"></i>Đánh giá buổi làm việc
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p class="mb-3">
+                                        <strong>Buổi làm ngày: </strong>
+                                        <span id="sessionRatingDate" class="text-primary"></span>
+                                    </p>
+                                    <input type="hidden" id="sessionRatingId" value="">
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Chất lượng dịch vụ:</label>
+                                        <div class="d-flex gap-2 session-rating-stars">
+                                            @for($i = 1; $i <= 5; $i++)
+                                                <button type="button" class="btn btn-link p-0 session-star-btn" data-value="{{ $i }}">
+                                                    <i class="bi bi-star-fill fs-3 text-secondary"></i>
+                                                </button>
+                                            @endfor
+                                            <span class="ms-2 align-self-center text-muted" id="sessionRatingLabel">Chọn số sao</span>
+                                        </div>
+                                        <input type="hidden" id="sessionRatingValue" value="0">
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="sessionRatingComment" class="form-label">Nhận xét (tùy chọn):</label>
+                                        <textarea id="sessionRatingComment" rows="3" class="form-control" placeholder="Chia sẻ trải nghiệm của bạn..."></textarea>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                                    <button type="button" class="btn btn-warning" onclick="submitSessionRating()">
+                                        <i class="bi bi-check-circle me-1"></i>Gửi đánh giá
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- View Session Rating Modal --}}
+                    <div class="modal fade" id="viewSessionRatingModal" tabindex="-1" aria-labelledby="viewSessionRatingModalLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content">
+                                <div class="modal-header bg-success text-white">
+                                    <h5 class="modal-title" id="viewSessionRatingModalLabel">
+                                        <i class="bi bi-chat-heart me-2"></i>Đánh giá buổi làm việc
+                                    </h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body text-center">
+                                    <p class="mb-3">
+                                        <strong>Buổi làm ngày: </strong>
+                                        <span id="viewSessionDate" class="text-primary fw-bold"></span>
+                                    </p>
+                                    <div class="mb-3">
+                                        <span id="viewSessionStars" class="fs-3"></span>
+                                        <p class="text-muted mb-0 mt-2" id="viewSessionRatingText"></p>
+                                    </div>
+                                    <div id="viewSessionCommentSection" class="text-start">
+                                        <hr>
+                                        <p class="text-muted small mb-1">Nhận xét của bạn:</p>
+                                        <p class="fst-italic mb-0" id="viewSessionComment"></p>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
                                 </div>
                             </div>
                         </div>
@@ -696,6 +899,129 @@
             console.error(err);
             alert('Lỗi kết nối.');
         });
+    }
+
+    // Session Rating Functions
+    function openSessionRatingModal(sessionId, sessionDate) {
+        document.getElementById('sessionRatingId').value = sessionId;
+        document.getElementById('sessionRatingDate').textContent = sessionDate;
+        document.getElementById('sessionRatingValue').value = 0;
+        document.getElementById('sessionRatingComment').value = '';
+        document.getElementById('sessionRatingLabel').textContent = 'Chọn số sao';
+        
+        // Reset stars
+        document.querySelectorAll('.session-star-btn i').forEach(icon => {
+            icon.classList.remove('text-warning');
+            icon.classList.add('text-secondary');
+        });
+        
+        const modal = new bootstrap.Modal(document.getElementById('sessionRatingModal'));
+        modal.show();
+    }
+
+    // Session star click handlers
+    document.querySelectorAll('.session-star-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const value = parseInt(this.dataset.value);
+            document.getElementById('sessionRatingValue').value = value;
+            
+            const labels = {
+                1: 'Rất tệ (1/5)',
+                2: 'Chưa hài lòng (2/5)',
+                3: 'Bình thường (3/5)',
+                4: 'Hài lòng (4/5)',
+                5: 'Rất hài lòng (5/5)',
+            };
+            document.getElementById('sessionRatingLabel').textContent = labels[value] || `${value}/5`;
+            
+            // Update star colors
+            document.querySelectorAll('.session-star-btn').forEach(starBtn => {
+                const starValue = parseInt(starBtn.dataset.value);
+                const icon = starBtn.querySelector('i');
+                if (starValue <= value) {
+                    icon.classList.remove('text-secondary');
+                    icon.classList.add('text-warning');
+                } else {
+                    icon.classList.remove('text-warning');
+                    icon.classList.add('text-secondary');
+                }
+            });
+        });
+    });
+
+    function submitSessionRating() {
+        const sessionId = document.getElementById('sessionRatingId').value;
+        const rating = document.getElementById('sessionRatingValue').value;
+        const comment = document.getElementById('sessionRatingComment').value;
+
+        if (!rating || rating === '0') {
+            alert('Vui lòng chọn số sao đánh giá.');
+            return;
+        }
+
+        fetch(`/my-bookings/sessions/${sessionId}/rating`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ 
+                rating: parseInt(rating), 
+                comment: comment 
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                bootstrap.Modal.getInstance(document.getElementById('sessionRatingModal')).hide();
+                location.reload();
+            } else {
+                alert(data.message || 'Có lỗi xảy ra.');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Lỗi kết nối.');
+        });
+    }
+
+    // View Session Rating Function
+    function viewSessionRating(sessionDate, rating, comment) {
+        document.getElementById('viewSessionDate').textContent = sessionDate;
+        
+        // Generate stars
+        let starsHtml = '';
+        for (let i = 1; i <= 5; i++) {
+            if (i <= rating) {
+                starsHtml += '<i class="bi bi-star-fill text-warning"></i>';
+            } else {
+                starsHtml += '<i class="bi bi-star text-muted"></i>';
+            }
+        }
+        document.getElementById('viewSessionStars').innerHTML = starsHtml;
+        
+        const labels = {
+            1: 'Rất tệ',
+            2: 'Chưa hài lòng',
+            3: 'Bình thường',
+            4: 'Hài lòng',
+            5: 'Rất hài lòng',
+        };
+        document.getElementById('viewSessionRatingText').textContent = `${labels[rating] || ''} (${rating}/5)`;
+        
+        // Handle comment section
+        const commentSection = document.getElementById('viewSessionCommentSection');
+        const commentEl = document.getElementById('viewSessionComment');
+        if (comment && comment.trim()) {
+            commentSection.style.display = 'block';
+            commentEl.textContent = '"' + comment + '"';
+        } else {
+            commentSection.style.display = 'none';
+        }
+        
+        const modal = new bootstrap.Modal(document.getElementById('viewSessionRatingModal'));
+        modal.show();
     }
 </script>
 @endsection

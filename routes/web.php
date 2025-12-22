@@ -169,6 +169,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/my-bookings/{id}/cancel', [BookingController::class, 'cancelBooking'])->name('bookings.cancel');
     Route::post('/my-bookings/cancel-session', [BookingController::class, 'cancelSession'])->name('bookings.cancel-session');
     Route::post('/my-bookings/{id}/rating', [BookingController::class, 'submitRating'])->name('bookings.rating');
+    Route::post('/my-bookings/sessions/{sessionId}/rating', [BookingController::class, 'submitSessionRating'])->name('bookings.session-rating');
 
     // Notification routes
     // Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');

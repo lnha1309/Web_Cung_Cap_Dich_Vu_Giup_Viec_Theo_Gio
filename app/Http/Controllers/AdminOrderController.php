@@ -383,6 +383,14 @@ class AdminOrderController extends Controller
             ], ';');
 
             foreach ($orders as $order) {
+                // Calculate end time for hourly orders
+                $hourlyEndTime = '';
+                if ($order->LoaiDon === 'hour' && $order->GioBatDau) {
+                    $startTime = \Carbon\Carbon::parse($order->GioBatDau);
+                    $duration = $order->ThoiLuongGio ?? ($order->dichVu->ThoiLuong ?? 2);
+                    $hourlyEndTime = $startTime->copy()->addHours($duration)->format('H:i');
+                }
+                
                 // 1. Print Order Row
                 fputcsv($file, [
                     $order->ID_DD,
@@ -390,10 +398,10 @@ class AdminOrderController extends Controller
                     $order->khachHang->Ten_KH ?? 'N/A',
                     $order->dichVu->TenDV ?? 'N/A',
                     \Carbon\Carbon::parse($order->NgayTao)->format('d/m/Y H:i'),
-                    $order->TongTienSauGiam,
+                    number_format($order->TongTienSauGiam, 0, ',', '.'),
                     // For hourly orders, fill session info here. For monthly, leave empty in main row.
                     ($order->LoaiDon === 'hour' && $order->NgayLam) ? \Carbon\Carbon::parse($order->NgayLam)->format('d/m/Y') : '',
-                    ($order->LoaiDon === 'hour' && $order->GioBatDau) ? (\Carbon\Carbon::parse($order->GioBatDau)->format('H:i') . ' - ' . \Carbon\Carbon::parse($order->GioKetThuc)->format('H:i')) : '',
+                    ($order->LoaiDon === 'hour' && $order->GioBatDau) ? (\Carbon\Carbon::parse($order->GioBatDau)->format('H:i') . ' - ' . $hourlyEndTime) : '',
                     ($order->LoaiDon === 'hour') ? ($order->nhanVien->Ten_NV ?? 'Chưa có') : '', // Main staff for hourly
                     $order->TrangThaiDon,
                 ], ';');
@@ -401,6 +409,11 @@ class AdminOrderController extends Controller
                 // 2. If Monthly, Print Session Rows
                 if ($order->LoaiDon === 'month' && $order->lichBuoiThang->count() > 0) {
                     foreach ($order->lichBuoiThang as $session) {
+                        // Calculate end time for session
+                        $sessionStartTime = \Carbon\Carbon::parse($session->GioBatDau);
+                        $sessionDuration = $order->ThoiLuongGio ?? ($order->dichVu->ThoiLuong ?? 2);
+                        $sessionEndTime = $sessionStartTime->copy()->addHours($sessionDuration)->format('H:i');
+                        
                         fputcsv($file, [
                             '', // ID (Empty for detail row)
                             '', // Type
@@ -409,9 +422,9 @@ class AdminOrderController extends Controller
                             '', // Created Date
                             '', // Total Amount
                             \Carbon\Carbon::parse($session->NgayLam)->format('d/m/Y'),
-                            \Carbon\Carbon::parse($session->GioBatDau)->format('H:i') . ' - ' . \Carbon\Carbon::parse($session->GioKetThuc)->format('H:i'),
+                            $sessionStartTime->format('H:i') . ' - ' . $sessionEndTime,
                             $session->nhanVien->Ten_NV ?? 'Chưa có',
-                            $session->TrangThai,
+                            $session->TrangThaiBuoi,
                         ], ';');
                     }
                 }

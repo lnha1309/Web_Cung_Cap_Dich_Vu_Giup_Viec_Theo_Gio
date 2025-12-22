@@ -364,7 +364,19 @@
                 const status = document.querySelector('select[name="status"]').value;
                 const search = document.querySelector('input[name="search"]').value;
 
-                if (dateFrom && dateTo && new Date(dateTo) < new Date(dateFrom)) {
+                // Require date selection before export
+                if (!dateFrom || !dateTo) {
+                    alert('Vui lòng chọn ngày bắt đầu và ngày kết thúc trước khi xuất Excel!');
+                    // Focus on the first empty date field
+                    if (!dateFrom) {
+                        document.querySelector('input[name="date_from"]').focus();
+                    } else {
+                        document.querySelector('input[name="date_to"]').focus();
+                    }
+                    return;
+                }
+
+                if (new Date(dateTo) < new Date(dateFrom)) {
                     alert('Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu!');
                     return;
                 }

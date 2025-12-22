@@ -1349,7 +1349,7 @@ HTML;
             return redirect('/')->with('error', 'Tài khoản chưa cập nhật thông tin khách hàng.');
         }
 
-        $activeStatuses = ['finding_staff', 'assigned', 'confirmed', 'rejected', 'completed', 'working'];
+        $activeStatuses = ['finding_staff', 'assigned', 'confirmed', 'rejected', 'working'];
         $historyStatuses = ['completed', 'cancelled', 'failed'];
 
         $hourCurrent = DonDat::with(['nhanVien', 'lichSuThanhToan', 'dichVu'])
@@ -1366,19 +1366,49 @@ HTML;
                             ->orderBy('NgayTao', 'desc')
                             ->get();
 
-        $monthCurrent = DonDat::with(['nhanVien', 'lichSuThanhToan', 'lichBuoiThang.nhanVien', 'dichVu'])
+        // Lấy tất cả đơn tháng
+        $allMonthOrders = DonDat::with(['nhanVien', 'lichSuThanhToan', 'lichBuoiThang.nhanVien', 'dichVu'])
                             ->where('ID_KH', $customer->ID_KH)
                             ->where('LoaiDon', 'month')
-                            ->whereIn('TrangThaiDon', $activeStatuses)
                             ->orderBy('NgayTao', 'desc')
                             ->get();
-
-        $monthHistory = DonDat::with(['nhanVien', 'lichSuThanhToan', 'lichBuoiThang.nhanVien', 'dichVu'])
-                            ->where('ID_KH', $customer->ID_KH)
-                            ->where('LoaiDon', 'month')
-                            ->whereIn('TrangThaiDon', $historyStatuses)
-                            ->orderBy('NgayTao', 'desc')
-                            ->get();
+        
+        // Phân loại đơn tháng dựa trên trạng thái các buổi
+        $monthCurrent = collect();
+        $monthHistory = collect();
+        
+        foreach ($allMonthOrders as $order) {
+            // Nếu đơn đã bị hủy hoàn toàn, đưa vào lịch sử
+            if (in_array($order->TrangThaiDon, ['cancelled', 'failed'])) {
+                $monthHistory->push($order);
+                continue;
+            }
+            
+            $sessions = $order->lichBuoiThang;
+            
+            // Nếu không có buổi nào, xử lý theo trạng thái đơn
+            if ($sessions->isEmpty()) {
+                if (in_array($order->TrangThaiDon, $historyStatuses)) {
+                    $monthHistory->push($order);
+                } else {
+                    $monthCurrent->push($order);
+                }
+                continue;
+            }
+            
+            // Kiểm tra xem tất cả buổi đã hoàn thành hoặc hủy chưa
+            $allSessionsDone = $sessions->every(function ($session) {
+                return in_array($session->TrangThaiBuoi, ['completed', 'cancelled']);
+            });
+            
+            if ($allSessionsDone) {
+                // Tất cả buổi đã xong -> đưa vào lịch sử
+                $monthHistory->push($order);
+            } else {
+                // Còn buổi chưa xong -> đang xử lý
+                $monthCurrent->push($order);
+            }
+        }
 
         return view('account.history', compact('hourCurrent', 'hourHistory', 'monthCurrent', 'monthHistory'));
     }
@@ -1532,6 +1562,78 @@ HTML;
 
         return redirect()->route('bookings.detail', $booking->ID_DD)
             ->with('success', 'Cảm ơn bạn đã đánh giá. Đánh giá của bạn đã được lưu.');
+    }
+
+    /**
+     * Customer submits rating for a specific session in monthly order
+     */
+    public function submitSessionRating(Request $request, string $sessionId)
+    {
+        if (!Auth::check()) {
+            return response()->json(['success' => false, 'message' => 'Chưa đăng nhập'], 401);
+        }
+
+        $customer = Auth::user()->khachHang;
+        if (!$customer) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy thông tin khách hàng'], 400);
+        }
+
+        // Find the session
+        $session = LichBuoiThang::with('donDat')->find($sessionId);
+        if (!$session || !$session->donDat) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy buổi làm việc'], 404);
+        }
+
+        // Check ownership
+        if ($session->donDat->ID_KH !== $customer->ID_KH) {
+            return response()->json(['success' => false, 'message' => 'Bạn không có quyền đánh giá buổi này'], 403);
+        }
+
+        // Check session is completed
+        if ($session->TrangThaiBuoi !== 'completed') {
+            return response()->json(['success' => false, 'message' => 'Chỉ có thể đánh giá buổi đã hoàn thành'], 400);
+        }
+
+        // Check if session has staff
+        if (!$session->ID_NV) {
+            return response()->json(['success' => false, 'message' => 'Buổi này chưa có nhân viên để đánh giá'], 400);
+        }
+
+        // Check if already rated (by checking NhanXet containing session_id)
+        $sessionMarker = '[SESSION:' . $sessionId . ']';
+        $alreadyRated = DanhGiaNhanVien::where('ID_DD', $session->ID_DD)
+            ->where('NhanXet', 'like', $sessionMarker . '%')
+            ->exists();
+
+        if ($alreadyRated) {
+            return response()->json(['success' => false, 'message' => 'Bạn đã đánh giá buổi này rồi'], 400);
+        }
+
+        $validated = $request->validate([
+            'rating' => ['required', 'integer', 'min:1', 'max:5'],
+            'comment' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        // Store session ID in NhanXet as prefix
+        $comment = $validated['comment'] ?? '';
+        $nhanXetWithMeta = $sessionMarker . $comment;
+
+        DanhGiaNhanVien::create([
+            'ID_DG' => IdGenerator::next('DanhGiaNhanVien', 'ID_DG', 'DG_'),
+            'ID_DD' => $session->ID_DD,
+            'ID_NV' => $session->ID_NV,
+            'ID_KH' => $customer->ID_KH,
+            'Diem' => $validated['rating'],
+            'NhanXet' => $nhanXetWithMeta,
+            'ThoiGian' => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Cảm ơn bạn đã đánh giá buổi làm việc!',
+            'session_id' => $sessionId,
+            'rating' => $validated['rating'],
+        ]);
     }
 
     /**

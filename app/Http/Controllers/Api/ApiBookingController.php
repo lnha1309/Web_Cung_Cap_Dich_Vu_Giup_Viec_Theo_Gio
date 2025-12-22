@@ -118,7 +118,23 @@ class ApiBookingController extends Controller
             ->whereIn('LoaiGiaoDich', ['payment', 'reschedule_surcharge'])
             ->orderByDesc('ThoiGian')
             ->first();
-        $rating = DanhGiaNhanVien::where('ID_DD', $id)->first();
+        $ratings = DanhGiaNhanVien::where('ID_DD', $id)->get();
+        $rating = null;
+        $sessionRatingsMap = [];
+        foreach ($ratings as $entry) {
+            $comment = $entry->NhanXet ?? '';
+            if (is_string($comment) && preg_match('/^\[SESSION:([^\]]+)\]/', $comment, $matches)) {
+                $sessionId = $matches[1];
+                $cleanComment = trim(preg_replace('/^\[SESSION:[^\]]+\]/', '', $comment));
+                $sessionRatingsMap[$sessionId] = [
+                    'score' => (int) $entry->Diem,
+                    'comment' => $cleanComment,
+                    'created_at' => $entry->ThoiGian,
+                ];
+            } elseif ($rating === null) {
+                $rating = $entry;
+            }
+        }
         $paymentStatus = 'unknown';
         $paymentDeadline = null;
         $pendingSurchargePayment = false;
@@ -170,13 +186,14 @@ class ApiBookingController extends Controller
                 ->orderBy('GioBatDau')
                 ->get();
 
-            $sessionData = $sessions->map(function ($session) {
+            $sessionData = $sessions->map(function ($session) use ($sessionRatingsMap) {
                 return [
                     'id' => $session->ID_Buoi,
                     'date' => $session->NgayLam,
                     'start_time' => $session->GioBatDau ? substr($session->GioBatDau, 0, 5) : null,
                     'status' => $session->TrangThaiBuoi,
                     'staff_id' => $session->ID_NV,
+                    'rating' => $sessionRatingsMap[$session->ID_Buoi] ?? null,
                 ];
             });
 
@@ -239,6 +256,7 @@ class ApiBookingController extends Controller
                     ];
                 }),
                 'sessions' => $sessionData,
+                'session_ratings' => $sessionRatingsMap,
                 'session_counts' => $sessionCounts,
                 'rating' => $rating ? [
                     'id' => $rating->ID_DG,
@@ -681,6 +699,206 @@ class ApiBookingController extends Controller
         ]);
     }
 
+    /**
+     * Customer rates a completed session in monthly order
+     * POST /api/bookings/sessions/{sessionId}/rating
+     */
+    public function rateSession(Request $request, string $sessionId)
+    {
+        $user = $request->user();
+        $khachHang = $user->khachHang;
+        if (!$khachHang) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Không tìm thấy thông tin khách hàng.'
+            ], 403);
+        }
+
+        $session = LichBuoiThang::with('donDat')->find($sessionId);
+        if (!$session || !$session->donDat) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Không tìm thấy buổi làm việc.'
+            ], 404);
+        }
+
+        if ($session->donDat->ID_KH !== $khachHang->ID_KH) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Bạn không có quyền đánh giá buổi này.'
+            ], 403);
+        }
+
+        if ($session->TrangThaiBuoi !== 'completed') {
+            return response()->json([
+                'success' => false,
+                'error' => 'Chỉ có thể đánh giá buổi đã hoàn thành.'
+            ], 422);
+        }
+
+        if (!$session->ID_NV) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Buổi này chưa có nhân viên để đánh giá.'
+            ], 422);
+        }
+
+        $sessionMarker = '[SESSION:' . $sessionId . ']';
+        $alreadyRated = DanhGiaNhanVien::where('ID_DD', $session->ID_DD)
+            ->where('NhanXet', 'like', $sessionMarker . '%')
+            ->exists();
+        if ($alreadyRated) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Bạn đã đánh giá buổi này.'
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'rating' => ['required', 'integer', 'min:1', 'max:5'],
+            'comment' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $comment = $validated['comment'] ?? '';
+        $nhanXetWithMeta = $sessionMarker . $comment;
+
+        DanhGiaNhanVien::create([
+            'ID_DG' => IdGenerator::next('DanhGiaNhanVien', 'ID_DG', 'DG_'),
+            'ID_DD' => $session->ID_DD,
+            'ID_NV' => $session->ID_NV,
+            'ID_KH' => $khachHang->ID_KH,
+            'Diem' => $validated['rating'],
+            'NhanXet' => $nhanXetWithMeta,
+            'ThoiGian' => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Đánh giá đã được lưu.',
+            'data' => [
+                'session_id' => $sessionId,
+                'rating' => [
+                    'score' => (int) $validated['rating'],
+                    'comment' => $validated['comment'] ?? null,
+                    'created_at' => now()->toDateTimeString(),
+                ],
+            ],
+        ]);
+    }
+    /**
+     * Customer cancels a session in monthly order
+     * POST /api/bookings/cancel-session
+     */
+    public function cancelSession(Request $request, RefundService $refundService, NotificationService $notificationService)
+    {
+        $user = $request->user();
+        $khachHang = $user->khachHang;
+        if (!$khachHang) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Không tìm thấy thông tin khách hàng.'
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'session_id' => ['required'],
+        ]);
+
+        $session = LichBuoiThang::with(['donDat', 'nhanVien'])->find($validated['session_id']);
+        if (!$session || !$session->donDat) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Không tìm thấy buổi làm việc.'
+            ], 404);
+        }
+
+        if ($session->donDat->ID_KH !== $khachHang->ID_KH) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Bạn không có quyền hủy buổi này.'
+            ], 403);
+        }
+
+        if ($session->TrangThaiBuoi === 'cancelled') {
+            return response()->json([
+                'success' => false,
+                'error' => 'Buổi này đã bị hủy.'
+            ], 422);
+        }
+
+        if ($session->TrangThaiBuoi === 'completed') {
+            return response()->json([
+                'success' => false,
+                'error' => 'Không thể hủy buổi đã hoàn thành.'
+            ], 422);
+        }
+
+        $startTime = Carbon::parse($session->NgayLam . ' ' . $session->GioBatDau);
+        if (Carbon::now()->diffInHours($startTime, false) < 12) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Không thể hủy buổi trong vòng 12 giờ trước giờ bắt đầu.'
+            ], 422);
+        }
+
+        $refundResult = $refundService->refundSession($session, 'user_cancel_session');
+        if (!($refundResult['success'] ?? false)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Lỗi hoàn tiền VNPay: ' . ($refundResult['message'] ?? 'Không xác định'),
+            ], 422);
+        }
+
+        $session->TrangThaiBuoi = 'cancelled';
+        $session->save();
+
+        if ($session->ID_NV) {
+            $staff = $session->nhanVien;
+            LichLamViec::where('ID_NV', $session->ID_NV)
+                ->where('NgayLam', $session->NgayLam)
+                ->where('GioBatDau', '<=', $session->GioBatDau)
+                ->where('TrangThai', 'assigned')
+                ->update(['TrangThai' => 'ready']);
+
+            try {
+                if ($staff && $staff->Email) {
+                    \Mail::to($staff->Email)->send(new \App\Mail\StaffSessionCancelledMail([
+                        'staff_name' => $staff->Ten_NV,
+                        'session_date' => Carbon::parse($session->NgayLam)->format('d/m/Y'),
+                        'session_time' => Carbon::parse($session->GioBatDau)->format('H:i'),
+                        'order_id' => $session->ID_DD,
+                        'reason' => 'Khách hàng yêu cầu hủy',
+                    ]));
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to send staff cancellation email: ' . $e->getMessage());
+            }
+        }
+
+        $notificationService->notifySessionCancelled($session, 'user_cancel_session', [
+            'amount' => $refundResult['amount'] ?? 0,
+            'payment_method' => $refundResult['payment_method'] ?? null,
+        ]);
+
+        $booking = $session->donDat;
+        $allSessions = LichBuoiThang::where('ID_DD', $booking->ID_DD)->get();
+        $cancelledCount = $allSessions->where('TrangThaiBuoi', 'cancelled')->count();
+
+        if ($cancelledCount === $allSessions->count()) {
+            $booking->TrangThaiDon = 'cancelled';
+            $booking->save();
+            $notificationService->notifyOrderCancelled($booking, 'user_cancel', [
+                'amount' => 0,
+                'payment_method' => $refundResult['payment_method'] ?? null,
+            ]);
+        }
+
+        $message = 'Hủy buổi làm thành công.';
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+        ]);
+    }
     /**
      * Handle finding-staff prompt (wait / reschedule)
      * POST /api/bookings/{id}/finding-staff-action

@@ -25,11 +25,38 @@ class AdminEmployeeController extends Controller
         }
 
         $employees = $query->with(['taiKhoan', 'danhGias', 'donDat' => function($q) use ($startDate, $endDate) {
-            $q->whereIn('TrangThaiDon', ['completed', 'done'])
+            $q->where('LoaiDon', 'hour')
+              ->where('TrangThaiDon', 'completed')
               ->whereBetween('NgayTao', [$startDate, $endDate]);
         }])->paginate(10);
 
-        return view('admin.employees.index', compact('employees', 'startDate', 'endDate'));
+        // Calculate revenue for each employee including session revenue
+        $employeeRevenues = [];
+        foreach ($employees as $employee) {
+            // Hourly order revenue
+            $hourlyRevenue = $employee->donDat->sum('TongTienSauGiam');
+            
+            // Monthly session revenue (sessions where this employee completed)
+            $completedSessions = \App\Models\LichBuoiThang::with('donDat')
+                ->where('ID_NV', $employee->ID_NV)
+                ->whereBetween('NgayLam', [$startDate, $endDate])
+                ->where('TrangThaiBuoi', 'completed')
+                ->get();
+            
+            $sessionRevenue = 0;
+            foreach ($completedSessions as $session) {
+                if ($session->donDat) {
+                    $totalSessions = \App\Models\LichBuoiThang::where('ID_DD', $session->ID_DD)->count();
+                    if ($totalSessions > 0) {
+                        $sessionRevenue += $session->donDat->TongTienSauGiam / $totalSessions;
+                    }
+                }
+            }
+            
+            $employeeRevenues[$employee->ID_NV] = $hourlyRevenue + $sessionRevenue;
+        }
+
+        return view('admin.employees.index', compact('employees', 'startDate', 'endDate', 'employeeRevenues'));
     }
     public function updateStatus(NhanVien $employee)
     {
@@ -71,9 +98,34 @@ class AdminEmployeeController extends Controller
         }
 
         $employees = $query->with(['donDat' => function($q) use ($startDate, $endDate) {
-            $q->whereIn('TrangThaiDon', ['completed', 'done'])
+            $q->where('LoaiDon', 'hour')
+              ->where('TrangThaiDon', 'completed')
               ->whereBetween('NgayTao', [$startDate, $endDate]);
         }])->get();
+
+        // Pre-calculate revenue for each employee
+        $employeeRevenues = [];
+        foreach ($employees as $employee) {
+            $hourlyRevenue = $employee->donDat->sum('TongTienSauGiam');
+            
+            $completedSessions = \App\Models\LichBuoiThang::with('donDat')
+                ->where('ID_NV', $employee->ID_NV)
+                ->whereBetween('NgayLam', [$startDate, $endDate])
+                ->where('TrangThaiBuoi', 'completed')
+                ->get();
+            
+            $sessionRevenue = 0;
+            foreach ($completedSessions as $session) {
+                if ($session->donDat) {
+                    $totalSessions = \App\Models\LichBuoiThang::where('ID_DD', $session->ID_DD)->count();
+                    if ($totalSessions > 0) {
+                        $sessionRevenue += $session->donDat->TongTienSauGiam / $totalSessions;
+                    }
+                }
+            }
+            
+            $employeeRevenues[$employee->ID_NV] = $hourlyRevenue + $sessionRevenue;
+        }
 
         $headers = [
             "Content-type"        => "text/csv",
@@ -83,7 +135,7 @@ class AdminEmployeeController extends Controller
             "Expires"             => "0"
         ];
 
-        $callback = function() use ($employees, $startDate, $endDate) {
+        $callback = function() use ($employees, $startDate, $endDate, $employeeRevenues) {
             $file = fopen('php://output', 'w');
             
             // Add BOM for Excel
@@ -101,7 +153,7 @@ class AdminEmployeeController extends Controller
             ], ';');
 
             foreach ($employees as $employee) {
-                $revenue = $employee->donDat->sum('TongTienSauGiam');
+                $revenue = $employeeRevenues[$employee->ID_NV] ?? 0;
                 
                 fputcsv($file, [
                     $employee->ID_NV,
@@ -110,7 +162,7 @@ class AdminEmployeeController extends Controller
                     $employee->Email,
                     $employee->KhuVucLamViec,
                     $employee->SoDu,
-                    $revenue
+                    round($revenue)
                 ], ';');
             }
 

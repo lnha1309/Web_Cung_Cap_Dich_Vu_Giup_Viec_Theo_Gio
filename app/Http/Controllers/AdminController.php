@@ -77,17 +77,76 @@ class AdminController extends Controller
         $workingStaff = NhanVien::count();
         $totalCustomers = KhachHang::count();
 
-        $revenueRange = DonDat::whereBetween('NgayTao', [$startDate, $endDate])
-            ->whereIn('TrangThaiDon', ['completed'])
+        // Revenue calculation including completed monthly sessions
+        // 1. Revenue from completed hourly orders
+        $hourlyRevenueRange = DonDat::whereBetween('NgayTao', [$startDate, $endDate])
+            ->where('LoaiDon', 'hour')
+            ->where('TrangThaiDon', 'completed')
             ->sum('TongTienSauGiam');
 
-        $revenueDay = DonDat::whereDate('NgayTao', Carbon::today())
-            ->whereIn('TrangThaiDon', ['completed'])
+        // 2. Revenue from completed monthly sessions (proportional)
+        $monthlySessionsRange = \App\Models\LichBuoiThang::with('donDat')
+            ->whereBetween('NgayLam', [$startDate, $endDate])
+            ->where('TrangThaiBuoi', 'completed')
+            ->get();
+        
+        $monthlyRevenueRange = 0;
+        foreach ($monthlySessionsRange as $session) {
+            if ($session->donDat) {
+                $totalSessions = \App\Models\LichBuoiThang::where('ID_DD', $session->ID_DD)->count();
+                if ($totalSessions > 0) {
+                    $monthlyRevenueRange += $session->donDat->TongTienSauGiam / $totalSessions;
+                }
+            }
+        }
+        
+        $revenueRange = $hourlyRevenueRange + $monthlyRevenueRange;
+
+        // Daily revenue (similar logic)
+        $hourlyRevenueDay = DonDat::whereDate('NgayTao', Carbon::today())
+            ->where('LoaiDon', 'hour')
+            ->where('TrangThaiDon', 'completed')
             ->sum('TongTienSauGiam');
+
+        $monthlySessionsDay = \App\Models\LichBuoiThang::with('donDat')
+            ->whereDate('NgayLam', Carbon::today())
+            ->where('TrangThaiBuoi', 'completed')
+            ->get();
+        
+        $monthlyRevenueDay = 0;
+        foreach ($monthlySessionsDay as $session) {
+            if ($session->donDat) {
+                $totalSessions = \App\Models\LichBuoiThang::where('ID_DD', $session->ID_DD)->count();
+                if ($totalSessions > 0) {
+                    $monthlyRevenueDay += $session->donDat->TongTienSauGiam / $totalSessions;
+                }
+            }
+        }
+        
+        $revenueDay = $hourlyRevenueDay + $monthlyRevenueDay;
             
-        $revenueWeek = DonDat::whereBetween('NgayTao', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()])
-            ->whereIn('TrangThaiDon', ['completed'])
+        // Weekly revenue (similar logic)
+        $hourlyRevenueWeek = DonDat::whereBetween('NgayTao', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()])
+            ->where('LoaiDon', 'hour')
+            ->where('TrangThaiDon', 'completed')
             ->sum('TongTienSauGiam');
+
+        $monthlySessionsWeek = \App\Models\LichBuoiThang::with('donDat')
+            ->whereBetween('NgayLam', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()])
+            ->where('TrangThaiBuoi', 'completed')
+            ->get();
+        
+        $monthlyRevenueWeek = 0;
+        foreach ($monthlySessionsWeek as $session) {
+            if ($session->donDat) {
+                $totalSessions = \App\Models\LichBuoiThang::where('ID_DD', $session->ID_DD)->count();
+                if ($totalSessions > 0) {
+                    $monthlyRevenueWeek += $session->donDat->TongTienSauGiam / $totalSessions;
+                }
+            }
+        }
+        
+        $revenueWeek = $hourlyRevenueWeek + $monthlyRevenueWeek;
 
 
         // 3. Charts Data
@@ -171,41 +230,93 @@ class AdminController extends Controller
         $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
         $endDate = $request->input('end_date', Carbon::now()->endOfMonth()->format('Y-m-d'));
 
-        $data = DonDat::join('DichVu', 'DonDat.ID_DV', '=', 'DichVu.ID_DV')
-            ->select(
-                'DichVu.TenDV',
-                DB::raw('SUM(DonDat.TongTienSauGiam) as DoanhThu'),
-                DB::raw('COUNT(DISTINCT DonDat.ID_KH) as SoKhachHang')
-            )
-            ->whereBetween('DonDat.NgayTao', [$startDate, $endDate])
-            ->where('DonDat.TrangThaiDon', 'completed')
-            ->groupBy('DichVu.ID_DV', 'DichVu.TenDV')
+        // Get completed hourly orders
+        $hourlyOrders = DonDat::with(['dichVu', 'khachHang', 'nhanVien'])
+            ->where('LoaiDon', 'hour')
+            ->where('TrangThaiDon', 'completed')
+            ->whereBetween('NgayLam', [$startDate, $endDate])
+            ->get();
+
+        // Get completed monthly sessions
+        $monthlySessions = \App\Models\LichBuoiThang::with(['donDat.dichVu', 'donDat.khachHang', 'nhanVien'])
+            ->where('TrangThaiBuoi', 'completed')
+            ->whereBetween('NgayLam', [$startDate, $endDate])
             ->get();
 
         $headers = [
             "Content-type"        => "text/csv",
-            "Content-Disposition" => "attachment; filename=revenue-report.csv",
+            "Content-Disposition" => "attachment; filename=revenue-report-{$startDate}-{$endDate}.csv",
             "Pragma"              => "no-cache",
             "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
             "Expires"             => "0"
         ];
 
-        $callback = function() use ($data) {
+        $callback = function() use ($hourlyOrders, $monthlySessions, $startDate, $endDate) {
             $file = fopen('php://output', 'w');
             
             // Add BOM for Excel to recognize UTF-8
             fputs($file, "\xEF\xBB\xBF");
 
             // Header row
-            fputcsv($file, ['Tên dịch vụ', 'Doanh thu', 'Số khách hàng đặt'], ';');
+            fputcsv($file, [
+                'Loại', 
+                'Mã đơn/buổi', 
+                'Dịch vụ', 
+                'Khách hàng', 
+                'Nhân viên', 
+                'Ngày làm', 
+                'Doanh thu'
+            ], ';');
 
-            foreach ($data as $row) {
+            // Export hourly orders
+            foreach ($hourlyOrders as $order) {
                 fputcsv($file, [
-                    $row->TenDV, 
-                    $row->DoanhThu, 
-                    $row->SoKhachHang
+                    'Đơn theo giờ',
+                    $order->ID_DD,
+                    $order->dichVu->TenDV ?? 'N/A',
+                    $order->khachHang->Ten_KH ?? 'N/A',
+                    $order->nhanVien->Ten_NV ?? 'N/A',
+                    $order->NgayLam ? Carbon::parse($order->NgayLam)->format('d/m/Y') : 'N/A',
+                    number_format(round($order->TongTienSauGiam), 0, ',', '.')
                 ], ';');
             }
+
+            // Export monthly sessions
+            foreach ($monthlySessions as $session) {
+                if ($session->donDat) {
+                    $totalSessions = \App\Models\LichBuoiThang::where('ID_DD', $session->ID_DD)->count();
+                    $sessionRevenue = $totalSessions > 0 
+                        ? $session->donDat->TongTienSauGiam / $totalSessions 
+                        : 0;
+
+                    fputcsv($file, [
+                        'Buổi theo tháng',
+                        $session->ID_Buoi,
+                        $session->donDat->dichVu->TenDV ?? 'N/A',
+                        $session->donDat->khachHang->Ten_KH ?? 'N/A',
+                        $session->nhanVien->Ten_NV ?? 'N/A',
+                        Carbon::parse($session->NgayLam)->format('d/m/Y'),
+                        number_format(round($sessionRevenue), 0, ',', '.')
+                    ], ';');
+                }
+            }
+
+            // Summary row
+            $totalHourly = $hourlyOrders->sum('TongTienSauGiam');
+            $totalMonthly = 0;
+            foreach ($monthlySessions as $session) {
+                if ($session->donDat) {
+                    $totalSessions = \App\Models\LichBuoiThang::where('ID_DD', $session->ID_DD)->count();
+                    if ($totalSessions > 0) {
+                        $totalMonthly += $session->donDat->TongTienSauGiam / $totalSessions;
+                    }
+                }
+            }
+            
+            fputcsv($file, [], ';');
+            fputcsv($file, ['TỔNG CỘNG', '', '', '', '', '', number_format(round($totalHourly + $totalMonthly), 0, ',', '.')], ';');
+            fputcsv($file, ['Đơn theo giờ', '', '', '', '', '', number_format(round($totalHourly), 0, ',', '.')], ';');
+            fputcsv($file, ['Buổi theo tháng', '', '', '', '', '', number_format(round($totalMonthly), 0, ',', '.')], ';');
 
             fclose($file);
         };
